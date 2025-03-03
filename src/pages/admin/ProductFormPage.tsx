@@ -196,18 +196,12 @@ const ProductFormPage: React.FC = () => {
     category: '',
     stock: '',
     sku: '',
-    brand: '',
-    weight: '',
-    dimensions: '',
     featured: false,
     discount: '',
-    taxable: true
+    taxable: true,
+    productType: 'pieces',
+    sizes: { S: 0, M: 0, L: 0, XL: 0, XXL: 0 }
   });
-  
-  // Specifications state
-  const [specifications, setSpecifications] = useState<Specification[]>([
-    { id: 1, name: '', value: '' }
-  ]);
   
   // Mock categories
   const categories = ['Electronics', 'Computers', 'Footwear', 'Home & Kitchen', 'Gaming', 'Clothing', 'Beauty'];
@@ -228,21 +222,12 @@ const ProductFormPage: React.FC = () => {
           category: 'Electronics',
           stock: '24',
           sku: 'SAM-GS21-BLK',
-          brand: 'Samsung',
-          weight: '171g',
-          dimensions: '151.7 x 71.2 x 7.9 mm',
           featured: true,
           discount: '10',
-          taxable: true
+          taxable: true,
+          productType: 'pieces',
+          sizes: { S: 0, M: 0, L: 0, XL: 0, XXL: 0 }
         });
-        
-        setSpecifications([
-          { id: 1, name: 'Display', value: '6.2 inches, Dynamic AMOLED 2X' },
-          { id: 2, name: 'Processor', value: 'Exynos 2100 / Snapdragon 888' },
-          { id: 3, name: 'RAM', value: '8GB' },
-          { id: 4, name: 'Storage', value: '128GB' },
-          { id: 5, name: 'Battery', value: '4000mAh' }
-        ]);
         
         setImages(['https://via.placeholder.com/150', 'https://via.placeholder.com/150']);
       }
@@ -265,21 +250,14 @@ const ProductFormPage: React.FC = () => {
     });
   };
   
-  const handleSpecificationChange = (id: number, field: 'name' | 'value', value: string) => {
-    setSpecifications(specs =>
-      specs.map(spec =>
-        spec.id === id ? { ...spec, [field]: value } : spec
-      )
-    );
-  };
-  
-  const addSpecification = () => {
-    const newId = Math.max(0, ...specifications.map(s => s.id)) + 1;
-    setSpecifications([...specifications, { id: newId, name: '', value: '' }]);
-  };
-  
-  const removeSpecification = (id: number) => {
-    setSpecifications(specs => specs.filter(spec => spec.id !== id));
+  const handleSizeStockChange = (size: string, value: string) => {
+    setFormData({
+      ...formData,
+      sizes: {
+        ...formData.sizes,
+        [size]: parseInt(value) || 0
+      }
+    });
   };
   
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -297,9 +275,23 @@ const ProductFormPage: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Calculate total stock for sizes if applicable
+    const totalStock = formData.productType === 'sizes' 
+      ? Object.values(formData.sizes).reduce((sum, qty) => sum + qty, 0)
+      : parseInt(formData.stock) || 0;
+    
+    // Prepare data for API submission
+    const productData = {
+      ...formData,
+      price: parseFloat(formData.price),
+      discount: formData.discount ? parseFloat(formData.discount) : null,
+      stock_quantity: totalStock,
+      // Include size data in metadata if product uses sizes
+      metadata: formData.productType === 'sizes' ? { sizes: formData.sizes } : {}
+    };
+    
     // In a real app, this would send the data to an API
-    console.log('Form Data:', formData);
-    console.log('Specifications:', specifications);
+    console.log('Form Data:', productData);
     console.log('Images:', images);
     
     // Redirect back to products list
@@ -386,16 +378,50 @@ const ProductFormPage: React.FC = () => {
             <SectionTitle>Inventory</SectionTitle>
             <FormRow>
               <FormGroup>
-                <Label htmlFor="sku">SKU (Stock Keeping Unit)*</Label>
+                <Label htmlFor="sku">SKU (Stock Keeping Unit)</Label>
                 <Input
                   id="sku"
                   name="sku"
                   value={formData.sku}
                   onChange={handleInputChange}
-                  required
                 />
               </FormGroup>
               
+              <FormGroup>
+                <Label htmlFor="productType">Product Type*</Label>
+                <Select
+                  id="productType"
+                  name="productType"
+                  value={formData.productType}
+                  onChange={handleInputChange}
+                  required
+                >
+                  <option value="pieces">Individual Pieces</option>
+                  <option value="packs">Packs/Bundles</option>
+                  <option value="sizes">Clothing (With Sizes)</option>
+                </Select>
+              </FormGroup>
+            </FormRow>
+            
+            {formData.productType === 'sizes' ? (
+              <FormGroup>
+                <Label>Stock Quantity by Size*</Label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px' }}>
+                  {Object.keys(formData.sizes).map((size) => (
+                    <div key={size}>
+                      <Label htmlFor={`size-${size}`}>{size}</Label>
+                      <Input
+                        id={`size-${size}`}
+                        type="number"
+                        value={formData.sizes[size as keyof typeof formData.sizes]}
+                        onChange={(e) => handleSizeStockChange(size, e.target.value)}
+                        min="0"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </FormGroup>
+            ) : (
               <FormGroup>
                 <Label htmlFor="stock">Stock Quantity*</Label>
                 <Input
@@ -408,7 +434,7 @@ const ProductFormPage: React.FC = () => {
                   required
                 />
               </FormGroup>
-            </FormRow>
+            )}
             
             <FormGroup>
               <Label>
@@ -432,100 +458,6 @@ const ProductFormPage: React.FC = () => {
                 />
                 {' '}Taxable
               </Label>
-            </FormGroup>
-          </FormSection>
-          
-          <FormSection>
-            <SectionTitle>Product Details</SectionTitle>
-            <FormRow>
-              <FormGroup>
-                <Label htmlFor="brand">Brand</Label>
-                <Input
-                  id="brand"
-                  name="brand"
-                  value={formData.brand}
-                  onChange={handleInputChange}
-                />
-              </FormGroup>
-              
-              <FormGroup>
-                <Label htmlFor="weight">Weight</Label>
-                <Input
-                  id="weight"
-                  name="weight"
-                  value={formData.weight}
-                  onChange={handleInputChange}
-                />
-              </FormGroup>
-            </FormRow>
-            
-            <FormGroup>
-              <Label htmlFor="dimensions">Dimensions</Label>
-              <Input
-                id="dimensions"
-                name="dimensions"
-                value={formData.dimensions}
-                onChange={handleInputChange}
-                placeholder="e.g. 10 x 15 x 5 cm"
-              />
-            </FormGroup>
-            
-            <FormGroup>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Label>Specifications</Label>
-                <Button 
-                  type="button" 
-                  variant="secondary" 
-                  onClick={addSpecification}
-                  style={{ padding: '5px 10px' }}
-                >
-                  Add Specification
-                </Button>
-              </div>
-              
-              <SpecificationTable>
-                <thead>
-                  <tr>
-                    <th style={{ width: '40%' }}>Name</th>
-                    <th style={{ width: '50%' }}>Value</th>
-                    <th style={{ width: '10%' }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {specifications.map(spec => (
-                    <tr key={spec.id}>
-                      <td>
-                        <Input
-                          value={spec.name}
-                          onChange={(e) => handleSpecificationChange(spec.id, 'name', e.target.value)}
-                          placeholder="e.g. CPU"
-                        />
-                      </td>
-                      <td>
-                        <Input
-                          value={spec.value}
-                          onChange={(e) => handleSpecificationChange(spec.id, 'value', e.target.value)}
-                          placeholder="e.g. Intel Core i5"
-                        />
-                      </td>
-                      <td>
-                        <button
-                          type="button"
-                          onClick={() => removeSpecification(spec.id)}
-                          style={{ 
-                            background: 'none', 
-                            border: 'none', 
-                            color: '#dc3545',
-                            cursor: 'pointer' 
-                          }}
-                        >
-                          ✕
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </SpecificationTable>
             </FormGroup>
           </FormSection>
           

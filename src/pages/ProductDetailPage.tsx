@@ -4,7 +4,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
-import { Text, Button } from '../styles/GlobalComponents';
+import { Text, Button, FlexBox } from '../styles/GlobalComponents';
 import { useCart } from '../contexts/CartContext';
 import { formatCurrency } from '../utils/formatCurrency';
 
@@ -283,6 +283,14 @@ const mockProducts = [
     price: 1200,
     compareAtPrice: 1500,
     description: 'Fresh and nutritious whole milk from local farms. Rich in calcium and protein, this milk is perfect for your daily nutrition needs. Pasteurized for safety while maintaining its fresh taste.',
+    shortDescription: 'Fresh whole milk from local farms.',
+    specifications: [
+      { name: 'Volume', value: '1 Liter' },
+      { name: 'Fat Content', value: '3.5%' },
+      { name: 'Storage', value: 'Refrigerated' },
+      { name: 'Shelf Life', value: '7 days' }
+    ],
+    productType: 'pieces',
     stock: 24,
     expiry: '2025-03-15',
     features: [
@@ -311,6 +319,14 @@ const mockProducts = [
     price: 7500,
     compareAtPrice: 8200,
     description: 'High-quality aged basmati rice with aromatic flavor. Grown in the finest rice fields and aged to perfection. Perfect for biryani, jollof rice, and other special dishes.',
+    shortDescription: 'Aged basmati rice with aromatic flavor.',
+    specifications: [
+      { name: 'Weight', value: '5 Kilograms' },
+      { name: 'Origin', value: 'Imported' },
+      { name: 'Cooking Time', value: '15-20 minutes' },
+      { name: 'Storage', value: 'Dry place' }
+    ],
+    productType: 'packs',
     stock: 12,
     expiry: '2025-12-18',
     features: [
@@ -339,6 +355,14 @@ const mockProducts = [
     price: 1800,
     compareAtPrice: 2000,
     description: 'Fresh locally grown tomatoes, perfect for salads and sauces. These tomatoes are harvested at the peak of ripeness to ensure the best flavor and nutritional value.',
+    shortDescription: 'Locally grown fresh tomatoes.',
+    specifications: [
+      { name: 'Weight', value: '1 Kilogram' },
+      { name: 'Type', value: 'Roma/Plum' },
+      { name: 'Storage', value: 'Room temperature or refrigerate' },
+      { name: 'Shelf Life', value: '3-5 days' }
+    ],
+    productType: 'pieces',
     stock: 38,
     expiry: '2025-03-07',
     features: [
@@ -367,6 +391,14 @@ const mockProducts = [
     price: 5500,
     compareAtPrice: 6000,
     description: 'Premium quality chicken breast, perfect for grilling or baking. Sourced from farms with high animal welfare standards. Individually quick frozen to preserve freshness.',
+    shortDescription: 'Premium quality frozen chicken breast.',
+    specifications: [
+      { name: 'Weight', value: '1 Kilogram' },
+      { name: 'Pieces', value: '4-5 pieces approximately' },
+      { name: 'Storage', value: 'Keep frozen until use' },
+      { name: 'Shelf Life', value: '12 months' }
+    ],
+    productType: 'pieces',
     stock: 45,
     expiry: '2025-06-22',
     features: [
@@ -395,6 +427,14 @@ const mockProducts = [
     price: 950,
     compareAtPrice: 1200,
     description: 'Effective dish soap with gentle formula for clean dishes and hands. Cuts through grease while being gentle on your skin. Pleasant citrus scent.',
+    shortDescription: 'Gentle and effective dish soap.',
+    specifications: [
+      { name: 'Volume', value: '750ml' },
+      { name: 'Concentration', value: 'Ultra-concentrated' },
+      { name: 'Ingredients', value: 'Plant-based surfactants' },
+      { name: 'Storage', value: 'Dry place' }
+    ],
+    productType: 'pieces',
     stock: 10,
     expiry: null,
     features: [
@@ -423,6 +463,14 @@ const mockProducts = [
     price: 3200,
     compareAtPrice: 3500,
     description: 'Farm-fresh eggs from free-range chickens. Perfect for breakfast, baking, or any recipe that calls for fresh eggs. Each egg is inspected for quality.',
+    shortDescription: 'Farm-fresh eggs from free-range chickens.',
+    specifications: [
+      { name: 'Quantity', value: '30 eggs' },
+      { name: 'Size', value: 'Large' },
+      { name: 'Type', value: 'Free Range' },
+      { name: 'Storage', value: 'Refrigerated' }
+    ],
+    productType: 'packs',
     stock: 8,
     expiry: '2025-03-20',
     features: [
@@ -434,124 +482,79 @@ const mockProducts = [
     specs: {
       quantity: '30 eggs',
       size: 'Large',
-      storage: 'Keep refrigerated'
+      storage: 'Refrigerated'
     },
     rating: 4.9,
     reviewCount: 73
   },
   {
-    id: 13,
-    name: 'Indomie Noodles (40 Pack)',
+    id: 7,
+    name: 'Premium Cotton T-Shirt',
     images: [
-      'https://via.placeholder.com/500x400?text=Indomie+Noodles',
-      'https://via.placeholder.com/500x400?text=Noodles+Package',
-      'https://via.placeholder.com/500x400?text=Noodles+Cooking',
+      'https://via.placeholder.com/500x400?text=Cotton+Tshirt',
+      'https://via.placeholder.com/500x400?text=Tshirt+Back'
     ],
-    category: 'Packaged & Frozen Foods',
-    price: 5800,
-    compareAtPrice: 6500,
-    description: 'Popular instant noodles in bulk pack, various flavors. A quick and easy meal option for busy days. Just add hot water for a tasty meal in minutes.',
-    stock: 25,
-    expiry: '2025-10-15',
-    features: [
-      'Ready in 3 minutes',
-      'Multiple flavors included',
-      'No artificial preservatives',
-      'Convenient single servings'
+    category: 'Clothing',
+    price: 5500,
+    compareAtPrice: 6000,
+    description: 'Premium quality cotton t-shirt, comfortable for everyday wear.',
+    shortDescription: '100% cotton t-shirt in various sizes.',
+    specifications: [
+      { name: 'Material', value: '100% Cotton' },
+      { name: 'Care', value: 'Machine Washable' },
+      { name: 'Style', value: 'Round Neck' }
     ],
-    specs: {
-      quantity: '40 packs',
-      flavors: 'Chicken, Beef, Vegetable',
-      weight: '70g per pack'
+    productType: 'sizes',
+    sizeStock: {
+      S: 10,
+      M: 15,
+      L: 20,
+      XL: 8,
+      XXL: 5
     },
-    rating: 4.6,
-    reviewCount: 189
-  },
-  {
-    id: 14,
-    name: 'Ceramic Cooking Pot Set',
-    images: [
-      'https://via.placeholder.com/500x400?text=Ceramic+Pot+Set',
-      'https://via.placeholder.com/500x400?text=Pots+Open',
-      'https://via.placeholder.com/500x400?text=Pots+Stacked',
-    ],
-    category: 'Cookware & Storage',
-    price: 12500,
-    compareAtPrice: 15000,
-    description: 'Premium ceramic cooking pot set with 3 different sizes. Non-stick interior makes cooking and cleaning easy. Elegant design makes them perfect for serving dishes as well.',
-    stock: 8,
-    expiry: null,
-    features: [
-      'Non-stick ceramic interior',
-      'Heat-resistant handles',
-      'Dishwasher safe',
-      'Works on all stovetops'
-    ],
-    specs: {
-      pieces: '3 pots with lids',
-      sizes: '2L, 3L, 5L',
-      material: 'Ceramic coated aluminum'
-    },
-    rating: 4.7,
-    reviewCount: 62
-  },
-  {
-    id: 15,
-    name: 'Pampers Diapers (Pack of 48)',
-    images: [
-      'https://via.placeholder.com/500x400?text=Pampers+Diapers',
-      'https://via.placeholder.com/500x400?text=Diaper+Package',
-      'https://via.placeholder.com/500x400?text=Diaper+Features',
-    ],
-    category: 'Baby Food & Diapers',
-    price: 6500,
-    compareAtPrice: 7200,
-    description: 'Premium quality diapers for babies, sizes 3-5. Ultra-absorbent with up to 12 hours of protection. Gentle on baby\'s skin with hypoallergenic materials.',
-    stock: 18,
-    expiry: null,
-    features: [
-      'Up to 12 hours protection',
-      'Hypoallergenic materials',
-      'Wetness indicator',
-      'Flexible fit for comfort'
-    ],
-    specs: {
-      quantity: '48 diapers',
-      sizes: 'Available in 3, 4, 5',
-      absorbency: 'Ultra-absorbent core'
-    },
-    rating: 4.8,
-    reviewCount: 215
-  },
-  {
-    id: 16,
-    name: 'Coca Cola (12 Pack)',
-    images: [
-      'https://via.placeholder.com/500x400?text=Coca+Cola+12+Pack',
-      'https://via.placeholder.com/500x400?text=Coke+Cans',
-      'https://via.placeholder.com/500x400?text=Coke+Chilled',
-    ],
-    category: 'Soft Drinks & Juices',
-    price: 2800,
-    compareAtPrice: 3000,
-    description: 'Classic Coca Cola soft drink in canned pack. Enjoy the refreshing taste of Coca-Cola in convenient single-serving cans, perfect for parties or everyday enjoyment.',
-    stock: 30,
-    expiry: '2025-09-15',
-    features: [
-      'Original cola taste',
-      'Convenient can size',
-      'Perfect for parties',
-      'Best served chilled'
-    ],
-    specs: {
-      quantity: '12 cans',
-      volume: '330ml per can',
-      calories: '139 calories per can'
-    },
-    rating: 4.9,
-    reviewCount: 320
+    rating: 4.5,
+    reviewCount: 210
   }
 ];
+
+const StockDisplay = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+`;
+
+const SizeButtons = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+`;
+
+const SizeButton = styled.button<{ selected?: boolean }>`
+  padding: 8px 16px;
+  border: 1px solid ${props => props.selected ? 'var(--primary-color)' : '#ddd'};
+  background-color: ${props => props.selected ? 'var(--primary-color)' : '#fff'};
+  color: ${props => props.selected ? '#fff' : '#333'};
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background-color: ${props => props.selected ? 'var(--primary-color)' : '#f5f5f5'};
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: #ddd;
+    background-color: #f5f5f5;
+  }
+`;
 
 const ProductDetailPage = () => {
   const { id } = useParams();
@@ -561,6 +564,7 @@ const ProductDetailPage = () => {
   const [currentFrequentlyBoughtIndex, setCurrentFrequentlyBoughtIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
   // Find if product is already in cart
   const cartItem = cartItems.find(item => item.id.toString() === id);
@@ -568,7 +572,36 @@ const ProductDetailPage = () => {
 
   // Get the product data
   // In a real app, this would be fetched from an API
-  const product = mockProducts.find((p) => p.id.toString() === id) || mockProducts[0];
+  const product = mockProducts.find((p) => p.id.toString() === id);
+
+  // Handle case where product isn't found
+  if (!product) {
+    return (
+      <PageContainer>
+        <Header />
+        <MainContent>
+          <Text size="xl">Product not found</Text>
+          <Button variant="primary" onClick={() => navigate('/')}>
+            Back to Home
+          </Button>
+        </MainContent>
+        <Footer />
+      </PageContainer>
+    );
+  }
+
+  // Select default size if product has sizes and none is selected
+  useEffect(() => {
+    if (product.productType === 'sizes' && !selectedSize) {
+      // Find first size that has stock
+      const availableSize = Object.entries(product.sizeStock || {})
+        .find(([_, stock]) => stock > 0);
+      
+      if (availableSize) {
+        setSelectedSize(availableSize[0]);
+      }
+    }
+  }, [product, selectedSize]);
 
   // Get similar products (same category, excluding current product)
   const frequentlyBoughtProducts = mockProducts
@@ -617,15 +650,37 @@ const ProductDetailPage = () => {
     return `https://via.placeholder.com/500x500?text=Product+Image+${index + 1}`;
   };
 
+  // Check if product is in stock based on product type
+  const isInStock = () => {
+    if (product.productType === 'sizes' && selectedSize) {
+      return product.sizeStock?.[selectedSize] > 0;
+    }
+    return product.stock > 0;
+  };
+
+  // Get available stock based on product type and selected size
+  const getAvailableStock = () => {
+    if (product.productType === 'sizes' && selectedSize) {
+      return product.sizeStock?.[selectedSize] || 0;
+    }
+    return product.stock;
+  };
+
   // Handle adding to cart - always adds 1 initially
   const handleAddToCart = () => {
     if (product) {
+      // For sized products, we need to include the selected size
+      const metadata = product.productType === 'sizes' 
+        ? { size: selectedSize } 
+        : {};
+        
       addToCart({
         id: product.id,
         name: product.name,
         price: product.price,
         image: product.images?.[0] || getImagePlaceholder(0),
-        quantity: 1
+        quantity: 1,
+        metadata
       });
       alert('Product added to cart');
     }
@@ -634,17 +689,23 @@ const ProductDetailPage = () => {
   // Handle buy now
   const handleBuyNow = () => {
     if (!isInCart && product) {
+      // For sized products, we need to include the selected size
+      const metadata = product.productType === 'sizes' 
+        ? { size: selectedSize } 
+        : {};
+        
       // If not in cart, use the buyNow function from context
       buyNow({
         id: product.id,
         name: product.name,
         price: product.price,
         image: product.images?.[0] || getImagePlaceholder(0),
-        quantity: 1
+        quantity: 1,
+        metadata
       });
     } else {
-      // Navigate to cart page using window.location as fallback
-      window.location.href = '/cart';
+      // Navigate to cart page
+      navigate('/cart');
     }
   };
 
@@ -756,6 +817,60 @@ const ProductDetailPage = () => {
 
               <Spacer size={20} />
 
+              {/* Stock information */}
+              <StockDisplay>
+                {product.productType === 'sizes' ? (
+                  <>
+                    <Text size="md" weight="medium">Select Size:</Text>
+                    <SizeButtons>
+                      {Object.entries(product.sizeStock || {}).map(([size, qty]) => (
+                        <SizeButton 
+                          key={size}
+                          selected={selectedSize === size}
+                          disabled={qty <= 0}
+                          onClick={() => setSelectedSize(size)}
+                        >
+                          {size} {qty <= 0 && '(Out of Stock)'}
+                        </SizeButton>
+                      ))}
+                    </SizeButtons>
+                    {selectedSize && (
+                      <Text size="sm">
+                        {product.sizeStock?.[selectedSize] > 0 
+                          ? `${product.sizeStock?.[selectedSize]} items available in size ${selectedSize}` 
+                          : `Out of stock in size ${selectedSize}`}
+                      </Text>
+                    )}
+                  </>
+                ) : (
+                  <Text size="sm">
+                    {product.stock > 0 
+                      ? `${product.stock} ${product.productType === 'packs' ? 'packs' : 'items'} available` 
+                      : 'Out of stock'}
+                  </Text>
+                )}
+              </StockDisplay>
+
+              {/* Add to cart and buy now buttons */}
+              <FlexBox gap="15px" style={{ marginTop: '20px' }}>
+                <Button 
+                  variant="primary" 
+                  fullWidth
+                  onClick={handleAddToCart}
+                  disabled={!isInStock()}
+                >
+                  Add to Cart
+                </Button>
+                <Button 
+                  variant="secondary" 
+                  fullWidth
+                  onClick={handleBuyNow}
+                  disabled={!isInStock()}
+                >
+                  Buy Now
+                </Button>
+              </FlexBox>
+
               {/* Show quantity controls only if item is in cart */}
               {isInCart && (
                 <>
@@ -777,31 +892,6 @@ const ProductDetailPage = () => {
                   </QuantitySelector>
                 </>
               )}
-
-              <AddToCartContainer>
-                {/* Show Add to Cart button only if item is not in cart */}
-                {!isInCart ? (
-                  <Button variant="primary" fullWidth={true} onClick={handleAddToCart}>
-                    Add to Cart
-                  </Button>
-                ) : (
-                  <>
-                    <Button variant="primary" fullWidth={true} onClick={handleContinueToCheckout}>
-                      Continue to Checkout
-                    </Button>
-                    <Spacer size={10} />
-                    <Button variant="outline" fullWidth={true} onClick={handleContinueShopping}>
-                      Continue Shopping
-                    </Button>
-                  </>
-                )}
-                {/* Show Buy Now button only if item is not in cart */}
-                {!isInCart && (
-                  <Button variant="outline" fullWidth={true} onClick={handleBuyNow}>
-                    Buy Now
-                  </Button>
-                )}
-              </AddToCartContainer>
             </ProductInfo>
           </ProductGrid>
 

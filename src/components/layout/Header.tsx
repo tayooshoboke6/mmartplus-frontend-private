@@ -244,8 +244,7 @@ const Header = () => {
       </TopBanner>
       <HeaderContainer>
         <Logo to="/">
-          <img src="/cart-icon.svg" alt="M-Mart+ Logo" width="30" height="30" />
-          <span>M-Mart+</span>
+          <img src="https://shop.mmartplus.com/images/white-logo.png" alt="M-Mart+ Logo" width="120" height="auto" />
         </Logo>
         
         <SearchBar>

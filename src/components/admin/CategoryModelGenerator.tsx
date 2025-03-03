@@ -124,16 +124,6 @@ const Button = styled.button<{ variant?: 'contained' | 'outlined' }>`
   }
 `;
 
-const Grid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
 const ImagePreview = styled.div`
   width: 100%;
   max-width: 300px;

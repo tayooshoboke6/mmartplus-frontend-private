@@ -293,7 +293,7 @@ const LoginPage: React.FC = () => {
     <PageContainer>
       {/* Logo */}
       <Logo>
-        <img src="/logo.png" alt="M-Mart+" />
+        <img src="https://shop.mmartplus.com/images/white-logo.png" alt="M-Mart+" style={{ width: '120px', height: 'auto' }} />
       </Logo>
       
       {/* Heading */}
