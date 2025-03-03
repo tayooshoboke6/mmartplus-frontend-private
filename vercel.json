@@ -16,5 +16,6 @@
       ]
     }
   ],
-  "buildCommand": "vite build"
+  "buildCommand": "vite build",
+  "installCommand": "npm install"
 }
