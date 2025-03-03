@@ -15,5 +15,7 @@
         { "key": "X-XSS-Protection", "value": "1; mode=block" }
       ]
     }
-  ]
+  ],
+  "buildCommand": "vite build",
+  "installCommand": "npm install"
 }
