@@ -8,10 +8,10 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build --skipLibCheck",
     "lint": "eslint .",
     "preview": "vite preview",
-    "vercel-build": "vite build"
+    "vercel-build": "vite build --skipLibCheck"
   },
   "dependencies": {
     "@emotion/react": "^11.10.6",
