@@ -208,7 +208,7 @@ const AdminLoginPage: React.FC = () => {
   return (
     <PageContainer>
       <Logo>
-        <img src="/logo.png" alt="M-Mart+ Admin" />
+        <img src="https://shop.mmartplus.com/images/white-logo.png" alt="M-Mart+ Admin" style={{ width: '120px', height: 'auto' }} />
       </Logo>
       
       <Heading>Admin Login</Heading>

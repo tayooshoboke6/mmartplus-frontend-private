@@ -3,10 +3,12 @@ import styled from 'styled-components';
 import ModelViewer from '../common/ModelViewer';
 
 interface Category3DDisplayProps {
-  categoryName: string;
   frontView?: string;
   angleView?: string;
   animatedView?: string;
+  modelUrl?: string;
+  categoryName: string;
+  themeColor?: string;
 }
 
 // Styled components
@@ -19,26 +21,18 @@ const ModelContainer = styled.div`
   position: relative;
 `;
 
-const ToggleButton = styled.button`
-  margin-bottom: 16px;
-  border-radius: 4px;
+const ViewButton = styled.button`
   padding: 8px 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background-color: ${props => props.color || '#0066b2'};
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
   cursor: pointer;
-  font-weight: 500;
-  transition: all 0.2s;
-  background-color: ${props => props.variant === 'outlined' ? 'transparent' : '#1976d2'};
-  color: ${props => props.variant === 'outlined' ? '#1976d2' : 'white'};
-  border: 1px solid #1976d2;
-
+  margin-top: 16px;
+  
   &:hover {
-    background-color: ${props => props.variant === 'outlined' ? 'rgba(25, 118, 210, 0.1)' : '#115293'};
-  }
-
-  svg {
-    margin-right: 8px;
+    opacity: 0.9;
   }
 `;
 
@@ -69,52 +63,51 @@ const ViewerBox = styled.div`
  * Component to display a 3D model for a category with a toggle option
  */
 const Category3DDisplay: React.FC<Category3DDisplayProps> = ({
-  categoryName,
   frontView,
   angleView,
-  animatedView
+  animatedView,
+  modelUrl,
+  categoryName,
+  themeColor
 }) => {
   const [showModel, setShowModel] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [activeView, setActiveView] = useState<'front' | 'angle' | 'animated'>('front');
 
   // If no model views are available, don't render anything
   if (!frontView && !angleView && !animatedView) {
     return null;
   }
 
-  const hasModel = frontView || angleView || animatedView;
-
   const handleToggle = () => {
-    setLoading(true);
     setShowModel(!showModel);
-    // Simulate loading time for better UX
-    setTimeout(() => {
-      setLoading(false);
-    }, 500);
   };
 
   return (
     <ModelContainer>
       {!showModel ? (
-        <ToggleButton onClick={handleToggle}>
+        <ViewButton onClick={handleToggle}>
           View 3D Model
-        </ToggleButton>
+        </ViewButton>
       ) : (
         <>
-          <ToggleButton variant="outlined" onClick={handleToggle}>
+          <ViewButton color="#1976d2" onClick={handleToggle}>
             Hide 3D Model
-          </ToggleButton>
+          </ViewButton>
           
           {loading ? (
             <LoadingSpinner />
           ) : (
             <ViewerBox>
-              <ModelViewer
-                frontView={frontView}
-                angleView={angleView}
-                animatedView={animatedView}
-                name={categoryName}
-              />
+              {!loading ? (
+                <ModelViewer
+                  frontView={frontView}
+                  angleView={angleView}
+                  animatedView={animatedView}
+                  modelUrl={modelUrl}
+                  name={categoryName}
+                />
+              ) : null}
             </ViewerBox>
           )}
         </>

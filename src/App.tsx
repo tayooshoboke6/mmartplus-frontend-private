@@ -9,6 +9,7 @@ import { CartProvider } from './contexts/CartContext'
 import { AuthProvider } from './contexts/AuthContext'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import AdminRoute from './components/auth/AdminRoute'
+import ErrorBoundary from './components/common/ErrorBoundary'
 import './App.css'
 
 // Admin pages
@@ -45,7 +46,11 @@ function App() {
             
             {/* Customer routes */}
             <Route path="/" element={<HomePage />} />
-            <Route path="/product/:id" element={<ProductDetailPage />} />
+            <Route path="/product/:id" element={
+              <ErrorBoundary>
+                <ProductDetailPage />
+              </ErrorBoundary>
+            } />
             <Route path="/cart" element={<CartPage />} />
             <Route path="/category/:slug" element={<CategoryProductsPage />} />
             
@@ -66,6 +71,7 @@ function App() {
             <Route path="/admin" element={<AdminRoute><DashboardPage /></AdminRoute>} />
             <Route path="/admin/products" element={<AdminRoute><ProductsPage /></AdminRoute>} />
             <Route path="/admin/products/new" element={<AdminRoute><ProductFormPage /></AdminRoute>} />
+            <Route path="/admin/products/add" element={<AdminRoute><ProductFormPage /></AdminRoute>} />
             <Route path="/admin/products/edit/:id" element={<AdminRoute><ProductFormPage /></AdminRoute>} />
             <Route path="/admin/categories" element={<AdminRoute><CategoriesPage /></AdminRoute>} />
             <Route path="/admin/categories/manage" element={<AdminRoute><CategoryManager /></AdminRoute>} />

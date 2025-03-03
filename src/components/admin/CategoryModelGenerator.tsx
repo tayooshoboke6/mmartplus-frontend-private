@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import ModelViewer from '../common/ModelViewer';
-import modelService from '../../services/modelService';
+import modelService, { Model3DUploadResponse } from '../../services/modelService';
 import imageService from '../../services/imageService';
 
 interface CategoryModelGeneratorProps {
@@ -12,7 +12,7 @@ interface CategoryModelGeneratorProps {
     frontView?: string;
     angleView?: string;
     animatedView?: string;
-  };
+  } | null;
 }
 
 type GenerationMethod = 'ai-text' | 'image-upload' | 'model-upload';
@@ -60,77 +60,85 @@ const RadioGroup = styled.div`
 const RadioLabel = styled.label`
   display: flex;
   align-items: center;
+  gap: 8px;
   cursor: pointer;
 `;
 
 const RadioInput = styled.input`
-  margin-right: 8px;
+  cursor: pointer;
 `;
 
-const TextField = styled.input`
+const TextInput = styled.input`
   width: 100%;
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 16px;
-  
+  margin-bottom: 16px;
   &:focus {
     outline: none;
-    border-color: #1976d2;
+    border-color: #0066b2;
   }
 `;
 
 const TextArea = styled.textarea`
   width: 100%;
   padding: 10px;
-  border: 1px solid #ddd;
+  border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 16px;
-  min-height: 80px;
-  
+  margin-bottom: 16px;
+  resize: vertical;
+  min-height: 100px;
   &:focus {
     outline: none;
-    border-color: #1976d2;
+    border-color: #0066b2;
   }
 `;
 
-const ButtonGroup = styled.div`
-  display: flex;
-  gap: 16px;
-  margin-top: 24px;
+const FileInput = styled.input`
+  display: none;
 `;
 
-const Button = styled.button<{ variant?: 'contained' | 'outlined' }>`
+const FileInputLabel = styled.label`
+  display: inline-block;
   padding: 10px 16px;
+  background-color: #f5f5f5;
+  color: #333;
   border-radius: 4px;
-  font-weight: 500;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  
-  background-color: ${props => props.variant === 'contained' ? '#1976d2' : 'transparent'};
-  color: ${props => props.variant === 'contained' ? 'white' : '#1976d2'};
-  border: 1px solid ${props => props.variant === 'contained' ? 'transparent' : '#1976d2'};
+  font-size: 14px;
+  margin-bottom: 16px;
+  border: 1px solid #ccc;
   
   &:hover {
-    background-color: ${props => props.variant === 'contained' ? '#1565c0' : 'rgba(25, 118, 210, 0.1)'};
+    background-color: #e5e5e5;
+  }
+`;
+
+const SelectedFile = styled.div`
+  margin-top: 8px;
+  font-size: 14px;
+  color: #666;
+`;
+
+const Button = styled.button`
+  padding: 10px 16px;
+  background-color: #0066b2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background-color: #0055a5;
   }
   
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
-  }
-`;
-
-const Grid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
   }
 `;
 
@@ -153,67 +161,57 @@ const PreviewImage = styled.img`
   object-fit: contain;
 `;
 
-const FileInput = styled.input`
-  display: none;
-`;
-
-const FileInputLabel = styled.label`
+const ButtonGroup = styled.div`
   display: flex;
-  align-items: center;
-  padding: 10px 16px;
-  background-color: #1976d2;
-  color: white;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 500;
-  
-  &:hover {
-    background-color: #1565c0;
-  }
+  gap: 12px;
+  margin-top: 24px;
 `;
 
 const ErrorAlert = styled.div`
   background-color: #fdeded;
-  color: #d32f2f;
-  padding: 12px 16px;
+  color: #5f2120;
+  padding: 16px;
   border-radius: 4px;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
+  border: 1px solid #f5c2c7;
 `;
 
 const SuccessAlert = styled.div`
   background-color: #edf7ed;
-  color: #2e7d32;
-  padding: 12px 16px;
+  color: #1e4620;
+  padding: 16px;
   border-radius: 4px;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
+  border: 1px solid #c3e6cb;
+`;
+
+const LoadingOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
 `;
 
 const LoadingSpinner = styled.div`
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  border: 2px solid rgba(0, 0, 0, 0.1);
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #0066b2;
   border-radius: 50%;
-  border-top-color: white;
-  animation: spin 1s ease-in-out infinite;
-  margin-right: 8px;
-
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+  
   @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
   }
 `;
 
-const Divider = styled.hr`
-  margin: 24px 0;
-  border: none;
-  border-top: 1px solid #eee;
-`;
-
-/**
- * Component for generating 3D models for categories
- */
 const CategoryModelGenerator: React.FC<CategoryModelGeneratorProps> = ({
   categoryName,
   onModelGenerated,
@@ -221,64 +219,53 @@ const CategoryModelGenerator: React.FC<CategoryModelGeneratorProps> = ({
 }) => {
   const [generationMethod, setGenerationMethod] = useState<GenerationMethod>('ai-text');
   const [modelName, setModelName] = useState<string>(categoryName);
-  const [stylePrompt, setStylePrompt] = useState<string>('');
+  const [prompt, setPrompt] = useState<string>(`A 3D model of ${categoryName} category`);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [modelResult, setModelResult] = useState(existingModel || null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-
-  // Handle method selection
-  const handleMethodChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setGenerationMethod(event.target.value as GenerationMethod);
-    setError(null);
-  };
-
-  // Handle image selection
-  const handleImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0]) {
-      const file = event.target.files[0];
-      
-      // Create a preview
-      const imageUrl = URL.createObjectURL(file);
-      setPreviewUrl(imageUrl);
-      
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [modelResult, setModelResult] = useState<{
+    modelUrl?: string;
+    frontView?: string;
+    angleView?: string;
+    animatedView?: string;
+  } | null>(existingModel || null);
+  
+  // Handle file selection
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
       setSelectedImage(file);
-      setError(null);
+      
+      // Create a preview URL
+      const objectUrl = URL.createObjectURL(file);
+      setPreviewUrl(objectUrl);
+      
+      return () => URL.revokeObjectURL(objectUrl);
     }
   };
-
-  // Handle model generation
+  
+  // Handle form submission
   const handleGenerateModel = async () => {
-    setLoading(true);
     setError(null);
+    setLoading(true);
     
     try {
-      let result;
+      let result: Model3DUploadResponse;
       
       if (generationMethod === 'ai-text') {
-        // Generate from text
-        if (!modelName) {
-          throw new Error('Model name is required');
-        }
-        
-        const styleParam = stylePrompt.trim() || undefined;
         result = await modelService.generateCategoryModel({
           name: modelName,
-          style: styleParam
+          style: 'modern'
         });
-      } else if (generationMethod === 'image-upload') {
-        // Generate from image
-        if (!selectedImage) {
-          throw new Error('Please select an image');
-        }
-        
-        // Compress the image before upload
-        const compressedImage = await imageService.compressImage(selectedImage, {
-          maxWidth: 1000,
-          maxHeight: 1000,
-          quality: 0.8
-        });
+      } else if (generationMethod === 'image-upload' && selectedImage) {
+        // Compress image before uploading
+        const compressedImage = await imageService.compressImage(
+          selectedImage, 
+          1200, 
+          1200, 
+          0.7
+        );
         
         const compressedFile = await imageService.dataURLtoFile(
           compressedImage,
@@ -300,17 +287,23 @@ const CategoryModelGenerator: React.FC<CategoryModelGeneratorProps> = ({
         throw new Error(result.message || 'Failed to generate model');
       }
       
-      setModelResult(result);
-      onModelGenerated(result);
+      // Convert the API response model to our expected format
+      const modelData = {
+        modelUrl: result.model_url,
+        frontView: result.front_view,
+        angleView: result.angle_view,
+        animatedView: result.animated_view
+      };
       
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred');
-      console.error('Model generation error:', err);
-    } finally {
+      setModelResult(modelData);
+      onModelGenerated(modelData);
+      setLoading(false);
+    } catch (err) {
+      setError((err as Error).message || 'An error occurred while generating the model');
       setLoading(false);
     }
   };
-
+  
   return (
     <Container>
       <Title>Category 3D Model Generator</Title>
@@ -328,15 +321,15 @@ const CategoryModelGenerator: React.FC<CategoryModelGeneratorProps> = ({
           </SuccessAlert>
           
           <ModelViewer
-            frontView={modelResult.frontView || modelResult.front_view}
-            angleView={modelResult.angleView || modelResult.angle_view}
-            animatedView={modelResult.animatedView || modelResult.animated_view}
-            modelUrl={modelResult.modelUrl || modelResult.model_url}
+            frontView={modelResult.frontView || modelResult.frontView}
+            angleView={modelResult.angleView || modelResult.angleView}
+            animatedView={modelResult.animatedView || modelResult.animatedView}
+            modelUrl={modelResult.modelUrl || modelResult.modelUrl}
             name={modelName}
           />
           
           <ButtonGroup>
-            <Button variant="outlined" onClick={() => {
+            <Button onClick={() => {
               setModelResult(null);
               setSelectedImage(null);
               setPreviewUrl(null);
@@ -354,130 +347,107 @@ const CategoryModelGenerator: React.FC<CategoryModelGeneratorProps> = ({
             <FormLabel>Generation Method</FormLabel>
             <RadioGroup>
               <RadioLabel>
-                <RadioInput 
-                  type="radio" 
-                  name="generation-method" 
-                  value="ai-text" 
-                  checked={generationMethod === 'ai-text'} 
-                  onChange={handleMethodChange} 
+                <RadioInput
+                  type="radio"
+                  name="generationMethod"
+                  value="ai-text"
+                  checked={generationMethod === 'ai-text'}
+                  onChange={() => setGenerationMethod('ai-text')}
                 />
-                AI-Generated from Category Name
+                Generate from text description (AI)
               </RadioLabel>
+              
               <RadioLabel>
-                <RadioInput 
-                  type="radio" 
-                  name="generation-method" 
-                  value="image-upload" 
-                  checked={generationMethod === 'image-upload'} 
-                  onChange={handleMethodChange} 
+                <RadioInput
+                  type="radio"
+                  name="generationMethod"
+                  value="image-upload"
+                  checked={generationMethod === 'image-upload'}
+                  onChange={() => setGenerationMethod('image-upload')}
                 />
-                Generate from Image
+                Generate from image
               </RadioLabel>
+              
               <RadioLabel>
-                <RadioInput 
-                  type="radio" 
-                  name="generation-method" 
-                  value="model-upload" 
-                  checked={generationMethod === 'model-upload'} 
-                  onChange={handleMethodChange} 
+                <RadioInput
+                  type="radio"
+                  name="generationMethod"
+                  value="model-upload"
+                  checked={generationMethod === 'model-upload'}
+                  onChange={() => setGenerationMethod('model-upload')}
                 />
-                Upload 3D Model File
+                Upload existing 3D model
               </RadioLabel>
             </RadioGroup>
           </FormGroup>
           
-          <Divider />
+          <FormGroup>
+            <FormLabel>Model Name</FormLabel>
+            <TextInput
+              type="text"
+              value={modelName}
+              onChange={(e) => setModelName(e.target.value)}
+              placeholder="Enter model name"
+            />
+          </FormGroup>
           
           {generationMethod === 'ai-text' && (
             <FormGroup>
-              <FormLabel>Model Name</FormLabel>
-              <TextField
-                type="text"
-                value={modelName}
-                onChange={(e) => setModelName(e.target.value)}
-                placeholder="e.g. Furniture, Electronics"
-              />
-              
-              <FormLabel style={{ marginTop: '16px' }}>Style Prompt (Optional)</FormLabel>
+              <FormLabel>Description</FormLabel>
               <TextArea
-                value={stylePrompt}
-                onChange={(e) => setStylePrompt(e.target.value)}
-                placeholder="e.g. modern, minimalist, realistic, colorful"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="Describe the 3D model you want to generate"
               />
-              
-              <Button 
-                variant="contained" 
-                onClick={handleGenerateModel} 
-                disabled={!modelName || loading}
-                style={{ marginTop: '16px' }}
-              >
-                {loading && <LoadingSpinner />}
-                {loading ? 'Generating...' : 'Generate 3D Model'}
-              </Button>
             </FormGroup>
           )}
           
           {generationMethod === 'image-upload' && (
             <FormGroup>
-              <FormLabel>Model Name</FormLabel>
-              <TextField
-                type="text"
-                value={modelName}
-                onChange={(e) => setModelName(e.target.value)}
-                placeholder="Name for your 3D model"
-              />
+              <FileInputLabel>
+                {selectedImage ? 'Change Image' : 'Select Image'}
+                <FileInput
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                />
+              </FileInputLabel>
+              
+              {selectedImage && (
+                <SelectedFile>
+                  Selected: {selectedImage.name}
+                </SelectedFile>
+              )}
               
               {previewUrl && (
                 <ImagePreview>
-                  <PreviewImage src={previewUrl} alt="Selected image" />
+                  <PreviewImage src={previewUrl} alt="Preview" />
                 </ImagePreview>
               )}
-              
-              <div>
-                <FileInput
-                  type="file"
-                  id="image-upload"
-                  accept="image/*"
-                  onChange={handleImageSelect}
-                />
-                <FileInputLabel htmlFor="image-upload">
-                  Select Image
-                </FileInputLabel>
-              </div>
-              
-              <Button
-                variant="contained"
-                onClick={handleGenerateModel}
-                disabled={!selectedImage || !modelName || loading}
-                style={{ marginTop: '16px' }}
-              >
-                {loading && <LoadingSpinner />}
-                {loading ? 'Processing...' : 'Generate 3D Model from Image'}
-              </Button>
             </FormGroup>
           )}
           
           {generationMethod === 'model-upload' && (
             <FormGroup>
-              <FormLabel>Model Name</FormLabel>
-              <TextField
-                type="text"
-                value={modelName}
-                onChange={(e) => setModelName(e.target.value)}
-                placeholder="Name for your 3D model"
-              />
-              
-              <Button
-                variant="contained"
-                onClick={handleGenerateModel}
-                disabled={!modelName || loading}
-                style={{ marginTop: '16px' }}
-              >
-                Upload 3D Model File
-              </Button>
+              <FormLabel>
+                You'll be redirected to the 3D model uploader after clicking the button below
+              </FormLabel>
             </FormGroup>
           )}
+          
+          <Button
+            onClick={handleGenerateModel}
+            disabled={loading || (generationMethod === 'image-upload' && !selectedImage)}
+          >
+            {loading ? 'Generating...' : 'Generate 3D Model'}
+          </Button>
         </StyledPaper>
+      )}
+      
+      {loading && (
+        <LoadingOverlay>
+          <LoadingSpinner />
+        </LoadingOverlay>
       )}
     </Container>
   );

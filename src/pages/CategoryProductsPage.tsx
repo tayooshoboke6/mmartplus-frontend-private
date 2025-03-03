@@ -641,10 +641,24 @@ interface Product {
   createdAt: string;
 }
 
+interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  parentId: number | null;
+  image: string;
+  description: string;
+  productCount: number;
+  color: string;
+  model_front_view?: string;
+  model_angle_view?: string;
+  model_animated_view?: string;
+}
+
 const CategoryProductsPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const [products, setProducts] = useState<Product[]>([]);
-  const [category, setCategory] = useState<any>(null);
+  const [category, setCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { addToCart } = useCart();
