@@ -193,11 +193,12 @@ const Model3DUploader: React.FC<Model3DUploaderProps> = ({
       const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase() || '';
       
       if (['jpg', 'jpeg', 'png', 'webp'].includes(fileExtension)) {
-        const compressedImage = await imageService.compressImage(selectedFile, {
-          maxWidth: 1000,
-          maxHeight: 1000,
-          quality: 0.8
-        });
+        const compressedImage = await imageService.compressImage(
+          fileToUpload, 
+          1200, 
+          1200, 
+          0.7
+        );
         
         fileToUpload = await imageService.dataURLtoFile(
           compressedImage,

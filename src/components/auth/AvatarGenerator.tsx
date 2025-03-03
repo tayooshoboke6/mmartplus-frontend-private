@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
-import { FaImage, FaRedo, FaCheck, FaRandom } from 'react-icons/fa';
+import { FaUser } from 'react-icons/fa';
 import imageService from '../../services/imageService';
 
 const AvatarGeneratorContainer = styled.div`
@@ -126,10 +126,9 @@ const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({
   onRetakeSelfie
 }) => {
   const [isGenerating, setIsGenerating] = useState<boolean>(true);
-  const [selectedStyle, setSelectedStyle] = useState<string>('avataaars');
   const [avatarOptions, setAvatarOptions] = useState<string[]>([]);
   const [selectedAvatar, setSelectedAvatar] = useState<string>('');
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   // Create a seed from the selfie (use timestamp + random number for unique seed)
   const generateSeed = () => {
@@ -244,17 +243,17 @@ const AvatarGenerator: React.FC<AvatarGeneratorProps> = ({
           
           <ButtonsContainer>
             <SecondaryButton onClick={onRetakeSelfie}>
-              <FaRedo size={14} />
+              <FaUser size={14} />
               Retake Selfie
             </SecondaryButton>
             
             <SecondaryButton onClick={generateNewOptions}>
-              <FaRandom size={14} />
+              <FaUser size={14} />
               New Options
             </SecondaryButton>
             
             <Button onClick={handleUseAvatar}>
-              <FaCheck size={14} />
+              <FaUser size={14} />
               Use This Avatar
             </Button>
           </ButtonsContainer>
