@@ -11,9 +11,10 @@ import AddressSelector from '../components/cart/AddressSelector';
 import AddressService from '../services/AddressService';
 import { Address, AddressFormData } from '../models/Address';
 import AddressForm from '../components/cart/AddressForm';
-import CheckoutOptions from '../components/cart/CheckoutOptions';
 import StoreAddressService from '../services/StoreAddressService';
 import { StoreAddress } from '../models/StoreAddress';
+import PaymentMethodSelector from '../components/checkout/PaymentMethodSelector';
+import { PaymentMethod } from '../models/PaymentMethod';
 
 const PageContainer = styled.div`
   display: flex;
@@ -628,6 +629,7 @@ const CartPage = () => {
   const [isAddingAddress, setIsAddingAddress] = useState(false);
   const [addressAddedMessage, setAddressAddedMessage] = useState<string | null>(null);
   const [showCheckoutOptions, setShowCheckoutOptions] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null);
   const [pickupStores, setPickupStores] = useState<StoreAddress[]>([]);
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
   const [selectedStore, setSelectedStore] = useState<StoreAddress | null>(null);
@@ -909,18 +911,15 @@ const CartPage = () => {
   };
 
   // Handle payment method selection
-  const handlePaymentSelection = (paymentMethodId: string) => {
-    // In a real app, you would store the selected payment method and navigate to the appropriate checkout page
-    console.log(`Selected payment method: ${paymentMethodId}`);
-    
-    // Close the checkout options modal
+  const handlePaymentSelection = (paymentMethod: PaymentMethod) => {
+    setSelectedPaymentMethod(paymentMethod);
     setShowCheckoutOptions(false);
     
     // Navigate to the checkout page with the selected payment method
     if (deliveryOption === 'home') {
-      navigate(`/checkout?payment=${paymentMethodId}&address=${selectedAddressId}&delivery=${deliveryOption}`);
+      navigate(`/checkout?payment=${paymentMethod.code}&address=${selectedAddressId}&delivery=${deliveryOption}`);
     } else {
-      navigate(`/checkout?payment=${paymentMethodId}&store=${selectedStoreId}&delivery=${deliveryOption}`);
+      navigate(`/checkout?payment=${paymentMethod.code}&store=${selectedStoreId}&delivery=${deliveryOption}`);
     }
   };
 
@@ -1325,10 +1324,11 @@ const CartPage = () => {
       
       {/* Checkout Options Modal */}
       {showCheckoutOptions && (
-        <CheckoutOptions
-          subtotal={total}
-          onClose={() => setShowCheckoutOptions(false)}
-          onProceed={handlePaymentSelection}
+        <PaymentMethodSelector
+          visible={showCheckoutOptions}
+          onCancel={() => setShowCheckoutOptions(false)}
+          onSelect={handlePaymentSelection}
+          orderTotal={total}
         />
       )}
       

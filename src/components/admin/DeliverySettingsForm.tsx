@@ -41,7 +41,7 @@ const DeliverySettingsForm: React.FC<DeliverySettingsFormProps> = ({
   // Add a new blank order value adjustment
   const handleAddAdjustment = () => {
     const newAdjustment: OrderValueAdjustment = {
-      orderValueThreshold: 5000, // Default $50
+      orderValueThreshold: 5000, // Default ₦50
       adjustmentType: 'percentage',
       adjustmentValue: 10 // Default 10%
     };
@@ -85,7 +85,7 @@ const DeliverySettingsForm: React.FC<DeliverySettingsFormProps> = ({
 
   // Format currency for display
   const formatCurrency = (cents: number) => {
-    return `$${(cents / 100).toFixed(2)}`;
+    return `₦${(cents / 100).toFixed(2)}`;
   };
 
   return (
@@ -121,12 +121,12 @@ const DeliverySettingsForm: React.FC<DeliverySettingsFormProps> = ({
             <InputNumber
               className="w-full"
               min={0}
-              formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+              formatter={(value) => `₦ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
               parser={(value) => {
-                const parsed = Number(value!.replace(/\$\s?|(,*)/g, '')) * 100;
+                const parsed = Number(value!.replace(/₦\s?|(,*)/g, '')) * 100;
                 return isNaN(parsed) ? 0 : parsed;
               }}
-              step={50} // $0.50 increments
+              step={50} // ₦0.50 increments
             />
           </Form.Item>
 
@@ -139,12 +139,12 @@ const DeliverySettingsForm: React.FC<DeliverySettingsFormProps> = ({
             <InputNumber
               className="w-full"
               min={0}
-              formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+              formatter={(value) => `₦ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
               parser={(value) => {
-                const parsed = Number(value!.replace(/\$\s?|(,*)/g, '')) * 100;
+                const parsed = Number(value!.replace(/₦\s?|(,*)/g, '')) * 100;
                 return isNaN(parsed) ? 0 : parsed;
               }}
-              step={25} // $0.25 increments
+              step={25} // ₦0.25 increments
             />
           </Form.Item>
         </div>
@@ -172,19 +172,19 @@ const DeliverySettingsForm: React.FC<DeliverySettingsFormProps> = ({
             <InputNumber
               className="w-full"
               min={0}
-              formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+              formatter={(value) => `₦ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
               parser={(value) => {
-                const parsed = Number(value!.replace(/\$\s?|(,*)/g, '')) * 100;
+                const parsed = Number(value!.replace(/₦\s?|(,*)/g, '')) * 100;
                 return isNaN(parsed) ? 0 : parsed;
               }}
-              step={50} // $0.50 increments
+              step={50} // ₦0.50 increments
             />
           </Form.Item>
         </div>
 
         <Divider orientation="left">Order Value Adjustments</Divider>
         <Text type="secondary" className="mb-4 block">
-          Adjust delivery fees based on order value. For example, offer 50% off delivery for orders over $50, or free delivery for orders over $100.
+          Adjust delivery fees based on order value. For example, offer 50% off delivery for orders over ₦50, or free delivery for orders over ₦100.
         </Text>
 
         {adjustments.map((adjustment, index) => (
@@ -195,8 +195,8 @@ const DeliverySettingsForm: React.FC<DeliverySettingsFormProps> = ({
                 className="w-full"
                 min={0}
                 value={adjustment.orderValueThreshold / 100}
-                formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                parser={(value) => Number(value!.replace(/\$\s?|(,*)/g, '')) || 0}
+                formatter={(value) => `₦ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                parser={(value) => Number(value!.replace(/₦\s?|(,*)/g, '')) || 0}
                 onChange={(value) => handleAdjustmentChange(index, 'orderValueThreshold', (value || 0) * 100)}
                 step={5}
               />
@@ -233,8 +233,8 @@ const DeliverySettingsForm: React.FC<DeliverySettingsFormProps> = ({
                   className="w-full"
                   min={0}
                   value={adjustment.adjustmentValue / 100}
-                  formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                  parser={(value) => Number(value!.replace(/\$\s?|(,*)/g, '')) * 100 || 0}
+                  formatter={(value) => `₦ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                  parser={(value) => Number(value!.replace(/₦\s?|(,*)/g, '')) * 100 || 0}
                   onChange={(value) => handleAdjustmentChange(index, 'adjustmentValue', (value || 0) * 100)}
                   step={0.50}
                 />
