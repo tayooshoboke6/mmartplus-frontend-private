@@ -147,11 +147,29 @@ const OrdersPage: React.FC = () => {
   const fetchOrders = async () => {
     setLoading(true);
     try {
+      console.log('Fetching orders with filters:', filters);
       const response = await orderService.getOrders(filters);
-      setOrders(response.orders);
-      setTotalCount(response.total_count);
+      console.log('Orders response:', response);
+      
+      if (response && response.orders) {
+        setOrders(response.orders);
+        setTotalCount(response.total_count || 0);
+        // Log order details for debugging
+        if (response.orders.length > 0) {
+          console.log('First order sample:', response.orders[0]);
+        } else {
+          console.log('No orders returned from API');
+        }
+      } else {
+        console.error('Invalid response format from orders API:', response);
+        setOrders([]);
+        setTotalCount(0);
+        toast.error('Received invalid data from the server. Please try again.');
+      }
     } catch (error) {
       console.error('Error fetching orders:', error);
+      setOrders([]);
+      setTotalCount(0);
       toast.error('Failed to load orders. Please try again.');
     } finally {
       setLoading(false);

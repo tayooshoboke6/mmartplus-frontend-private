@@ -4,129 +4,129 @@ import { Customer } from '../models/Customer';
 
 // Response interfaces
 export interface VoucherResponse {
-  success: boolean;
-  voucher: Voucher;
+  status: string;
+  data: Voucher;
+  message?: string;
 }
 
 export interface VouchersResponse {
-  success: boolean;
-  vouchers: Voucher[];
+  status: string;
+  data: Voucher[];
 }
 
 export interface CustomersResponse {
-  success: boolean;
-  customers: Customer[];
+  status: string;
+  data: Customer[];
+}
+
+export interface ApplyVoucherResponse {
+  status: string;
+  message: string;
+  data?: {
+    discount_amount: number;
+    new_total: number;
+  };
+}
+
+export interface BulkVoucherResponse {
+  status: string;
+  message: string;
+  data?: {
+    voucher_codes: string[];
+  };
 }
 
 export const VoucherService = {
-  // Get all vouchers
+  // Get all vouchers for the current user
   getVouchers: async (): Promise<Voucher[]> => {
     try {
       const response = await api.get<VouchersResponse>('/vouchers');
-      return response.data.vouchers;
+      if (response.data.status === 'success') {
+        return response.data.data;
+      }
+      return [];
     } catch (error) {
       console.error('Error fetching vouchers:', error);
       return []; // Return empty array as fallback
     }
   },
 
-  // Get a specific voucher by ID
-  getVoucherById: async (id: string): Promise<Voucher | null> => {
+  // Apply a voucher to an order
+  applyVoucher: async (orderId: number, voucherCode: string): Promise<ApplyVoucherResponse> => {
     try {
-      const response = await api.get<VoucherResponse>(`/vouchers/${id}`);
-      return response.data.voucher;
-    } catch (error) {
-      console.error(`Error fetching voucher #${id}:`, error);
-      return null;
-    }
-  },
-
-  // Create a new voucher
-  createVoucher: async (voucherData: Partial<Voucher>): Promise<Voucher> => {
-    try {
-      const response = await api.post<VoucherResponse>('/vouchers', voucherData);
-      return response.data.voucher;
-    } catch (error) {
-      console.error('Error creating voucher:', error);
-      throw error;
-    }
-  },
-
-  // Update an existing voucher
-  updateVoucher: async (id: string, voucherData: Partial<Voucher>): Promise<Voucher> => {
-    try {
-      const response = await api.put<VoucherResponse>(`/vouchers/${id}`, voucherData);
-      return response.data.voucher;
-    } catch (error) {
-      console.error(`Error updating voucher #${id}:`, error);
-      throw error;
-    }
-  },
-
-  // Delete a voucher
-  deleteVoucher: async (id: string): Promise<void> => {
-    try {
-      await api.delete(`/vouchers/${id}`);
-    } catch (error) {
-      console.error(`Error deleting voucher #${id}:`, error);
-      throw error;
-    }
-  },
-
-  // Toggle a voucher's status (active/inactive)
-  toggleVoucherStatus: async (id: string): Promise<Voucher> => {
-    try {
-      const response = await api.put<VoucherResponse>(`/vouchers/${id}/toggle-status`);
-      return response.data.voucher;
-    } catch (error) {
-      console.error(`Error toggling voucher #${id} status:`, error);
-      throw error;
-    }
-  },
-
-  // Get all customers for voucher targeting
-  getCustomers: async (): Promise<Customer[]> => {
-    try {
-      const response = await api.get<CustomersResponse>('/customers');
-      return response.data.customers;
-    } catch (error) {
-      console.error('Error fetching customers:', error);
-      return []; // Return empty array as fallback
-    }
-  },
-
-  // Verify voucher code for a customer
-  verifyVoucher: async (code: string, options: { customerId?: number, cartTotal?: number } = {}): Promise<{
-    valid: boolean;
-    voucher?: Voucher;
-    discountAmount?: number;
-    message?: string;
-  }> => {
-    try {
-      const response = await api.post('/vouchers/verify', {
-        code,
-        ...options
+      const response = await api.post<ApplyVoucherResponse>('/vouchers/apply', {
+        order_id: orderId,
+        voucher_code: voucherCode
       });
       return response.data;
-    } catch (error) {
-      console.error('Error verifying voucher:', error);
-      return { valid: false, message: 'Failed to verify voucher. Please try again.' };
+    } catch (error: any) {
+      console.error('Error applying voucher:', error);
+      return {
+        status: 'error',
+        message: error.response?.data?.message || 'Failed to apply voucher'
+      };
     }
   },
 
-  // Send voucher notification
-  sendVoucherNotification: async (notification: any): Promise<boolean> => {
+  // Admin: Create a new voucher
+  createVoucher: async (voucherData: any): Promise<VoucherResponse> => {
     try {
-      // In a real application, this would send notifications via the specified channels
-      console.log('Sending voucher notification:', notification);
-      return true;
-    } catch (error) {
-      console.error('Error sending voucher notification:', error);
-      return false;
+      const response = await api.post<VoucherResponse>('/vouchers', voucherData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error creating voucher:', error);
+      return {
+        status: 'error',
+        data: {} as Voucher,
+        message: error.response?.data?.message || 'Failed to create voucher'
+      };
     }
   },
 
-  // Validate and apply voucher code
+  // Admin: Generate bulk vouchers
+  generateBulkVouchers: async (data: any): Promise<BulkVoucherResponse> => {
+    try {
+      const response = await api.post<BulkVoucherResponse>('/vouchers/bulk', data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error generating bulk vouchers:', error);
+      return {
+        status: 'error',
+        message: error.response?.data?.message || 'Failed to generate vouchers'
+      };
+    }
+  },
+
+  // Admin: Schedule targeted voucher distribution
+  scheduleVoucherDistribution: async (data: any): Promise<VoucherResponse> => {
+    try {
+      const response = await api.post<VoucherResponse>('/vouchers/schedule', data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error scheduling voucher distribution:', error);
+      return {
+        status: 'error',
+        data: {} as Voucher,
+        message: error.response?.data?.message || 'Failed to schedule voucher distribution'
+      };
+    }
+  },
+
+  // Admin: Get voucher usage statistics
+  getVoucherStats: async (voucherId: number): Promise<any> => {
+    try {
+      const response = await api.get(`/vouchers/${voucherId}/stats`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error fetching voucher stats:', error);
+      return {
+        status: 'error',
+        message: error.response?.data?.message || 'Failed to fetch voucher statistics'
+      };
+    }
+  },
+
+  // Client-side voucher validation (for cart preview)
   validateVoucher: async (code: string, cartTotal: number): Promise<{
     valid: boolean;
     voucher?: Voucher;
@@ -134,58 +134,59 @@ export const VoucherService = {
     errorMessage?: string;
   }> => {
     try {
-      const voucher = await this.getVoucherById(code);
-
+      // Get all vouchers and find the matching one
+      const vouchers = await VoucherService.getVouchers();
+      const voucher = vouchers.find(v => v.code === code);
+      
       if (!voucher) {
-        return { 
-          valid: false, 
-          errorMessage: 'Invalid voucher code or voucher is inactive' 
+        return {
+          valid: false,
+          errorMessage: 'Invalid voucher code'
         };
       }
-
-      // Check if voucher is valid based on dates
-      const currentDate = new Date();
-      const startDate = new Date(voucher.startDate);
-      const endDate = new Date(voucher.endDate);
-
-      if (currentDate < startDate || currentDate > endDate) {
-        return { 
-          valid: false, 
-          errorMessage: 'Voucher is not valid for current date' 
+      
+      // Check if voucher is active
+      if (!voucher.is_active) {
+        return {
+          valid: false,
+          errorMessage: 'This voucher is no longer active'
         };
       }
-
-      // Check minimum purchase requirement
-      if (cartTotal < voucher.minPurchase) {
-        return { 
-          valid: false, 
-          errorMessage: `Minimum purchase of ${voucher.minPurchase} required` 
+      
+      // Check if voucher is expired
+      if (voucher.expires_at && new Date(voucher.expires_at) < new Date()) {
+        return {
+          valid: false,
+          errorMessage: 'This voucher has expired'
         };
       }
-
-      // Calculate discount amount
+      
+      // Check minimum spend
+      if (voucher.min_spend && cartTotal < voucher.min_spend) {
+        return {
+          valid: false,
+          errorMessage: `This voucher requires a minimum spend of ₦${voucher.min_spend.toFixed(2)}`
+        };
+      }
+      
+      // Calculate discount
       let discountAmount = 0;
-      if (voucher.discountType === 'percentage') {
-        discountAmount = (cartTotal * voucher.discount) / 100;
-        // Apply maximum discount if specified
-        if (voucher.maxDiscount && discountAmount > voucher.maxDiscount) {
-          discountAmount = voucher.maxDiscount;
-        }
+      if (voucher.type === 'percentage') {
+        discountAmount = cartTotal * (voucher.value / 100);
       } else {
-        // Fixed discount
-        discountAmount = voucher.discount;
+        discountAmount = Math.min(voucher.value, cartTotal); // Don't exceed cart total
       }
-
-      return { 
-        valid: true, 
-        voucher, 
-        discountAmount 
+      
+      return {
+        valid: true,
+        voucher,
+        discountAmount
       };
     } catch (error) {
       console.error('Error validating voucher:', error);
-      return { 
-        valid: false, 
-        errorMessage: 'Failed to validate voucher. Please try again.' 
+      return {
+        valid: false,
+        errorMessage: 'An error occurred while validating your voucher'
       };
     }
   }
@@ -193,13 +194,9 @@ export const VoucherService = {
 
 // Export individual functions to maintain compatibility with existing imports
 export const getVouchers = VoucherService.getVouchers;
-export const getVoucherById = VoucherService.getVoucherById;
+export const applyVoucher = VoucherService.applyVoucher;
 export const createVoucher = VoucherService.createVoucher;
-export const updateVoucher = VoucherService.updateVoucher;
-export const deleteVoucher = VoucherService.deleteVoucher;
-export const toggleVoucherStatus = VoucherService.toggleVoucherStatus;
-export const getCustomers = VoucherService.getCustomers;
-export const verifyVoucher = VoucherService.verifyVoucher;
+export const generateBulkVouchers = VoucherService.generateBulkVouchers;
+export const scheduleVoucherDistribution = VoucherService.scheduleVoucherDistribution;
+export const getVoucherStats = VoucherService.getVoucherStats;
 export const validateVoucher = VoucherService.validateVoucher;
-
-export default VoucherService;

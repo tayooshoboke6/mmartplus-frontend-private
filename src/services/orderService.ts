@@ -70,11 +70,16 @@ export interface Order {
 export interface OrderSummary {
   id: number;
   order_number: string;
-  customer_name: string;
+  customer_name?: string;
   total: number;
   status: OrderStatus;
-  items_count: number;
+  items_count?: number;
+  items?: OrderItem[];
+  payment_method?: string;
+  payment_status?: string;
   created_at: string;
+  updated_at?: string;
+  user_id?: number;
 }
 
 // Order filter options
@@ -124,8 +129,23 @@ export interface DashboardStats {
 const orderService = {
   getOrders: async (options: OrderFilterOptions = {}): Promise<GetOrdersResponse> => {
     try {
-      const response = await api.get<GetOrdersResponse>('/orders', { params: options });
-      return response.data;
+      const response = await api.get<any>('/orders', { params: options });
+      console.log('Orders API response:', response.data);
+      
+      // Map the Laravel response to our expected format
+      if (response.data && response.data.status === 'success' && response.data.data) {
+        // The response contains Laravel pagination data
+        return {
+          orders: response.data.data.data || [], // In Laravel pagination, items are in data.data
+          total_count: response.data.data.total || 0
+        };
+      }
+      
+      // Fallback for unexpected response format
+      return {
+        orders: [],
+        total_count: 0
+      };
     } catch (error) {
       console.error('Error fetching orders:', error);
       throw error;
