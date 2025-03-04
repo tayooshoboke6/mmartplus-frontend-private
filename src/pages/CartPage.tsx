@@ -632,7 +632,14 @@ const CartPage = () => {
   const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
   const [selectedStore, setSelectedStore] = useState<StoreAddress | null>(null);
   const [isLoadingStores, setIsLoadingStores] = useState(false);
-  
+  const [customerLocation, setCustomerLocation] = useState<{ lat: number, lng: number } | null>(null);
+  const [deliveryFeeDetails, setDeliveryFeeDetails] = useState<{
+    fee: number;
+    isDeliveryAvailable: boolean;
+    message?: string;
+  } | null>(null);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+
   const navigate = useNavigate();
   
   // Mock user ID - In a real app, this would come from authentication context
@@ -640,7 +647,9 @@ const CartPage = () => {
   
   // Calculate cart totals
   const subtotal = getCartTotal();
-  const shipping = deliveryOption === 'home' ? 1000 : 0;
+  const shipping = deliveryOption === 'home' 
+    ? (deliveryFeeDetails?.isDeliveryAvailable ? deliveryFeeDetails.fee : 0) 
+    : 0;
   
   // Calculate discount if voucher is applied
   const discount = appliedVoucher ? appliedVoucher.discountAmount : 0;
@@ -711,7 +720,69 @@ const CartPage = () => {
     const store = pickupStores.find(s => s.id === storeId);
     setSelectedStoreId(storeId);
     setSelectedStore(store || null);
+    
+    // Reset customer location when store changes
+    setCustomerLocation(null);
   };
+
+  // Get user location from address
+  const getLocationFromAddress = async () => {
+    if (!selectedAddress) return;
+    
+    try {
+      setIsLoadingLocation(true);
+      // Format the address as a string
+      const addressString = formatAddressForDisplay(selectedAddress);
+      
+      // Use the StoreAddressService to get coordinates
+      const coordinates = await StoreAddressService.getCoordinatesFromAddress(addressString);
+      
+      if (coordinates) {
+        setCustomerLocation(coordinates);
+      }
+    } catch (error) {
+      console.error('Error getting location from address:', error);
+    } finally {
+      setIsLoadingLocation(false);
+    }
+  };
+
+  // Calculate delivery fee
+  const calculateDeliveryFee = async () => {
+    if (!selectedStoreId || !customerLocation || deliveryOption !== 'home') return;
+    
+    try {
+      const store = await StoreAddressService.getStoreAddressById(selectedStoreId);
+      if (!store) return;
+      
+      const feeDetails = StoreAddressService.calculateDeliveryFee(
+        store, 
+        subtotal,
+        customerLocation.lat, 
+        customerLocation.lng
+      );
+      
+      setDeliveryFeeDetails(feeDetails);
+    } catch (error) {
+      console.error('Error calculating delivery fee:', error);
+    }
+  };
+
+  // Calculate delivery fee based on current selections
+  useEffect(() => {
+    if (deliveryOption === 'home' && selectedAddress && selectedStoreId) {
+      // If we have customer location from a previous calculation, use it
+      if (customerLocation) {
+        calculateDeliveryFee();
+      } else {
+        // Otherwise, try to get location from the address
+        getLocationFromAddress();
+      }
+    } else {
+      // Reset delivery fee details when not using home delivery
+      setDeliveryFeeDetails(null);
+    }
+  }, [deliveryOption, selectedAddress, selectedStoreId, customerLocation, subtotal]);
 
   // Would normally handle images properly with imports or actual URLs
   const getImagePlaceholder = (image: string) => {
@@ -829,6 +900,11 @@ const CartPage = () => {
       return;
     }
     
+    if (deliveryOption === 'home' && deliveryFeeDetails && !deliveryFeeDetails.isDeliveryAvailable) {
+      // If delivery is not available to the selected address, show error
+      return;
+    }
+    
     setShowCheckoutOptions(true);
   };
 
@@ -846,6 +922,21 @@ const CartPage = () => {
     } else {
       navigate(`/checkout?payment=${paymentMethodId}&store=${selectedStoreId}&delivery=${deliveryOption}`);
     }
+  };
+
+  // Handle delivery option change
+  const handleDeliveryOptionChange = (option: 'home' | 'pickup') => {
+    setDeliveryOption(option);
+    
+    // When switching to home delivery, make sure we have a store selected for delivery calculation
+    if (option === 'home' && !selectedStoreId && pickupStores.length > 0) {
+      // Select the first store by default
+      setSelectedStoreId(pickupStores[0].id);
+      setSelectedStore(pickupStores[0]);
+    }
+    
+    // Reset delivery fee details when changing delivery option
+    setDeliveryFeeDetails(null);
   };
 
   return (
@@ -953,12 +1044,37 @@ const CartPage = () => {
                   </SummaryRow>
                 )}
                 
+                {deliveryOption === 'home' && (
+                  <SummaryRow>
+                    <Text>Delivery Fee</Text>
+                    {isLoadingLocation ? (
+                      <Text weight="500">Calculating...</Text>
+                    ) : deliveryFeeDetails ? (
+                      <Text weight="500">{deliveryFeeDetails.isDeliveryAvailable ? formatCurrency(deliveryFeeDetails.fee) : 'Not available'}</Text>
+                    ) : (
+                      <Text weight="500">{formatCurrency(shipping)}</Text>
+                    )}
+                  </SummaryRow>
+                )}
+                
+                {deliveryOption === 'home' && deliveryFeeDetails && deliveryFeeDetails.message && (
+                  <div style={{ 
+                    padding: '10px', 
+                    backgroundColor: deliveryFeeDetails.isDeliveryAvailable ? '#fff8e1' : '#ffebee', 
+                    borderRadius: '4px', 
+                    marginBottom: '15px',
+                    fontSize: '14px'
+                  }}>
+                    {deliveryFeeDetails.message}
+                  </div>
+                )}
+                
                 <DeliveryOptionContainer>
                   <DeliveryOptionTitle>Delivery Options</DeliveryOptionTitle>
                   <DeliveryOptions>
                     <DeliveryOption 
                       selected={deliveryOption === 'home'}
-                      onClick={() => setDeliveryOption('home')}
+                      onClick={() => handleDeliveryOptionChange('home')}
                     >
                       <DeliveryOptionRadio>
                         <RadioButton selected={deliveryOption === 'home'} />
@@ -971,7 +1087,7 @@ const CartPage = () => {
                     
                     <DeliveryOption 
                       selected={deliveryOption === 'pickup'}
-                      onClick={() => setDeliveryOption('pickup')}
+                      onClick={() => handleDeliveryOptionChange('pickup')}
                     >
                       <DeliveryOptionRadio>
                         <RadioButton selected={deliveryOption === 'pickup'} />
@@ -1110,7 +1226,8 @@ const CartPage = () => {
                   variant="primary" 
                   fullWidth={true}
                   disabled={(deliveryOption === 'home' && !selectedAddress) || 
-                           (deliveryOption === 'pickup' && !selectedStoreId)}
+                           (deliveryOption === 'pickup' && !selectedStoreId) ||
+                           (deliveryOption === 'home' && deliveryFeeDetails && !deliveryFeeDetails.isDeliveryAvailable)}
                   onClick={handleCheckoutClick}
                 >
                   Proceed to checkout
@@ -1123,6 +1240,11 @@ const CartPage = () => {
                 {deliveryOption === 'pickup' && !selectedStoreId && (
                   <Text size="sm" style={{ color: 'red', marginTop: '5px', textAlign: 'center' }}>
                     Please select a pickup store
+                  </Text>
+                )}
+                {deliveryOption === 'home' && deliveryFeeDetails && !deliveryFeeDetails.isDeliveryAvailable && (
+                  <Text size="sm" style={{ color: 'red', marginTop: '5px', textAlign: 'center' }}>
+                    Delivery is not available to this address
                   </Text>
                 )}
               </SummarySection>

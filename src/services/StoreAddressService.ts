@@ -377,7 +377,7 @@ export const StoreAddressService = {
   },
 
   // Helper function to calculate distance between two points using Haversine formula
-  private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
     const R = 6371; // Radius of the earth in km
     const dLat = this.deg2rad(lat2 - lat1);
     const dLon = this.deg2rad(lon2 - lon1);
@@ -388,14 +388,14 @@ export const StoreAddressService = {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     const distance = R * c; // Distance in km
     return distance;
-  }
+  },
 
-  private deg2rad(deg: number): number {
+  deg2rad(deg: number): number {
     return deg * (Math.PI / 180);
-  }
+  },
 
   // Check if a point is inside a polygon using ray casting algorithm
-  private isPointInPolygon(point: { lat: number, lng: number }, polygon: { lat: number, lng: number }[]): boolean {
+  isPointInPolygon(point: { lat: number, lng: number }, polygon: { lat: number, lng: number }[]): boolean {
     // Ray casting algorithm
     let inside = false;
     for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
@@ -409,6 +409,23 @@ export const StoreAddressService = {
     }
     
     return inside;
+  },
+
+  // Get coordinates from address (mock implementation)
+  getCoordinatesFromAddress: async (address: string): Promise<{ lat: number, lng: number } | null> => {
+    // In a real app, this would make a call to a geocoding API like Google Maps Geocoding API
+    // Here we're just simulating with mock coordinates near Lagos
+    
+    // Simulate API delay
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        // Generate random coordinates in Nigeria (near Lagos)
+        const mockLat = 6.5244 + (Math.random() * 0.1 - 0.05);
+        const mockLng = 3.3792 + (Math.random() * 0.1 - 0.05);
+        
+        resolve({ lat: mockLat, lng: mockLng });
+      }, 500);
+    });
   }
 };
 

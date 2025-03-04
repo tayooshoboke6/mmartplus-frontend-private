@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Form, Input, Button, Switch, Tabs, TimePicker, Row, Col, Divider, Space } from 'antd';
-import { ClockCircleOutlined, EnvironmentOutlined, PhoneOutlined, MailOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { StoreAddress, StoreAddressFormData, OpeningHours, DayHours } from '../../models/StoreAddress';
+import { ClockCircleOutlined, EnvironmentOutlined, PhoneOutlined, MailOutlined, InfoCircleOutlined, CompassOutlined, DollarOutlined } from '@ant-design/icons';
+import { StoreAddress, StoreAddressFormData, OpeningHours, DayHours, defaultDeliverySettings, GeofencePolygon, DeliverySettings } from '../../models/StoreAddress';
 import dayjs from 'dayjs';
+import DeliverySettingsForm from './DeliverySettingsForm';
+import GeofenceMapEditor from './GeofenceMapEditor';
 
 const { TabPane } = Tabs;
 const { TextArea } = Input;
@@ -75,8 +77,26 @@ const StoreAddressForm: React.FC<StoreAddressFormProps> = ({ initialValues, onSu
     sunday: initialValues.openingHours?.sunday.isOpen ?? false,
   });
 
+  // Track delivery settings
+  const [deliverySettings, setDeliverySettings] = useState<DeliverySettings>(
+    initialValues.deliverySettings || {...defaultDeliverySettings}
+  );
+
+  // Track geofence data
+  const [geofence, setGeofence] = useState<GeofencePolygon | undefined>(
+    initialValues.geofence
+  );
+
   const handleDayOpenChange = (day: keyof typeof dayOpenStatus, isOpen: boolean) => {
     setDayOpenStatus(prev => ({ ...prev, [day]: isOpen }));
+  };
+
+  const handleDeliverySettingsChange = (newSettings: DeliverySettings) => {
+    setDeliverySettings(newSettings);
+  };
+
+  const handleGeofenceChange = (newGeofence: GeofencePolygon) => {
+    setGeofence(newGeofence);
   };
 
   const handleFinish = (values: any) => {
@@ -134,7 +154,9 @@ const StoreAddressForm: React.FC<StoreAddressFormProps> = ({ initialValues, onSu
       openingHours,
       isActive: values.isActive,
       allowsPickup: values.allowsPickup,
-      pickupInstructions: values.pickupInstructions
+      pickupInstructions: values.pickupInstructions,
+      deliverySettings: deliverySettings,
+      geofence: geofence
     };
 
     onSubmit(formData);
@@ -331,7 +353,7 @@ const StoreAddressForm: React.FC<StoreAddressFormProps> = ({ initialValues, onSu
             </Form.Item>
           </TabPane>
 
-          <TabPane tab="Opening Hours" key="hours" icon={<ClockCircleOutlined />}>
+          <TabPane tab="Hours & Pickup" key="hours" icon={<ClockCircleOutlined />}>
             <p style={{ marginBottom: '20px' }}>Set the opening and closing hours for each day of the week.</p>
 
             <DayRow gutter={16}>
@@ -523,12 +545,37 @@ const StoreAddressForm: React.FC<StoreAddressFormProps> = ({ initialValues, onSu
               )}
             </DayRow>
           </TabPane>
-        </Tabs>
 
+          <TabPane tab={<span><DollarOutlined /> Delivery Settings</span>} key="delivery">
+            <DeliverySettingsForm
+              initialValues={deliverySettings}
+              onChange={handleDeliverySettingsChange}
+            />
+          </TabPane>
+
+          <TabPane tab={<span><CompassOutlined /> Delivery Area</span>} key="geofence">
+            {(initialValues.latitude && initialValues.longitude) ? (
+              <GeofenceMapEditor
+                storeLatitude={parseFloat(initialValues.latitude.toString())}
+                storeLongitude={parseFloat(initialValues.longitude.toString())}
+                initialGeofence={geofence}
+                onChange={handleGeofenceChange}
+              />
+            ) : (
+              <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
+                <h3 className="text-lg font-medium text-yellow-800 mb-2">Latitude and Longitude Required</h3>
+                <p className="text-yellow-700">
+                  Please enter the store's latitude and longitude in the Basic Information tab before setting up the delivery area.
+                </p>
+              </div>
+            )}
+          </TabPane>
+        </Tabs>
+        
         <ButtonsContainer>
           <Button onClick={onCancel}>Cancel</Button>
           <Button type="primary" htmlType="submit">
-            {initialValues.id ? 'Update Store' : 'Add Store'}
+            {initialValues.name ? 'Update Store' : 'Add Store'}
           </Button>
         </ButtonsContainer>
       </Form>
