@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { OrderStatus, OrderFilterOptions } from '../../services/orderService';
+import { OrderStatus, OrderStatusEnum, OrderFilterOptions } from '../../services/orderService';
 import { FaFilter, FaSort, FaCalendarAlt } from 'react-icons/fa';
 
 const FiltersContainer = styled.div`
   background-color: #fff;
-  border-radius: 5px;
+  border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
   padding: 15px;
   margin-bottom: 20px;
@@ -51,9 +51,9 @@ const StatusFilterGroup = styled.div`
 `;
 
 const StatusButton = styled.button<{ active: boolean }>`
-  background-color: ${props => props.active ? '#0066cc' : '#fff'};
+  background-color: ${props => props.active ? '#0071BC' : '#fff'};
   color: ${props => props.active ? '#fff' : '#333'};
-  border: 1px solid ${props => props.active ? '#0066cc' : '#ddd'};
+  border: 1px solid ${props => props.active ? '#0071BC' : '#ddd'};
   border-radius: 4px;
   padding: 6px 12px;
   font-size: 13px;
@@ -61,7 +61,7 @@ const StatusButton = styled.button<{ active: boolean }>`
   transition: all 0.2s;
   
   &:hover {
-    background-color: ${props => props.active ? '#0055b3' : '#f5f5f5'};
+    background-color: ${props => props.active ? '#0062a3' : '#f5f5f5'};
   }
 `;
 
@@ -112,7 +112,7 @@ const ClearButton = styled.button`
 `;
 
 const ApplyButton = styled.button`
-  background-color: #0066cc;
+  background-color: #0071BC;
   color: #fff;
   border: none;
   border-radius: 4px;
@@ -122,7 +122,7 @@ const ApplyButton = styled.button`
   transition: all 0.2s;
   
   &:hover {
-    background-color: #0055b3;
+    background-color: #0062a3;
   }
 `;
 
@@ -185,32 +185,32 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({ onFilterChange }) => {
             All
           </StatusButton>
           <StatusButton 
-            active={status === OrderStatus.PENDING} 
-            onClick={() => handleStatusChange(OrderStatus.PENDING)}
+            active={status === OrderStatusEnum.PENDING} 
+            onClick={() => handleStatusChange(OrderStatusEnum.PENDING)}
           >
             Pending
           </StatusButton>
           <StatusButton 
-            active={status === OrderStatus.PROCESSING} 
-            onClick={() => handleStatusChange(OrderStatus.PROCESSING)}
+            active={status === OrderStatusEnum.PROCESSING} 
+            onClick={() => handleStatusChange(OrderStatusEnum.PROCESSING)}
           >
             Processing
           </StatusButton>
           <StatusButton 
-            active={status === OrderStatus.SHIPPED} 
-            onClick={() => handleStatusChange(OrderStatus.SHIPPED)}
+            active={status === OrderStatusEnum.SHIPPED} 
+            onClick={() => handleStatusChange(OrderStatusEnum.SHIPPED)}
           >
             Shipped
           </StatusButton>
           <StatusButton 
-            active={status === OrderStatus.DELIVERED} 
-            onClick={() => handleStatusChange(OrderStatus.DELIVERED)}
+            active={status === OrderStatusEnum.DELIVERED} 
+            onClick={() => handleStatusChange(OrderStatusEnum.DELIVERED)}
           >
             Delivered
           </StatusButton>
           <StatusButton 
-            active={status === OrderStatus.CANCELLED} 
-            onClick={() => handleStatusChange(OrderStatus.CANCELLED)}
+            active={status === OrderStatusEnum.CANCELLED} 
+            onClick={() => handleStatusChange(OrderStatusEnum.CANCELLED)}
           >
             Cancelled
           </StatusButton>
@@ -223,14 +223,11 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({ onFilterChange }) => {
           Sort By
         </SectionTitle>
         <SortGroup>
-          <SortSelect 
-            value={`${sortBy}-${sortOrder}`}
-            onChange={handleSortChange}
-          >
-            <option value="date-desc">Newest First</option>
-            <option value="date-asc">Oldest First</option>
-            <option value="total-desc">Highest Amount</option>
-            <option value="total-asc">Lowest Amount</option>
+          <SortSelect value={`${sortBy}-${sortOrder}`} onChange={handleSortChange}>
+            <option value="date-desc">Date (Newest First)</option>
+            <option value="date-asc">Date (Oldest First)</option>
+            <option value="total-desc">Total (High to Low)</option>
+            <option value="total-asc">Total (Low to High)</option>
           </SortSelect>
         </SortGroup>
       </FilterSection>
@@ -241,24 +238,28 @@ const OrderFilters: React.FC<OrderFiltersProps> = ({ onFilterChange }) => {
           Date Range
         </SectionTitle>
         <DateFilterGroup>
-          <DateInput 
-            type="date" 
-            placeholder="Start Date"
+          <DateInput
+            type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
+            placeholder="Start Date"
           />
-          <DateInput 
-            type="date" 
-            placeholder="End Date"
+          <DateInput
+            type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
+            placeholder="End Date"
           />
         </DateFilterGroup>
       </FilterSection>
       
       <FilterActions>
-        <ClearButton onClick={handleClearFilters}>Clear</ClearButton>
-        <ApplyButton onClick={handleApplyFilters}>Apply Filters</ApplyButton>
+        <ClearButton onClick={handleClearFilters}>
+          Clear All
+        </ClearButton>
+        <ApplyButton onClick={handleApplyFilters}>
+          Apply Filters
+        </ApplyButton>
       </FilterActions>
     </FiltersContainer>
   );

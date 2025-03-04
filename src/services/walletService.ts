@@ -31,7 +31,7 @@ const walletService = {
    */
   getWalletDetails: async (): Promise<WalletData> => {
     try {
-      const response = await api.get('/api/wallet');
+      const response = await api.get('/wallet');
       return response.data;
     } catch (error) {
       throw error;
@@ -43,7 +43,7 @@ const walletService = {
    */
   generateVirtualAccount: async (): Promise<GenerateAccountResponse> => {
     try {
-      const response = await api.post('/api/wallet/generate-account');
+      const response = await api.post('/wallet/generate-account');
       return response.data;
     } catch (error) {
       throw error;
@@ -55,7 +55,7 @@ const walletService = {
    */
   getTransactions: async (page = 1, limit = 10): Promise<Transaction[]> => {
     try {
-      const response = await api.get(`/api/wallet/transactions?page=${page}&limit=${limit}`);
+      const response = await api.get(`/wallet/transactions?page=${page}&limit=${limit}`);
       return response.data.transactions;
     } catch (error) {
       throw error;
@@ -67,7 +67,7 @@ const walletService = {
    */
   verifyPayment: async (reference: string): Promise<any> => {
     try {
-      const response = await api.post('/api/wallet/verify-payment', { reference });
+      const response = await api.post('/wallet/verify-payment', { reference });
       return response.data;
     } catch (error) {
       throw error;
@@ -79,7 +79,7 @@ const walletService = {
    */
   withdraw: async (amount: number, bankAccount: string, bankCode: string): Promise<any> => {
     try {
-      const response = await api.post('/api/wallet/withdraw', { amount, bankAccount, bankCode });
+      const response = await api.post('/wallet/withdraw', { amount, bankAccount, bankCode });
       return response.data;
     } catch (error) {
       throw error;

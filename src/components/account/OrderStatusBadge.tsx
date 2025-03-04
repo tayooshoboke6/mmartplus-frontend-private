@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { OrderStatus } from '../../services/orderService';
+import { OrderStatus, OrderStatusEnum } from '../../services/orderService';
 
 const StatusBadge = styled.span<{ status: OrderStatus }>`
   display: inline-block;
@@ -12,31 +12,31 @@ const StatusBadge = styled.span<{ status: OrderStatus }>`
   
   ${({ status }) => {
     switch (status) {
-      case OrderStatus.PENDING:
+      case OrderStatusEnum.PENDING:
         return `
           background-color: #FFF8E1;
           color: #FFA000;
           border: 1px solid #FFE082;
         `;
-      case OrderStatus.PROCESSING:
+      case OrderStatusEnum.PROCESSING:
         return `
           background-color: #E3F2FD;
           color: #1976D2;
           border: 1px solid #BBDEFB;
         `;
-      case OrderStatus.SHIPPED:
+      case OrderStatusEnum.SHIPPED:
         return `
           background-color: #E8F5E9;
           color: #388E3C;
           border: 1px solid #C8E6C9;
         `;
-      case OrderStatus.DELIVERED:
+      case OrderStatusEnum.DELIVERED:
         return `
           background-color: #E0F2F1;
           color: #00796B;
           border: 1px solid #B2DFDB;
         `;
-      case OrderStatus.CANCELLED:
+      case OrderStatusEnum.CANCELLED:
         return `
           background-color: #FFEBEE;
           color: #D32F2F;

@@ -301,7 +301,7 @@ const CategoryManager: React.FC = () => {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/categories');
+      const response = await api.get('/categories');
       if (response.data.success) {
         setCategories(response.data.categories.data);
       }
@@ -328,10 +328,10 @@ const CategoryManager: React.FC = () => {
     try {
       if (selectedCategory) {
         // Update existing category
-        await api.put(`/api/categories/${selectedCategory.id}`, formData);
+        await api.put(`/categories/${selectedCategory.id}`, formData);
       } else {
         // Create new category
-        await api.post('/api/categories', formData);
+        await api.post('/categories', formData);
       }
       
       setOpenDialog(false);
@@ -371,7 +371,7 @@ const CategoryManager: React.FC = () => {
   const handleDeleteCategory = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this category?')) {
       try {
-        await api.delete(`/api/categories/${id}`);
+        await api.delete(`/categories/${id}`);
         fetchCategories();
       } catch (error) {
         console.error('Error deleting category:', error);

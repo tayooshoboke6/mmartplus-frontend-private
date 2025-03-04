@@ -254,6 +254,13 @@ const LoginPage: React.FC = () => {
       // Redirect will happen in the useEffect above
     } catch (err) {
       // Error will be handled by the AuthContext
+      // Check if this is an email verification error
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      if (errorMessage.toLowerCase().includes('email verification') || 
+          errorMessage.toLowerCase().includes('verify your email')) {
+        // Navigate to email verification page with the email
+        navigate('/verify-email', { state: { email } });
+      }
     }
   };
   

@@ -1,188 +1,107 @@
+import api from './api';
 import { Address, AddressFormData } from '../models/Address';
 
-// Mock data for addresses
-const mockAddresses: Address[] = [
-  {
-    id: '1',
-    userId: 'user1',
-    name: 'John Doe',
-    phone: '+2348012345678',
-    street: '123 Main Street',
-    city: 'Lagos',
-    state: 'Lagos',
-    postalCode: '100001',
-    country: 'Nigeria',
-    isDefault: true,
-    createdAt: '2025-01-15T00:00:00Z',
-    updatedAt: '2025-01-15T00:00:00Z'
-  },
-  {
-    id: '2',
-    userId: 'user1',
-    name: 'John Doe (Office)',
-    phone: '+2348023456789',
-    street: '456 Business Avenue',
-    city: 'Abuja',
-    state: 'FCT',
-    postalCode: '900001',
-    country: 'Nigeria',
-    isDefault: false,
-    createdAt: '2025-02-10T00:00:00Z',
-    updatedAt: '2025-02-10T00:00:00Z'
-  }
-];
+// Response interfaces
+export interface AddressResponse {
+  success: boolean;
+  address: Address;
+}
 
-// In a real application, these functions would make API calls to a backend server
-export const AddressService = {
+export interface AddressesResponse {
+  success: boolean;
+  addresses: Address[];
+}
+
+// Address service with real API endpoints
+const AddressService = {
   // Get all addresses for a user
   getUserAddresses: async (userId: string): Promise<Address[]> => {
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const addresses = mockAddresses.filter(address => address.userId === userId);
-        resolve(addresses);
-      }, 500);
-    });
+    try {
+      const response = await api.get<AddressesResponse>(`/users/${userId}/addresses`);
+      return response.data.addresses;
+    } catch (error) {
+      console.error(`Error fetching addresses for user #${userId}:`, error);
+      return []; // Return empty array as fallback
+    }
   },
 
-  // Get address by ID
+  // Get a specific address by ID
   getAddressById: async (id: string): Promise<Address | null> => {
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const address = mockAddresses.find(a => a.id === id);
-        resolve(address || null);
-      }, 300);
-    });
+    try {
+      const response = await api.get<AddressResponse>(`/addresses/${id}`);
+      return response.data.address;
+    } catch (error) {
+      console.error(`Error fetching address #${id}:`, error);
+      return null;
+    }
   },
 
-  // Get default address for a user
+  // Get the default address for a user
   getDefaultAddress: async (userId: string): Promise<Address | null> => {
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const address = mockAddresses.find(a => a.userId === userId && a.isDefault);
-        resolve(address || null);
-      }, 300);
-    });
+    try {
+      const response = await api.get<AddressResponse>(`/users/${userId}/addresses/default`);
+      return response.data.address;
+    } catch (error) {
+      console.error(`Error fetching default address for user #${userId}:`, error);
+      return null;
+    }
   },
 
   // Create a new address
-  createAddress: async (userId: string, addressData: AddressFormData): Promise<Address> => {
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // If this is the first address or marked as default, set it as default
-        const isFirstAddress = !mockAddresses.some(a => a.userId === userId);
-        const isDefault = isFirstAddress || addressData.isDefault || false;
-        
-        // If setting this as default, unset any existing default
-        if (isDefault) {
-          mockAddresses.forEach(a => {
-            if (a.userId === userId && a.isDefault) {
-              a.isDefault = false;
-            }
-          });
-        }
-        
-        const newAddress: Address = {
-          ...addressData,
-          id: Date.now().toString(),
-          userId,
-          isDefault,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        
-        mockAddresses.push(newAddress);
-        resolve(newAddress);
-      }, 500);
-    });
+  createAddress: async (userId: string, addressData: Omit<AddressFormData, 'id' | 'userId'>): Promise<Address> => {
+    try {
+      const response = await api.post<AddressResponse>(`/users/${userId}/addresses`, {
+        ...addressData,
+        userId
+      });
+      return response.data.address;
+    } catch (error) {
+      console.error('Error creating address:', error);
+      throw error;
+    }
   },
 
   // Update an existing address
-  updateAddress: async (id: string, addressData: Partial<AddressFormData>): Promise<Address | null> => {
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const index = mockAddresses.findIndex(a => a.id === id);
-        if (index !== -1) {
-          // If setting this as default, unset any existing default
-          if (addressData.isDefault) {
-            const userId = mockAddresses[index].userId;
-            mockAddresses.forEach(a => {
-              if (a.userId === userId && a.isDefault && a.id !== id) {
-                a.isDefault = false;
-              }
-            });
-          }
-          
-          mockAddresses[index] = {
-            ...mockAddresses[index],
-            ...addressData,
-            updatedAt: new Date().toISOString()
-          };
-          resolve(mockAddresses[index]);
-        } else {
-          resolve(null);
-        }
-      }, 500);
-    });
+  updateAddress: async (id: string, addressData: Partial<AddressFormData>): Promise<Address> => {
+    try {
+      const response = await api.put<AddressResponse>(`/addresses/${id}`, addressData);
+      return response.data.address;
+    } catch (error) {
+      console.error(`Error updating address #${id}:`, error);
+      throw error;
+    }
   },
 
   // Delete an address
   deleteAddress: async (id: string): Promise<boolean> => {
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const index = mockAddresses.findIndex(a => a.id === id);
-        if (index !== -1) {
-          // Check if this was the default address
-          const wasDefault = mockAddresses[index].isDefault;
-          const userId = mockAddresses[index].userId;
-          
-          // Remove the address
-          mockAddresses.splice(index, 1);
-          
-          // If this was the default and there are other addresses, set a new default
-          if (wasDefault) {
-            const userAddresses = mockAddresses.filter(a => a.userId === userId);
-            if (userAddresses.length > 0) {
-              userAddresses[0].isDefault = true;
-            }
-          }
-          
-          resolve(true);
-        } else {
-          resolve(false);
-        }
-      }, 500);
-    });
+    try {
+      await api.delete(`/addresses/${id}`);
+      return true;
+    } catch (error) {
+      console.error(`Error deleting address #${id}:`, error);
+      return false;
+    }
   },
 
-  // Set an address as default
-  setDefaultAddress: async (id: string): Promise<boolean> => {
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const address = mockAddresses.find(a => a.id === id);
-        if (address) {
-          const userId = address.userId;
-          
-          // Unset any existing default
-          mockAddresses.forEach(a => {
-            if (a.userId === userId) {
-              a.isDefault = (a.id === id);
-            }
-          });
-          
-          resolve(true);
-        } else {
-          resolve(false);
-        }
-      }, 300);
-    });
+  // Make an address the default for a user
+  setDefaultAddress: async (id: string): Promise<Address> => {
+    try {
+      const response = await api.put<AddressResponse>(`/addresses/${id}/set-default`);
+      return response.data.address;
+    } catch (error) {
+      console.error(`Error setting address #${id} as default:`, error);
+      throw error;
+    }
   }
 };
+
+// Export individual functions to maintain compatibility with existing imports
+export const getUserAddresses = AddressService.getUserAddresses;
+export const getAddressById = AddressService.getAddressById;
+export const getDefaultAddress = AddressService.getDefaultAddress;
+export const createAddress = AddressService.createAddress;
+export const updateAddress = AddressService.updateAddress;
+export const deleteAddress = AddressService.deleteAddress;
+export const setDefaultAddress = AddressService.setDefaultAddress;
 
 export default AddressService;

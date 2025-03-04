@@ -113,21 +113,62 @@ const ActionButton = styled(Link)`
   }
 `;
 
+// Default banners to show if API fails
+const defaultBanners: Banner[] = [
+  {
+    id: 1,
+    active: true,
+    label: 'Monthly Promotion',
+    title: 'SHOP & SAVE BIG',
+    description: 'Get up to 30% off on all groceries and household essentials',
+    image: '/banners/groceries-banner.png',
+    bgColor: '#0066b2',
+    imgBgColor: '#e0f2ff',
+    link: '/promotions'
+  },
+  {
+    id: 2,
+    active: true,
+    label: 'Flash Sale',
+    title: 'FRESH PRODUCE DEALS',
+    description: 'Limited time offer on fresh fruits and vegetables',
+    image: '/banners/fresh-produce.png',
+    bgColor: '#4CAF50',
+    imgBgColor: '#e8f5e9',
+    link: '/flash-sale'
+  }
+];
+
 const HeroBanner: React.FC = () => {
   const [currentBanner, setCurrentBanner] = useState(0);
-  const [banners, setBanners] = useState<Banner[]>([]);
+  const [banners, setBanners] = useState<Banner[]>(defaultBanners);
+  const [loading, setLoading] = useState(true);
   
   useEffect(() => {
     // Fetch active banners from the service
-    setBanners(getActiveBanners());
+    const fetchBanners = async () => {
+      try {
+        const activeBanners = await getActiveBanners();
+        if (activeBanners && activeBanners.length > 0) {
+          setBanners(activeBanners);
+        }
+      } catch (error) {
+        console.error('Error fetching banners:', error);
+        // Default banners already set in initial state
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchBanners();
   }, []);
   
   const handleSlideChange = (index: number) => {
     setCurrentBanner(index);
   };
   
-  // Don't render if there are no active banners
-  if (banners.length === 0) {
+  // Don't render if there are no active banners or still loading
+  if (loading || banners.length === 0) {
     return null;
   }
   
@@ -148,7 +189,6 @@ const HeroBanner: React.FC = () => {
                 <BannerDescription>{banner.description}</BannerDescription>
                 <ActionButton to={banner.link}>Learn More</ActionButton>
               </BannerContent>
-              
               <BannerImage style={{ backgroundColor: banner.imgBgColor }}>
                 <img src={banner.image} alt={banner.title} />
               </BannerImage>

@@ -192,7 +192,7 @@ const CategorySection: React.FC = () => {
         setLoading(true);
         
         // In production, this will be replaced with a real API call:
-        // const response = await fetch('/api/categories');
+        // const response = await fetch('/categories');
         // const data = await response.json();
         
         // For now, use mock data and add a slight delay to simulate network request

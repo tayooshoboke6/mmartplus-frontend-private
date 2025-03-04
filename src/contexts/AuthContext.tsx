@@ -16,6 +16,8 @@ interface AuthContextType {
   updateProfile: (userData: Partial<User>) => Promise<User>;
   updateUser: (userData: User) => void;
   clearError: () => void;
+  verifyEmail: (code: string) => Promise<void>;
+  sendVerificationCode: () => Promise<void>;
 }
 
 interface AuthProviderProps {
@@ -216,6 +218,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Clear any authentication errors
   const clearError = () => setError(null);
 
+  // Email verification functions
+  const verifyEmail = async (code: string) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      await authService.verifyEmail(code);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to verify email');
+      console.error('Email verification error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const sendVerificationCode = async () => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      await authService.sendVerificationCode();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to send verification code');
+      console.error('Send verification code error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Provide the auth context value to all children
   return (
     <AuthContext.Provider
@@ -232,7 +263,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         logout,
         updateProfile,
         updateUser,
-        clearError
+        clearError,
+        verifyEmail,
+        sendVerificationCode
       }}
     >
       {children}

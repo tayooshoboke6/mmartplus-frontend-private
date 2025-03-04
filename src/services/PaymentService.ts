@@ -1,143 +1,119 @@
+import api from './api';
 import { PaymentMethod, PaymentSettings } from '../models/PaymentMethod';
 
-// Mock payment methods data
-const mockPaymentMethods: PaymentMethod[] = [
-  {
-    id: '1',
-    name: 'Credit/Debit Card',
-    code: 'card',
-    description: 'Pay securely with your credit or debit card',
-    icon: 'credit-card',
-    enabled: true,
-    requiresRedirect: false,
-    processingFee: 1.5,
-    processingFeeType: 'percentage',
-    position: 1
-  },
-  {
-    id: '2',
-    name: 'Bank Transfer',
-    code: 'bank_transfer',
-    description: 'Pay directly from your bank account',
-    icon: 'bank',
-    enabled: true,
-    requiresRedirect: true,
-    position: 2
-  },
-  {
-    id: '3',
-    name: 'Cash on Delivery',
-    code: 'cod',
-    description: 'Pay with cash when your order is delivered',
-    icon: 'cash',
-    enabled: true,
-    requiresRedirect: false,
-    position: 3
-  },
-  {
-    id: '4',
-    name: 'Mobile Money',
-    code: 'mobile_money',
-    description: 'Pay using your mobile money account',
-    icon: 'mobile',
-    enabled: true,
-    requiresRedirect: true,
-    processingFee: 100,
-    processingFeeType: 'fixed',
-    position: 4
-  },
-  {
-    id: '5',
-    name: 'PayPal',
-    code: 'paypal',
-    description: 'Pay securely with PayPal',
-    icon: 'paypal',
-    enabled: false,
-    requiresRedirect: true,
-    processingFee: 2.9,
-    processingFeeType: 'percentage',
-    position: 5
-  }
-];
+// Response interfaces
+export interface PaymentMethodResponse {
+  success: boolean;
+  payment_method: PaymentMethod;
+}
 
-// Mock payment settings
-const mockPaymentSettings: PaymentSettings = {
-  availablePaymentMethods: mockPaymentMethods.filter(method => method.enabled),
-  defaultPaymentMethod: 'card',
-  allowCashOnDelivery: true,
-  allowBankTransfer: true,
-  allowCardPayments: true,
-  allowMobilePayments: true,
-  processingFees: {
-    card: {
-      amount: 1.5,
-      type: 'percentage'
-    },
-    mobile_money: {
-      amount: 100,
-      type: 'fixed'
-    }
-  }
-};
+export interface PaymentMethodsResponse {
+  success: boolean;
+  payment_methods: PaymentMethod[];
+}
 
-// In a real application, these functions would make API calls to a backend server
+export interface PaymentSettingsResponse {
+  success: boolean;
+  settings: PaymentSettings;
+}
+
+// Payment service with real API endpoints
 export const PaymentService = {
   // Get all available payment methods
   getPaymentMethods: async (): Promise<PaymentMethod[]> => {
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const enabledMethods = mockPaymentMethods.filter(method => method.enabled);
-        // Sort by position
-        enabledMethods.sort((a, b) => a.position - b.position);
-        resolve(enabledMethods);
-      }, 500);
-    });
+    try {
+      const response = await api.get<PaymentMethodsResponse>('/payment-methods');
+      return response.data.payment_methods;
+    } catch (error) {
+      console.error('Error fetching payment methods:', error);
+      throw error;
+    }
   },
 
   // Get payment settings
   getPaymentSettings: async (): Promise<PaymentSettings> => {
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(mockPaymentSettings);
-      }, 300);
-    });
+    try {
+      const response = await api.get<PaymentSettingsResponse>('/payment/settings');
+      return response.data.settings;
+    } catch (error) {
+      console.error('Error fetching payment settings:', error);
+      throw error;
+    }
   },
 
   // Get payment method by ID
   getPaymentMethodById: async (id: string): Promise<PaymentMethod | null> => {
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const method = mockPaymentMethods.find(m => m.id === id);
-        resolve(method || null);
-      }, 200);
-    });
+    try {
+      const response = await api.get<PaymentMethodResponse>(`/payment-methods/${id}`);
+      return response.data.payment_method;
+    } catch (error) {
+      console.error(`Error fetching payment method #${id}:`, error);
+      return null;
+    }
   },
 
   // Get payment method by code
   getPaymentMethodByCode: async (code: string): Promise<PaymentMethod | null> => {
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const method = mockPaymentMethods.find(m => m.code === code);
-        resolve(method || null);
-      }, 200);
-    });
+    try {
+      const response = await api.get<PaymentMethodResponse>('/payment-methods/by-code', {
+        params: { code }
+      });
+      return response.data.payment_method;
+    } catch (error) {
+      console.error(`Error fetching payment method with code ${code}:`, error);
+      return null;
+    }
   },
 
   // Calculate processing fee for a payment method
-  calculateProcessingFee: (methodCode: string, amount: number): number => {
-    const fee = mockPaymentSettings.processingFees[methodCode];
-    if (!fee) return 0;
-    
-    if (fee.type === 'percentage') {
-      return (amount * fee.amount) / 100;
-    } else {
-      return fee.amount;
+  calculateProcessingFee: async (methodCode: string, amount: number): Promise<number> => {
+    try {
+      const response = await api.get('/payment/calculate-fee', {
+        params: {
+          method_code: methodCode,
+          amount
+        }
+      });
+      return response.data.fee;
+    } catch (error) {
+      console.error('Error calculating processing fee:', error);
+      return 0;
+    }
+  },
+
+  // Admin: Update payment method
+  updatePaymentMethod: async (id: string, data: Partial<PaymentMethod>): Promise<PaymentMethod> => {
+    try {
+      const response = await api.put<PaymentMethodResponse>(`/payment-methods/${id}`, data);
+      return response.data.payment_method;
+    } catch (error) {
+      console.error(`Error updating payment method #${id}:`, error);
+      throw error;
+    }
+  },
+
+  // Admin: Toggle payment method status
+  togglePaymentMethodStatus: async (id: string): Promise<PaymentMethod> => {
+    try {
+      const response = await api.put<PaymentMethodResponse>(`/payment-methods/${id}/toggle`);
+      return response.data.payment_method;
+    } catch (error) {
+      console.error(`Error toggling payment method #${id}:`, error);
+      throw error;
+    }
+  },
+
+  // Admin: Update payment settings
+  updatePaymentSettings: async (settings: Partial<PaymentSettings>): Promise<PaymentSettings> => {
+    try {
+      const response = await api.put<PaymentSettingsResponse>('/payment/settings', settings);
+      return response.data.settings;
+    } catch (error) {
+      console.error('Error updating payment settings:', error);
+      throw error;
     }
   }
 };
 
+// Also export as default for flexibility
 export default PaymentService;

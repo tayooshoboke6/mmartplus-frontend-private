@@ -7,6 +7,7 @@ import OrderCard from '../../components/account/OrderCard';
 import OrderFilters from '../../components/account/OrderFilters';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
+import { toast } from 'react-toastify';
 
 const PageContainer = styled.div`
   display: flex;
@@ -131,7 +132,13 @@ const OrdersContent = styled.div`
 const OrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [filters, setFilters] = useState<OrderFilterOptions>({});
+  const [filters, setFilters] = useState<OrderFilterOptions>({
+    page: 1,
+    limit: 10,
+    sortBy: 'date',
+    sortOrder: 'desc'
+  });
+  const [totalCount, setTotalCount] = useState<number>(0);
   
   useEffect(() => {
     fetchOrders();
@@ -140,21 +147,19 @@ const OrdersPage: React.FC = () => {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      // In a real app, you would use the API call:
-      // const response = await orderService.getOrders(filters);
-      
-      // For development, we'll use mock data
-      const response = orderService.getMockOrders();
+      const response = await orderService.getOrders(filters);
       setOrders(response.orders);
+      setTotalCount(response.total_count);
     } catch (error) {
       console.error('Error fetching orders:', error);
+      toast.error('Failed to load orders. Please try again.');
     } finally {
       setLoading(false);
     }
   };
   
   const handleFilterChange = (newFilters: OrderFilterOptions) => {
-    setFilters(newFilters);
+    setFilters({ ...filters, ...newFilters, page: 1 }); // Reset to first page when filters change
   };
   
   // Function to redirect to shop page

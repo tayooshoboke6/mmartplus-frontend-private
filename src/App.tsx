@@ -5,8 +5,12 @@ import CartPage from './pages/CartPage'
 import CheckoutPage from './pages/CheckoutPage'
 import OrderConfirmationPage from './pages/OrderConfirmationPage'
 import CategoryProductsPage from './pages/CategoryProductsPage'
+import SearchResultsPage from './pages/SearchResultsPage'
+import ProductNotFoundPage from './pages/ProductNotFoundPage'
 import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
+import EmailVerificationPage from './pages/EmailVerificationPage'
+import RegistrationVerificationPage from './pages/RegistrationVerificationPage'
 import { CartProvider } from './contexts/CartContext'
 import { AuthProvider } from './contexts/AuthContext'
 import ProtectedRoute from './components/auth/ProtectedRoute'
@@ -51,6 +55,8 @@ function App() {
             {/* Auth routes */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
+            <Route path="/email-verification" element={<ProtectedRoute><EmailVerificationPage /></ProtectedRoute>} />
+            <Route path="/verify-email" element={<RegistrationVerificationPage />} />
             <Route path="/admin/login" element={<AdminLoginPage />} />
             
             {/* Customer routes */}
@@ -64,6 +70,8 @@ function App() {
             <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
             <Route path="/order-confirmation" element={<ProtectedRoute><OrderConfirmationPage /></ProtectedRoute>} />
             <Route path="/category/:slug" element={<CategoryProductsPage />} />
+            <Route path="/search" element={<SearchResultsPage />} />
+            <Route path="/product-not-found" element={<ProductNotFoundPage />} />
             
             {/* Account routes - protected */}
             <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />

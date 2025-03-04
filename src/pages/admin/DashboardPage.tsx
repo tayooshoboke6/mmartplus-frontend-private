@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { FlexBox, Text } from '../../styles/GlobalComponents';
 import { formatCurrency } from '../../utils/formatCurrency';
+import SalesChart from '../../components/admin/SalesChart';
+import orderService, { DashboardStats } from '../../services/orderService';
+import { toast } from 'react-toastify';
 
 const DashboardGrid = styled.div`
   display: grid;
@@ -265,130 +268,130 @@ const StatusBadge = styled.span<{ status: string }>`
 `;
 
 const DashboardPage: React.FC = () => {
-  // Mock data for recent orders
-  const recentOrders = [
-    { id: 'ORD93849', customer: 'John Doe', date: '2025-03-01', total: 12500, status: 'completed', items: 7 },
-    { id: 'ORD93820', customer: 'Sarah Miller', date: '2025-03-01', total: 8750, status: 'processing', items: 5 },
-    { id: 'ORD93810', customer: 'Michael Brown', date: '2025-02-28', total: 32000, status: 'pending', items: 12 },
-    { id: 'ORD93788', customer: 'Emma Wilson', date: '2025-02-28', total: 5300, status: 'completed', items: 3 },
-    { id: 'ORD93774', customer: 'David Clark', date: '2025-02-27', total: 18900, status: 'cancelled', items: 8 },
-  ];
-  
-  // Mock data for popular categories
-  const popularCategories = [
-    { 
-      name: 'Fresh Produce', 
-      count: 124, 
-      sales: 875000, 
-      percentage: '75%', 
-      color: '#4CAF50',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M14 10.5a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0 0 1h3a.5.5 0 0 0 .5-.5m0-3a.5.5 0 0 0-.5-.5h-7a.5.5 0 0 0 0 1h7a.5.5 0 0 0 .5-.5m0-3a.5.5 0 0 0-.5-.5h-11a.5.5 0 0 0 0 1h11a.5.5 0 0 0 .5-.5"/>
-        </svg>
-      )
-    },
-    { 
-      name: 'Dairy & Eggs', 
-      count: 86, 
-      sales: 650000, 
-      percentage: '62%', 
-      color: '#2196F3',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M14 10.5a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0 0 1h3a.5.5 0 0 0 .5-.5m0-3a.5.5 0 0 0-.5-.5h-7a.5.5 0 0 0 0 1h7a.5.5 0 0 0 .5-.5m0-3a.5.5 0 0 0-.5-.5h-11a.5.5 0 0 0 0 1h11a.5.5 0 0 0 .5-.5"/>
-        </svg>
-      ) 
-    },
-    { 
-      name: 'Meat & Seafood', 
-      count: 78, 
-      sales: 520000, 
-      percentage: '58%', 
-      color: '#F44336',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M14 10.5a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0 0 1h3a.5.5 0 0 0 .5-.5m0-3a.5.5 0 0 0-.5-.5h-7a.5.5 0 0 0 0 1h7a.5.5 0 0 0 .5-.5m0-3a.5.5 0 0 0-.5-.5h-11a.5.5 0 0 0 0 1h11a.5.5 0 0 0 .5-.5"/>
-        </svg>
-      ) 
-    },
-    { 
-      name: 'Household Supplies', 
-      count: 95, 
-      sales: 480000, 
-      percentage: '45%', 
-      color: '#FF9800',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M14 10.5a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0 0 1h3a.5.5 0 0 0 .5-.5m0-3a.5.5 0 0 0-.5-.5h-7a.5.5 0 0 0 0 1h7a.5.5 0 0 0 .5-.5m0-3a.5.5 0 0 0-.5-.5h-11a.5.5 0 0 0 0 1h11a.5.5 0 0 0 .5-.5"/>
-        </svg>
-      ) 
-    },
-  ];
-  
-  // Mock data for low stock alerts
-  const lowStockAlerts = [
-    { name: 'Fresh Milk (1L)', current: 5, minimum: 10 },
-    { name: 'Premium Rice (5kg)', current: 3, minimum: 15 },
-    { name: 'Laundry Detergent', current: 8, minimum: 20 },
-  ];
-  
+  const [salesData, setSalesData] = useState<Array<{ date: string; amount: number }>>([]);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setIsLoading(true);
+        const [salesStats, stats] = await Promise.all([
+          orderService.getSalesStats(),
+          orderService.getDashboardStats()
+        ]);
+        
+        setSalesData(salesStats.daily_sales);
+        setDashboardStats(stats);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        toast.error('Failed to load dashboard data. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <Text size="xl" weight="bold" style={{ marginBottom: '20px' }}>
+          Dashboard
+        </Text>
+        <div>Loading dashboard data...</div>
+      </AdminLayout>
+    );
+  }
+
+  if (!dashboardStats) {
+    return (
+      <AdminLayout>
+        <Text size="xl" weight="bold" style={{ marginBottom: '20px' }}>
+          Dashboard
+        </Text>
+        <div>Error loading dashboard data. Please refresh the page.</div>
+      </AdminLayout>
+    );
+  }
+
   return (
-    <AdminLayout title="Dashboard">
+    <AdminLayout>
+      <Text size="xl" weight="bold" style={{ marginBottom: '20px' }}>
+        Dashboard
+      </Text>
+
       <DashboardGrid>
         <StatCard>
           <StatLabel>Total Revenue</StatLabel>
-          <StatValue>{formatCurrency(2485000)}</StatValue>
-          <StatChangeIndicator isPositive={true}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-              <path d="m7.247 4.86-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z"/>
+          <StatValue>{formatCurrency(dashboardStats.total_revenue)}</StatValue>
+          <StatChangeIndicator isPositive={dashboardStats.revenue_change > 0}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path 
+                d={dashboardStats.revenue_change > 0 ? "M6 2L10 6L6 10" : "M6 10L2 6L6 2"} 
+                stroke="currentColor" 
+                strokeWidth="2"
+              />
             </svg>
-            18% from last month
+            {Math.abs(dashboardStats.revenue_change)}% from last month
           </StatChangeIndicator>
         </StatCard>
-        
+
         <StatCard>
           <StatLabel>Orders</StatLabel>
-          <StatValue>184</StatValue>
-          <StatChangeIndicator isPositive={true}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-              <path d="m7.247 4.86-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z"/>
+          <StatValue>{dashboardStats.total_orders}</StatValue>
+          <StatChangeIndicator isPositive={dashboardStats.orders_change > 0}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path 
+                d={dashboardStats.orders_change > 0 ? "M6 2L10 6L6 10" : "M6 10L2 6L6 2"} 
+                stroke="currentColor" 
+                strokeWidth="2"
+              />
             </svg>
-            12% from last month
+            {Math.abs(dashboardStats.orders_change)}% from last month
           </StatChangeIndicator>
         </StatCard>
-        
+
         <StatCard>
           <StatLabel>Products</StatLabel>
-          <StatValue>856</StatValue>
-          <Text size="sm" color="#666">
-            24 new products added this month
-          </Text>
+          <StatValue>{dashboardStats.total_products}</StatValue>
+          <Text size="sm" color="gray">{dashboardStats.new_products_count} new products added this month</Text>
         </StatCard>
-        
+
         <StatCard>
           <StatLabel>Low Stock Items</StatLabel>
-          <StatValue>15</StatValue>
-          <StatChangeIndicator isPositive={false}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-              <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
+          <StatValue>{dashboardStats.low_stock_items}</StatValue>
+          <StatChangeIndicator isPositive={dashboardStats.low_stock_change <= 0}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path 
+                d={dashboardStats.low_stock_change <= 0 ? "M6 2L10 6L6 10" : "M6 10L2 6L6 2"} 
+                stroke="currentColor" 
+                strokeWidth="2"
+              />
             </svg>
-            5 more than last week
+            {Math.abs(dashboardStats.low_stock_change)} {dashboardStats.low_stock_change > 0 ? 'more' : 'fewer'} than last week
           </StatChangeIndicator>
         </StatCard>
       </DashboardGrid>
-      
+
       <ChartRowGrid>
+        <ChartContainer>
+          <SalesChart data={salesData} />
+        </ChartContainer>
+
         <OrderListContainer>
           <FlexBox justify="space-between" align="center" style={{ marginBottom: '15px' }}>
-            <Text size="lg" weight="bold">Recent Orders</Text>
-            <a href="/admin/orders" style={{ color: '#0066b2', textDecoration: 'none' }}>View All</a>
+            <Text size="lg" weight="medium">Recent Orders</Text>
+            <Text size="sm" color="primary" as="a" href="/admin/orders">
+              View All
+            </Text>
           </FlexBox>
-          
+
           <RecentOrdersTable>
             <thead>
               <tr>
-                <th>Order ID</th>
+                <th>Order #</th>
                 <th>Customer</th>
                 <th>Items</th>
                 <th>Date</th>
@@ -397,97 +400,34 @@ const DashboardPage: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {recentOrders.map(order => (
+              {dashboardStats.recent_orders.map((order) => (
                 <tr key={order.id}>
-                  <td>{order.id}</td>
-                  <td>{order.customer}</td>
-                  <td>{order.items}</td>
-                  <td>{order.date}</td>
+                  <td>{order.order_number}</td>
+                  <td>{order.customer_name}</td>
+                  <td>{order.items_count}</td>
+                  <td>{new Date(order.created_at).toLocaleDateString()}</td>
                   <td>{formatCurrency(order.total)}</td>
-                  <td>
-                    <StatusBadge status={order.status}>
-                      {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                    </StatusBadge>
-                  </td>
+                  <td><StatusBadge status={order.status}>{order.status}</StatusBadge></td>
                 </tr>
               ))}
             </tbody>
           </RecentOrdersTable>
-          
+
           <MobileOrderList>
-            {recentOrders.map(order => (
+            {dashboardStats.recent_orders.map((order) => (
               <OrderItem key={order.id}>
                 <div>
-                  <Text size="sm" weight="bold">#{order.id}</Text>
-                  <Text size="sm">{order.customer} • {order.date}</Text>
-                  <Text size="sm">{order.items} items</Text>
+                  <Text size="sm" weight="medium">{order.order_number}</Text>
+                  <Text size="sm" color="gray">{order.customer_name}</Text>
                 </div>
                 <div>
-                  <Text size="md" weight="bold">{formatCurrency(order.total)}</Text>
-                  <StatusBadge status={order.status}>
-                    {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                  </StatusBadge>
+                  <Text size="sm">{formatCurrency(order.total)}</Text>
+                  <StatusBadge status={order.status}>{order.status}</StatusBadge>
                 </div>
               </OrderItem>
             ))}
           </MobileOrderList>
         </OrderListContainer>
-        
-        <ChartContainer>
-          <Text size="lg" weight="bold" style={{ marginBottom: '15px' }}>Sales Overview</Text>
-          <ChartPlaceholder>
-            Sales Chart will be displayed here
-          </ChartPlaceholder>
-        </ChartContainer>
-      </ChartRowGrid>
-      
-      <ChartRowGrid>
-        <ChartContainer>
-          <Text size="lg" weight="bold" style={{ marginBottom: '15px' }}>Popular Categories</Text>
-          
-          {popularCategories.map((category, index) => (
-            <CategoryCard key={index}>
-              <CategoryIcon>
-                {category.icon}
-              </CategoryIcon>
-              <CategoryInfo>
-                <Text size="md" weight="bold">{category.name}</Text>
-                <Text size="sm" color="#666">{category.count} products • {formatCurrency(category.sales)}</Text>
-                <CategoryProgressOuter>
-                  <CategoryProgressInner width={category.percentage} color={category.color} />
-                </CategoryProgressOuter>
-              </CategoryInfo>
-            </CategoryCard>
-          ))}
-        </ChartContainer>
-        
-        <ChartContainer>
-          <FlexBox justify="space-between" align="center" style={{ marginBottom: '15px' }}>
-            <Text size="lg" weight="bold">Inventory Alerts</Text>
-            <a href="/admin/products" style={{ color: '#0066b2', textDecoration: 'none' }}>View All</a>
-          </FlexBox>
-          
-          {lowStockAlerts.map((item, index) => (
-            <InventoryAlertCard key={index}>
-              <Text size="md" weight="bold">{item.name}</Text>
-              <FlexBox justify="space-between" align="center" style={{ marginTop: '5px' }}>
-                <Text size="sm" color="#666">Current Stock: <strong>{item.current}</strong></Text>
-                <Text size="sm" color="#666">Minimum Required: <strong>{item.minimum}</strong></Text>
-              </FlexBox>
-              <FlexBox justify="flex-end" style={{ marginTop: '10px' }}>
-                <a href={`/admin/products`} style={{ fontSize: '14px', color: '#0066b2', textDecoration: 'none' }}>
-                  Restock Now
-                </a>
-              </FlexBox>
-            </InventoryAlertCard>
-          ))}
-          
-          <FlexBox justify="center" style={{ marginTop: '15px' }}>
-            <a href="/admin/products" style={{ color: '#0066b2', textDecoration: 'none' }}>
-              View All Low Stock Items
-            </a>
-          </FlexBox>
-        </ChartContainer>
       </ChartRowGrid>
     </AdminLayout>
   );

@@ -1,7 +1,21 @@
+import api from './api';
 import { Banner, NotificationBar } from '../models/Promotion';
 
-// Mock data - in a real application, this would be stored in a database
-// and accessed via API calls
+// Response interfaces
+export interface BannerResponse {
+  success: boolean;
+  banner: Banner;
+}
+
+export interface BannersResponse {
+  success: boolean;
+  banners: Banner[];
+}
+
+export interface NotificationBarResponse {
+  success: boolean;
+  notificationBar: NotificationBar;
+}
 
 // Initial banners data
 const initialBanners: Banner[] = [
@@ -50,65 +64,93 @@ const initialNotificationBar: NotificationBar = {
   bgColor: '#e25822'
 };
 
-// Local storage keys
-const BANNERS_STORAGE_KEY = 'mmart_banners';
-const NOTIFICATION_BAR_STORAGE_KEY = 'mmart_notification_bar';
+// Promotion service with real API endpoints
+export const PromotionService = {
+  // Banner service methods
+  getBanners: async (): Promise<Banner[]> => {
+    try {
+      const response = await api.get<BannersResponse>('/banners');
+      return response.data.banners;
+    } catch (error) {
+      console.error('Error fetching banners:', error);
+      // Return initial data as fallback if API fails
+      return initialBanners;
+    }
+  },
 
-// Helper to get data from localStorage with fallback to initial data
-const getStoredData = <T>(key: string, initialData: T): T => {
-  const storedData = localStorage.getItem(key);
-  return storedData ? JSON.parse(storedData) : initialData;
+  getActiveBanners: async (): Promise<Banner[]> => {
+    try {
+      const response = await api.get<BannersResponse>('/banners', {
+        params: { active: true }
+      });
+      return response.data.banners;
+    } catch (error) {
+      console.error('Error fetching active banners:', error);
+      // Return active initial data as fallback
+      return initialBanners.filter(banner => banner.active);
+    }
+  },
+
+  updateBanner: async (updatedBanner: Banner): Promise<Banner> => {
+    try {
+      const response = await api.put<BannerResponse>(`/banners/${updatedBanner.id}`, updatedBanner);
+      return response.data.banner;
+    } catch (error) {
+      console.error(`Error updating banner #${updatedBanner.id}:`, error);
+      throw error;
+    }
+  },
+
+  toggleBannerStatus: async (id: number): Promise<Banner> => {
+    try {
+      const response = await api.put<BannerResponse>(`/banners/${id}/toggle-status`);
+      return response.data.banner;
+    } catch (error) {
+      console.error(`Error toggling banner #${id} status:`, error);
+      throw error;
+    }
+  },
+
+  // Notification bar service methods
+  getNotificationBar: async (): Promise<NotificationBar> => {
+    try {
+      const response = await api.get<NotificationBarResponse>('/notification-bar');
+      return response.data.notificationBar;
+    } catch (error) {
+      console.error('Error fetching notification bar:', error);
+      // Return initial data as fallback
+      return initialNotificationBar;
+    }
+  },
+
+  updateNotificationBar: async (updatedNotificationBar: NotificationBar): Promise<NotificationBar> => {
+    try {
+      const response = await api.put<NotificationBarResponse>('/notification-bar', updatedNotificationBar);
+      return response.data.notificationBar;
+    } catch (error) {
+      console.error('Error updating notification bar:', error);
+      throw error;
+    }
+  },
+
+  toggleNotificationBarStatus: async (): Promise<NotificationBar> => {
+    try {
+      const response = await api.put<NotificationBarResponse>('/notification-bar/toggle-status');
+      return response.data.notificationBar;
+    } catch (error) {
+      console.error('Error toggling notification bar status:', error);
+      throw error;
+    }
+  }
 };
 
-// Helper to save data to localStorage
-const saveData = <T>(key: string, data: T): void => {
-  localStorage.setItem(key, JSON.stringify(data));
-};
+// Export individual functions to maintain compatibility with existing imports
+export const getBanners = PromotionService.getBanners;
+export const getActiveBanners = PromotionService.getActiveBanners;
+export const updateBanner = PromotionService.updateBanner;
+export const toggleBannerStatus = PromotionService.toggleBannerStatus;
+export const getNotificationBar = PromotionService.getNotificationBar;
+export const updateNotificationBar = PromotionService.updateNotificationBar;
+export const toggleNotificationBarStatus = PromotionService.toggleNotificationBarStatus;
 
-// Banner service methods
-export const getBanners = (): Banner[] => {
-  return getStoredData<Banner[]>(BANNERS_STORAGE_KEY, initialBanners);
-};
-
-export const getActiveBanners = (): Banner[] => {
-  const banners = getBanners();
-  return banners.filter(banner => banner.active);
-};
-
-export const updateBanner = (updatedBanner: Banner): Banner[] => {
-  const banners = getBanners();
-  const updatedBanners = banners.map(banner => 
-    banner.id === updatedBanner.id ? updatedBanner : banner
-  );
-  saveData(BANNERS_STORAGE_KEY, updatedBanners);
-  return updatedBanners;
-};
-
-export const toggleBannerStatus = (id: number): Banner[] => {
-  const banners = getBanners();
-  const updatedBanners = banners.map(banner => 
-    banner.id === id ? { ...banner, active: !banner.active } : banner
-  );
-  saveData(BANNERS_STORAGE_KEY, updatedBanners);
-  return updatedBanners;
-};
-
-// Notification bar service methods
-export const getNotificationBar = (): NotificationBar => {
-  return getStoredData<NotificationBar>(NOTIFICATION_BAR_STORAGE_KEY, initialNotificationBar);
-};
-
-export const updateNotificationBar = (updatedNotificationBar: NotificationBar): NotificationBar => {
-  saveData(NOTIFICATION_BAR_STORAGE_KEY, updatedNotificationBar);
-  return updatedNotificationBar;
-};
-
-export const toggleNotificationBarStatus = (): NotificationBar => {
-  const notificationBar = getNotificationBar();
-  const updatedNotificationBar = { 
-    ...notificationBar, 
-    active: !notificationBar.active 
-  };
-  saveData(NOTIFICATION_BAR_STORAGE_KEY, updatedNotificationBar);
-  return updatedNotificationBar;
-};
+export default PromotionService;
