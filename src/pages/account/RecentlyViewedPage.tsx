@@ -132,8 +132,16 @@ const ClearButton = styled.button`
 
 const ProductGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 20px;
+  
+  @media (max-width: 992px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  @media (max-width: 576px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const ProductCard = styled.div`
@@ -343,7 +351,7 @@ const RecentlyViewedPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const itemsPerPage = 9;
   
   useEffect(() => {
     // Simulate API call to fetch recently viewed products
@@ -461,6 +469,18 @@ const RecentlyViewedPage: React.FC = () => {
           category: 'Toiletries & Personal Care',
           viewedAt: '2025-02-26T08:40:00',
           inStock: true
+        },
+        {
+          id: 11,
+          productId: 111,
+          name: 'Milo Chocolate Malt - 500g',
+          image: '/images/products/milo.jpg',
+          price: 2200,
+          rating: 4.7,
+          category: 'Beverages',
+          viewedAt: '2025-02-25T14:20:00',
+          inStock: true,
+          discount: 8
         }
       ]);
       setLoading(false);

@@ -565,6 +565,7 @@ const ProductDetailPage = () => {
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState(1);
 
   // Find if product is already in cart
   const cartItem = cartItems.find(item => item.id.toString() === id);
@@ -679,7 +680,7 @@ const ProductDetailPage = () => {
         name: product.name,
         price: product.price,
         image: product.images?.[0] || getImagePlaceholder(0),
-        quantity: 1,
+        quantity: quantity,
         metadata
       });
       alert('Product added to cart');
@@ -700,7 +701,7 @@ const ProductDetailPage = () => {
         name: product.name,
         price: product.price,
         image: product.images?.[0] || getImagePlaceholder(0),
-        quantity: 1,
+        quantity: quantity,
         metadata
       });
     } else {
@@ -725,6 +726,8 @@ const ProductDetailPage = () => {
   const handleIncrement = () => {
     if (isInCart && cartItem) {
       updateQuantity(cartItem.id, cartItem.quantity + 1);
+    } else {
+      setQuantity(prev => Math.min(prev + 1, 99)); // Set a reasonable max quantity
     }
   };
 
@@ -736,6 +739,8 @@ const ProductDetailPage = () => {
       } else {
         removeFromCart(cartItem.id);
       }
+    } else {
+      setQuantity(prev => Math.max(prev - 1, 1)); // Don't go below 1
     }
   };
 
@@ -851,47 +856,68 @@ const ProductDetailPage = () => {
                 )}
               </StockDisplay>
 
-              {/* Add to cart and buy now buttons */}
-              <FlexBox gap="15px" style={{ marginTop: '20px' }}>
-                <Button 
-                  variant="primary" 
-                  fullWidth
-                  onClick={handleAddToCart}
-                  disabled={!isInStock()}
-                >
-                  Add to Cart
-                </Button>
-                <Button 
-                  variant="secondary" 
-                  fullWidth
-                  onClick={handleBuyNow}
-                  disabled={!isInStock()}
-                >
-                  Buy Now
-                </Button>
-              </FlexBox>
+              {/* Quantity controls - shown for all products */}
+              <div style={{ marginTop: '20px' }}>
+                <Text weight="500">Quantity</Text>
+                <QuantitySelector>
+                  <QuantityButton 
+                    onClick={handleDecrement}
+                    aria-label="Decrease quantity"
+                    disabled={!isInCart && quantity <= 1}
+                  >
+                    -
+                  </QuantityButton>
+                  <QuantityValue>{isInCart ? cartItem?.quantity : quantity}</QuantityValue>
+                  <QuantityButton 
+                    onClick={handleIncrement}
+                    aria-label="Increase quantity"
+                    disabled={!isInCart && quantity >= 99}
+                  >
+                    +
+                  </QuantityButton>
+                </QuantitySelector>
+              </div>
 
-              {/* Show quantity controls only if item is in cart */}
-              {isInCart && (
-                <>
-                  <Text weight="500">Quantity</Text>
-                  <QuantitySelector>
-                    <QuantityButton 
-                      onClick={handleDecrement}
-                      aria-label="Decrease quantity"
+              {/* Conditional buttons based on cart status */}
+              <FlexBox gap="15px" style={{ marginTop: '20px' }}>
+                {isInCart ? (
+                  <>
+                    <Button 
+                      variant="primary" 
+                      fullWidth
+                      onClick={handleContinueToCheckout}
                     >
-                      -
-                    </QuantityButton>
-                    <QuantityValue>{cartItem?.quantity || 0}</QuantityValue>
-                    <QuantityButton 
-                      onClick={handleIncrement}
-                      aria-label="Increase quantity"
+                      Checkout Now
+                    </Button>
+                    <Button 
+                      variant="secondary" 
+                      fullWidth
+                      onClick={handleContinueShopping}
                     >
-                      +
-                    </QuantityButton>
-                  </QuantitySelector>
-                </>
-              )}
+                      Continue Shopping
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button 
+                      variant="primary" 
+                      fullWidth
+                      onClick={handleAddToCart}
+                      disabled={!isInStock()}
+                    >
+                      Add to Cart
+                    </Button>
+                    <Button 
+                      variant="secondary" 
+                      fullWidth
+                      onClick={handleBuyNow}
+                      disabled={!isInStock()}
+                    >
+                      Buy Now
+                    </Button>
+                  </>
+                )}
+              </FlexBox>
             </ProductInfo>
           </ProductGrid>
 

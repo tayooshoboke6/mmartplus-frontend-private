@@ -55,6 +55,17 @@ const StatChangeIndicator = styled.div<{ isPositive?: boolean }>`
   }
 `;
 
+const ChartRowGrid = styled.div`
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+  
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
 const ChartContainer = styled.div`
   background-color: #fff;
   border-radius: 8px;
@@ -62,6 +73,16 @@ const ChartContainer = styled.div`
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
   margin-bottom: 20px;
   min-height: 300px;
+  
+  @media (max-width: 768px) {
+    padding: 15px;
+    min-height: 250px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 12px;
+    min-height: 200px;
+  }
 `;
 
 const ChartPlaceholder = styled.div`
@@ -71,7 +92,30 @@ const ChartPlaceholder = styled.div`
   justify-content: center;
   background-color: #f9f9f9;
   border-radius: 4px;
-  color: #666;
+  
+  @media (max-width: 768px) {
+    height: 200px;
+  }
+  
+  @media (max-width: 480px) {
+    height: 180px;
+  }
+`;
+
+const OrderListContainer = styled.div`
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  height: 100%;
+  
+  @media (max-width: 768px) {
+    padding: 15px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 12px;
+  }
 `;
 
 const RecentOrdersTable = styled.table`
@@ -96,29 +140,42 @@ const RecentOrdersTable = styled.table`
   tbody tr:hover {
     background-color: #f9f9f9;
   }
+  
+  @media (max-width: 768px) {
+    th, td {
+      padding: 10px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    display: none; /* Hide table on small screens */
+  }
 `;
 
-const StatusBadge = styled.span<{ status: string }>`
-  display: inline-block;
-  padding: 4px 8px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
+const OrderItem = styled.div`
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   
-  ${props => {
-    switch(props.status) {
-      case 'completed':
-        return 'background-color: #e6f7e6; color: #2e7d32;';
-      case 'processing':
-        return 'background-color: #e3f2fd; color: #1565c0;';
-      case 'pending':
-        return 'background-color: #fff8e1; color: #f57f17;';
-      case 'cancelled':
-        return 'background-color: #feebee; color: #b71c1c;';
-      default:
-        return 'background-color: #f5f5f5; color: #757575;';
-    }
-  }}
+  @media (max-width: 480px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+  
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const MobileOrderList = styled.div`
+  display: none;
+  
+  @media (max-width: 480px) {
+    display: block;
+  }
 `;
 
 const CategoryCard = styled.div`
@@ -182,6 +239,29 @@ const InventoryAlertCard = styled.div`
   &:last-child {
     margin-bottom: 0;
   }
+`;
+
+const StatusBadge = styled.span<{ status: string }>`
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  
+  ${props => {
+    switch(props.status) {
+      case 'completed':
+        return 'background-color: #e6f7e6; color: #2e7d32;';
+      case 'processing':
+        return 'background-color: #e3f2fd; color: #1565c0;';
+      case 'pending':
+        return 'background-color: #fff8e1; color: #f57f17;';
+      case 'cancelled':
+        return 'background-color: #feebee; color: #b71c1c;';
+      default:
+        return 'background-color: #f5f5f5; color: #757575;';
+    }
+  }}
 `;
 
 const DashboardPage: React.FC = () => {
@@ -298,109 +378,117 @@ const DashboardPage: React.FC = () => {
         </StatCard>
       </DashboardGrid>
       
-      <FlexBox direction="column" gap="20px">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '20px' }}>
-          <div style={{ gridColumn: 'span 8' }}>
-            <ChartContainer>
-              <Text size="lg" weight="bold" style={{ marginBottom: '15px' }}>Sales Overview</Text>
-              <ChartPlaceholder>
-                Sales Chart will be displayed here
-              </ChartPlaceholder>
-            </ChartContainer>
-          </div>
+      <ChartRowGrid>
+        <OrderListContainer>
+          <FlexBox justify="space-between" align="center" style={{ marginBottom: '15px' }}>
+            <Text size="lg" weight="bold">Recent Orders</Text>
+            <a href="/admin/orders" style={{ color: '#0066b2', textDecoration: 'none' }}>View All</a>
+          </FlexBox>
           
-          <div style={{ gridColumn: 'span 4' }}>
-            <ChartContainer>
-              <Text size="lg" weight="bold" style={{ marginBottom: '15px' }}>Popular Categories</Text>
-              
-              {popularCategories.map((category, index) => (
-                <CategoryCard key={index}>
-                  <CategoryIcon>
-                    {category.icon}
-                  </CategoryIcon>
-                  <CategoryInfo>
-                    <Text size="md" weight="bold">{category.name}</Text>
-                    <Text size="sm" color="#666">{category.count} products • {formatCurrency(category.sales)}</Text>
-                    <CategoryProgressOuter>
-                      <CategoryProgressInner width={category.percentage} color={category.color} />
-                    </CategoryProgressOuter>
-                  </CategoryInfo>
-                </CategoryCard>
+          <RecentOrdersTable>
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Customer</th>
+                <th>Items</th>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentOrders.map(order => (
+                <tr key={order.id}>
+                  <td>{order.id}</td>
+                  <td>{order.customer}</td>
+                  <td>{order.items}</td>
+                  <td>{order.date}</td>
+                  <td>{formatCurrency(order.total)}</td>
+                  <td>
+                    <StatusBadge status={order.status}>
+                      {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                    </StatusBadge>
+                  </td>
+                </tr>
               ))}
-            </ChartContainer>
-          </div>
-        </div>
+            </tbody>
+          </RecentOrdersTable>
+          
+          <MobileOrderList>
+            {recentOrders.map(order => (
+              <OrderItem key={order.id}>
+                <div>
+                  <Text size="sm" weight="bold">#{order.id}</Text>
+                  <Text size="sm">{order.customer} • {order.date}</Text>
+                  <Text size="sm">{order.items} items</Text>
+                </div>
+                <div>
+                  <Text size="md" weight="bold">{formatCurrency(order.total)}</Text>
+                  <StatusBadge status={order.status}>
+                    {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                  </StatusBadge>
+                </div>
+              </OrderItem>
+            ))}
+          </MobileOrderList>
+        </OrderListContainer>
         
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '20px' }}>
-          <div style={{ gridColumn: 'span 8' }}>
-            <ChartContainer>
-              <FlexBox justify="space-between" align="center" style={{ marginBottom: '15px' }}>
-                <Text size="lg" weight="bold">Recent Orders</Text>
-                <a href="/admin/orders" style={{ color: '#0066b2', textDecoration: 'none' }}>View All</a>
-              </FlexBox>
-              
-              <RecentOrdersTable>
-                <thead>
-                  <tr>
-                    <th>Order ID</th>
-                    <th>Customer</th>
-                    <th>Items</th>
-                    <th>Date</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentOrders.map(order => (
-                    <tr key={order.id}>
-                      <td>{order.id}</td>
-                      <td>{order.customer}</td>
-                      <td>{order.items}</td>
-                      <td>{order.date}</td>
-                      <td>{formatCurrency(order.total)}</td>
-                      <td>
-                        <StatusBadge status={order.status}>
-                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                        </StatusBadge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </RecentOrdersTable>
-            </ChartContainer>
-          </div>
+        <ChartContainer>
+          <Text size="lg" weight="bold" style={{ marginBottom: '15px' }}>Sales Overview</Text>
+          <ChartPlaceholder>
+            Sales Chart will be displayed here
+          </ChartPlaceholder>
+        </ChartContainer>
+      </ChartRowGrid>
+      
+      <ChartRowGrid>
+        <ChartContainer>
+          <Text size="lg" weight="bold" style={{ marginBottom: '15px' }}>Popular Categories</Text>
           
-          <div style={{ gridColumn: 'span 4' }}>
-            <ChartContainer>
-              <FlexBox justify="space-between" align="center" style={{ marginBottom: '15px' }}>
-                <Text size="lg" weight="bold">Inventory Alerts</Text>
-                <a href="/admin/products" style={{ color: '#0066b2', textDecoration: 'none' }}>View All</a>
+          {popularCategories.map((category, index) => (
+            <CategoryCard key={index}>
+              <CategoryIcon>
+                {category.icon}
+              </CategoryIcon>
+              <CategoryInfo>
+                <Text size="md" weight="bold">{category.name}</Text>
+                <Text size="sm" color="#666">{category.count} products • {formatCurrency(category.sales)}</Text>
+                <CategoryProgressOuter>
+                  <CategoryProgressInner width={category.percentage} color={category.color} />
+                </CategoryProgressOuter>
+              </CategoryInfo>
+            </CategoryCard>
+          ))}
+        </ChartContainer>
+        
+        <ChartContainer>
+          <FlexBox justify="space-between" align="center" style={{ marginBottom: '15px' }}>
+            <Text size="lg" weight="bold">Inventory Alerts</Text>
+            <a href="/admin/products" style={{ color: '#0066b2', textDecoration: 'none' }}>View All</a>
+          </FlexBox>
+          
+          {lowStockAlerts.map((item, index) => (
+            <InventoryAlertCard key={index}>
+              <Text size="md" weight="bold">{item.name}</Text>
+              <FlexBox justify="space-between" align="center" style={{ marginTop: '5px' }}>
+                <Text size="sm" color="#666">Current Stock: <strong>{item.current}</strong></Text>
+                <Text size="sm" color="#666">Minimum Required: <strong>{item.minimum}</strong></Text>
               </FlexBox>
-              
-              {lowStockAlerts.map((item, index) => (
-                <InventoryAlertCard key={index}>
-                  <Text size="md" weight="bold">{item.name}</Text>
-                  <FlexBox justify="space-between" align="center" style={{ marginTop: '5px' }}>
-                    <Text size="sm" color="#666">Current Stock: <strong>{item.current}</strong></Text>
-                    <Text size="sm" color="#666">Minimum Required: <strong>{item.minimum}</strong></Text>
-                  </FlexBox>
-                  <FlexBox justify="flex-end" style={{ marginTop: '10px' }}>
-                    <a href={`/admin/products`} style={{ fontSize: '14px', color: '#0066b2', textDecoration: 'none' }}>
-                      Restock Now
-                    </a>
-                  </FlexBox>
-                </InventoryAlertCard>
-              ))}
-              
-              <FlexBox justify="center" style={{ marginTop: '15px' }}>
-                <a href="/admin/products" style={{ color: '#0066b2', textDecoration: 'none' }}>
-                  View All Low Stock Items
+              <FlexBox justify="flex-end" style={{ marginTop: '10px' }}>
+                <a href={`/admin/products`} style={{ fontSize: '14px', color: '#0066b2', textDecoration: 'none' }}>
+                  Restock Now
                 </a>
               </FlexBox>
-            </ChartContainer>
-          </div>
-        </div>
-      </FlexBox>
+            </InventoryAlertCard>
+          ))}
+          
+          <FlexBox justify="center" style={{ marginTop: '15px' }}>
+            <a href="/admin/products" style={{ color: '#0066b2', textDecoration: 'none' }}>
+              View All Low Stock Items
+            </a>
+          </FlexBox>
+        </ChartContainer>
+      </ChartRowGrid>
     </AdminLayout>
   );
 };

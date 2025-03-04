@@ -1,11 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
 import { Button, SectionContainer, Spacer, Text } from '../styles/GlobalComponents';
 import { useCart } from '../contexts/CartContext';
 import { formatCurrency } from '../utils/formatCurrency';
+import VoucherService from '../services/VoucherService';
+import AddressSelector from '../components/cart/AddressSelector';
+import AddressService from '../services/AddressService';
+import { Address, AddressFormData } from '../models/Address';
+import AddressForm from '../components/cart/AddressForm';
+import CheckoutOptions from '../components/cart/CheckoutOptions';
+import StoreAddressService from '../services/StoreAddressService';
+import { StoreAddress } from '../models/StoreAddress';
 
 const PageContainer = styled.div`
   display: flex;
@@ -289,24 +297,70 @@ const ShippingPrice = styled.span`
 
 const DeliveryAddress = styled.div`
   padding: 10px;
-  background-color: #f9f9f9;
+  background-color: #f9fafb;
   border-radius: 4px;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
   font-size: 14px;
+  line-height: 1.5;
 `;
 
 const ChangeLink = styled.button`
   background: none;
   border: none;
-  color: var(--primary-color);
-  font-size: 13px;
+  color: #0071BC;
+  font-size: 14px;
   cursor: pointer;
   padding: 0;
-  text-decoration: underline;
   margin-top: 5px;
+  text-decoration: underline;
   
   &:hover {
-    color: var(--dark-blue);
+    color: #005a9e;
+  }
+`;
+
+const AddressModal = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+`;
+
+const ModalContent = styled.div`
+  background-color: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+`;
+
+const ModalHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+`;
+
+const CloseButton = styled.button`
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  
+  &:hover {
+    color: #333;
   }
 `;
 
@@ -348,18 +402,450 @@ const AddItemPrompt = styled.div`
   }
 `;
 
+const VoucherContainer = styled.div`
+  margin: 20px 0;
+  padding: 15px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+`;
+
+const VoucherForm = styled.div`
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  
+  @media (max-width: 480px) {
+    flex-direction: column;
+  }
+`;
+
+const VoucherInput = styled.input`
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid var(--med-gray);
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+  
+  &:focus {
+    border-color: #0071BC;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 113, 188, 0.2);
+  }
+`;
+
+const VoucherMessage = styled.div<{ type: 'success' | 'error' }>`
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: ${props => props.type === 'success' ? '#e6f7e6' : '#ffebeb'};
+  color: ${props => props.type === 'success' ? '#2e7d32' : '#d32f2f'};
+  display: flex;
+  align-items: center;
+  
+  &:before {
+    content: '';
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin-right: 8px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='${props => props.type === 'success' ? '%232e7d32' : '%23d32f2f'}'%3E%3Cpath d='${props => props.type === 'success' ? 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z' : 'M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'}'/%3E%3C/svg%3E");
+    background-size: contain;
+  }
+`;
+
+const AppliedVoucher = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  padding: 10px 12px;
+  background-color: #e6f7e6;
+  border-radius: 4px;
+  border-left: 3px solid #2e7d32;
+`;
+
+const ModalTabs = styled.div`
+  display: flex;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 20px;
+`;
+
+const ModalTab = styled.button<{ active: boolean }>`
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid ${props => props.active ? '#0071BC' : 'transparent'};
+  color: ${props => props.active ? '#0071BC' : '#666'};
+  font-weight: ${props => props.active ? '500' : 'normal'};
+  cursor: pointer;
+  
+  &:hover {
+    color: #0071BC;
+  }
+`;
+
+const DeliveryOptionContainer = styled.div`
+  margin-bottom: 20px;
+`;
+
+const DeliveryOptionTitle = styled.h3`
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 10px;
+`;
+
+const DeliveryOptions = styled.div`
+  display: flex;
+  flex-direction: column;
+`;
+
+const DeliveryOption = styled.div<{ selected: boolean }>`
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid ${props => props.selected ? '#0071BC' : '#ddd'};
+  border-radius: 4px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  
+  &:hover {
+    border-color: #0071BC;
+  }
+`;
+
+const DeliveryOptionRadio = styled.div`
+  margin-right: 10px;
+`;
+
+const RadioButton = styled.div<{ selected: boolean }>`
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid ${props => props.selected ? '#0071BC' : '#ddd'};
+  background-color: ${props => props.selected ? '#0071BC' : 'white'};
+`;
+
+const DeliveryOptionContent = styled.div`
+  flex: 1;
+`;
+
+const DeliveryOptionLabel = styled.div`
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 5px;
+`;
+
+const DeliveryOptionDescription = styled.div`
+  font-size: 14px;
+  color: #666;
+`;
+
+const AddressContainer = styled.div`
+  margin-bottom: 20px;
+`;
+
+const AddressHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+`;
+
+const AddressTitle = styled.h3`
+  font-size: 16px;
+  font-weight: 500;
+`;
+
+const ChangeButton = styled.button`
+  background: none;
+  border: none;
+  color: #0071BC;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  
+  &:hover {
+    color: #005a9e;
+  }
+`;
+
+const AddressCard = styled.div`
+  padding: 15px;
+  background-color: #f9fafb;
+  border-radius: 4px;
+`;
+
+const AddressDetails = styled.div`
+  font-size: 14px;
+  line-height: 1.5;
+`;
+
+const AddressName = styled.div`
+  font-weight: 500;
+  margin-bottom: 5px;
+`;
+
+const AddressText = styled.div`
+  margin-bottom: 10px;
+`;
+
+const AddressPhone = styled.div`
+  margin-bottom: 10px;
+`;
+
+const EmptyAddressCard = styled.div`
+  padding: 15px;
+  background-color: #f9fafb;
+  border-radius: 4px;
+  text-align: center;
+`;
+
+const EmptyAddressText = styled.div`
+  font-size: 14px;
+  margin-bottom: 10px;
+`;
+
 const CartPage = () => {
   const { cartItems, updateQuantity, removeFromCart, getCartTotal } = useCart();
   const [deliveryOption, setDeliveryOption] = useState('home');
+  const [voucherCode, setVoucherCode] = useState('');
+  const [voucherMessage, setVoucherMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+  const [appliedVoucher, setAppliedVoucher] = useState<{ 
+    code: string, 
+    discount: number, 
+    discountType: 'percentage' | 'fixed',
+    discountAmount: number 
+  } | null>(null);
+  const [isApplyingVoucher, setIsApplyingVoucher] = useState(false);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'select' | 'add'>('select');
+  const [isAddingAddress, setIsAddingAddress] = useState(false);
+  const [addressAddedMessage, setAddressAddedMessage] = useState<string | null>(null);
+  const [showCheckoutOptions, setShowCheckoutOptions] = useState(false);
+  const [pickupStores, setPickupStores] = useState<StoreAddress[]>([]);
+  const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
+  const [selectedStore, setSelectedStore] = useState<StoreAddress | null>(null);
+  const [isLoadingStores, setIsLoadingStores] = useState(false);
+  
+  const navigate = useNavigate();
+  
+  // Mock user ID - In a real app, this would come from authentication context
+  const userId = 'user1';
   
   // Calculate cart totals
   const subtotal = getCartTotal();
   const shipping = deliveryOption === 'home' ? 1000 : 0;
-  const total = subtotal + shipping;
   
+  // Calculate discount if voucher is applied
+  const discount = appliedVoucher ? appliedVoucher.discountAmount : 0;
+  
+  // Calculate final total
+  const total = subtotal + shipping - discount;
+  
+  // Fetch selected address details when selectedAddressId changes
+  useEffect(() => {
+    const fetchSelectedAddress = async () => {
+      if (selectedAddressId) {
+        try {
+          const address = await AddressService.getAddressById(selectedAddressId);
+          setSelectedAddress(address);
+        } catch (error) {
+          console.error('Error fetching selected address:', error);
+        }
+      }
+    };
+
+    fetchSelectedAddress();
+  }, [selectedAddressId]);
+
+  // Fetch default address on component mount
+  useEffect(() => {
+    const fetchDefaultAddress = async () => {
+      try {
+        const defaultAddress = await AddressService.getDefaultAddress(userId);
+        if (defaultAddress) {
+          setSelectedAddressId(defaultAddress.id);
+          setSelectedAddress(defaultAddress);
+        }
+      } catch (error) {
+        console.error('Error fetching default address:', error);
+      }
+    };
+
+    fetchDefaultAddress();
+  }, [userId]);
+  
+  // Fetch pickup stores
+  useEffect(() => {
+    const fetchPickupStores = async () => {
+      if (deliveryOption === 'pickup') {
+        try {
+          setIsLoadingStores(true);
+          const stores = await StoreAddressService.getPickupStoreAddresses();
+          setPickupStores(stores);
+          
+          // Select the first store by default if none is selected
+          if (stores.length > 0 && !selectedStoreId) {
+            setSelectedStoreId(stores[0].id);
+            setSelectedStore(stores[0]);
+          }
+        } catch (error) {
+          console.error('Error fetching pickup stores:', error);
+        } finally {
+          setIsLoadingStores(false);
+        }
+      }
+    };
+    
+    fetchPickupStores();
+  }, [deliveryOption, selectedStoreId]);
+
+  // Handle store selection
+  const handleStoreSelect = (storeId: string) => {
+    const store = pickupStores.find(s => s.id === storeId);
+    setSelectedStoreId(storeId);
+    setSelectedStore(store || null);
+  };
+
   // Would normally handle images properly with imports or actual URLs
   const getImagePlaceholder = (image: string) => {
     return image || 'https://via.placeholder.com/80';
+  };
+
+  // Handle applying voucher code
+  const handleApplyVoucher = async () => {
+    if (!voucherCode.trim()) {
+      setVoucherMessage({
+        text: 'Please enter a voucher code',
+        type: 'error'
+      });
+      return;
+    }
+
+    setIsApplyingVoucher(true);
+    setVoucherMessage(null);
+
+    try {
+      const result = await VoucherService.validateVoucher(voucherCode, subtotal);
+      
+      if (result.valid && result.voucher && result.discountAmount) {
+        setAppliedVoucher({
+          code: result.voucher.code,
+          discount: result.voucher.discount,
+          discountType: result.voucher.discountType,
+          discountAmount: result.discountAmount
+        });
+        setVoucherMessage({
+          text: 'Voucher applied successfully!',
+          type: 'success'
+        });
+        setVoucherCode('');
+      } else {
+        setVoucherMessage({
+          text: result.errorMessage || 'Invalid voucher code',
+          type: 'error'
+        });
+      }
+    } catch (error) {
+      setVoucherMessage({
+        text: 'Error applying voucher. Please try again.',
+        type: 'error'
+      });
+    } finally {
+      setIsApplyingVoucher(false);
+    }
+  };
+
+  // Handle removing applied voucher
+  const handleRemoveVoucher = () => {
+    setAppliedVoucher(null);
+    setVoucherMessage(null);
+  };
+
+  // Format discount display text
+  const getDiscountText = () => {
+    if (!appliedVoucher) return '';
+    
+    if (appliedVoucher.discountType === 'percentage') {
+      return `${appliedVoucher.discount}% off`;
+    } else {
+      return `${formatCurrency(appliedVoucher.discount)} off`;
+    }
+  };
+
+  // Handle address selection
+  const handleAddressSelect = (addressId: string) => {
+    setSelectedAddressId(addressId);
+    setShowAddressModal(false);
+  };
+
+  // Handle address form submission
+  const handleAddressSubmit = async (addressData: AddressFormData) => {
+    try {
+      setIsAddingAddress(true);
+      const newAddress = await AddressService.createAddress(userId, addressData);
+      
+      // Select the newly created address
+      setSelectedAddressId(newAddress.id);
+      setSelectedAddress(newAddress);
+      
+      // Show success message
+      setAddressAddedMessage('Address added successfully!');
+      
+      // Clear message after 3 seconds
+      setTimeout(() => {
+        setAddressAddedMessage(null);
+        // Close modal or switch back to select tab
+        setActiveTab('select');
+      }, 3000);
+    } catch (error) {
+      console.error('Error adding address:', error);
+    } finally {
+      setIsAddingAddress(false);
+    }
+  };
+
+  // Format address for display
+  const formatAddressForDisplay = (address: Address | null) => {
+    if (!address) return 'No address selected';
+    return `${address.name}, ${address.street}, ${address.city}, ${address.state}, ${address.postalCode}`;
+  };
+
+  // Handle checkout button click
+  const handleCheckoutClick = () => {
+    if (deliveryOption === 'home' && !selectedAddress) {
+      // If home delivery is selected but no address is selected, show error
+      return;
+    }
+    
+    if (deliveryOption === 'pickup' && !selectedStoreId) {
+      // If pickup is selected but no store is selected, show error
+      return;
+    }
+    
+    setShowCheckoutOptions(true);
+  };
+
+  // Handle payment method selection
+  const handlePaymentSelection = (paymentMethodId: string) => {
+    // In a real app, you would store the selected payment method and navigate to the appropriate checkout page
+    console.log(`Selected payment method: ${paymentMethodId}`);
+    
+    // Close the checkout options modal
+    setShowCheckoutOptions(false);
+    
+    // Navigate to the checkout page with the selected payment method
+    if (deliveryOption === 'home') {
+      navigate(`/checkout?payment=${paymentMethodId}&address=${selectedAddressId}&delivery=${deliveryOption}`);
+    } else {
+      navigate(`/checkout?payment=${paymentMethodId}&store=${selectedStoreId}&delivery=${deliveryOption}`);
+    }
   };
 
   return (
@@ -387,7 +873,6 @@ const CartPage = () => {
             </EmptyCartMessage>
           ) : (
             <CartContainer>
-              {/* Left Column - Cart Items */}
               <CartItemsSection>
                 <CartHeader>
                   <div>Products</div>
@@ -453,7 +938,6 @@ const CartPage = () => {
                 </AddItemPrompt>
               </CartItemsSection>
               
-              {/* Right Column - Order Summary */}
               <SummarySection>
                 <SummaryTitle>Cart Total</SummaryTitle>
                 
@@ -462,60 +946,285 @@ const CartPage = () => {
                   <Text weight="500">{formatCurrency(subtotal)}</Text>
                 </SummaryRow>
                 
-                <ShippingOptions>
-                  <Text weight="500" style={{ marginBottom: '10px' }}>Delivery option</Text>
-                  
-                  <ShippingOption>
-                    <input 
-                      type="radio" 
-                      name="delivery" 
-                      id="home-delivery"
-                      checked={deliveryOption === 'home'}
-                      onChange={() => setDeliveryOption('home')}
-                    />
-                    <div>Home delivery</div>
-                    <ShippingPrice>{formatCurrency(1000)}</ShippingPrice>
-                  </ShippingOption>
-                  
-                  <ShippingOption>
-                    <input 
-                      type="radio" 
-                      name="delivery" 
-                      id="pickup"
-                      checked={deliveryOption === 'pickup'}
-                      onChange={() => setDeliveryOption('pickup')}
-                    />
-                    <div>Pick up at shop</div>
-                    <ShippingPrice>Free</ShippingPrice>
-                  </ShippingOption>
-                </ShippingOptions>
+                {appliedVoucher && (
+                  <SummaryRow>
+                    <Text>Discount</Text>
+                    <Text weight="500" style={{ color: '#2e7d32' }}>- {formatCurrency(discount)}</Text>
+                  </SummaryRow>
+                )}
                 
-                <div>
-                  <Text weight="500" style={{ marginBottom: '10px' }}>Ship to</Text>
-                  <DeliveryAddress>
-                    Default address:
-                    <div>1234 cafe, Ajanlekoko, Ogun state.</div>
-                    <ChangeLink>Change location</ChangeLink>
-                  </DeliveryAddress>
-                </div>
+                <DeliveryOptionContainer>
+                  <DeliveryOptionTitle>Delivery Options</DeliveryOptionTitle>
+                  <DeliveryOptions>
+                    <DeliveryOption 
+                      selected={deliveryOption === 'home'}
+                      onClick={() => setDeliveryOption('home')}
+                    >
+                      <DeliveryOptionRadio>
+                        <RadioButton selected={deliveryOption === 'home'} />
+                      </DeliveryOptionRadio>
+                      <DeliveryOptionContent>
+                        <DeliveryOptionLabel>Home Delivery</DeliveryOptionLabel>
+                        <DeliveryOptionDescription>Delivered to your address</DeliveryOptionDescription>
+                      </DeliveryOptionContent>
+                    </DeliveryOption>
+                    
+                    <DeliveryOption 
+                      selected={deliveryOption === 'pickup'}
+                      onClick={() => setDeliveryOption('pickup')}
+                    >
+                      <DeliveryOptionRadio>
+                        <RadioButton selected={deliveryOption === 'pickup'} />
+                      </DeliveryOptionRadio>
+                      <DeliveryOptionContent>
+                        <DeliveryOptionLabel>Pick up at Store</DeliveryOptionLabel>
+                        <DeliveryOptionDescription>Collect from your nearest M-Mart store</DeliveryOptionDescription>
+                      </DeliveryOptionContent>
+                    </DeliveryOption>
+                  </DeliveryOptions>
+                </DeliveryOptionContainer>
                 
-                <TotalRow>
+                {deliveryOption === 'home' ? (
+                  <AddressContainer>
+                    <AddressHeader>
+                      <AddressTitle>Delivery Address</AddressTitle>
+                      <ChangeButton onClick={() => setShowAddressModal(true)}>
+                        {selectedAddress ? 'Change' : 'Select Address'}
+                      </ChangeButton>
+                    </AddressHeader>
+                    
+                    {selectedAddress ? (
+                      <AddressCard>
+                        <AddressDetails>
+                          <AddressName>{selectedAddress.name}</AddressName>
+                          <AddressText>{formatAddressForDisplay(selectedAddress)}</AddressText>
+                          <AddressPhone>{selectedAddress.phone}</AddressPhone>
+                        </AddressDetails>
+                      </AddressCard>
+                    ) : (
+                      <EmptyAddressCard onClick={() => setShowAddressModal(true)}>
+                        <EmptyAddressText>No address selected</EmptyAddressText>
+                        <Button variant="outline" size="sm">Select Address</Button>
+                      </EmptyAddressCard>
+                    )}
+                  </AddressContainer>
+                ) : (
+                  <AddressContainer>
+                    <AddressHeader>
+                      <AddressTitle>Pickup Store</AddressTitle>
+                    </AddressHeader>
+                    
+                    {isLoadingStores ? (
+                      <div style={{ padding: '20px', textAlign: 'center' }}>Loading stores...</div>
+                    ) : pickupStores.length === 0 ? (
+                      <EmptyAddressCard>
+                        <EmptyAddressText>No pickup stores available</EmptyAddressText>
+                      </EmptyAddressCard>
+                    ) : (
+                      <>
+                        <div style={{ marginBottom: '15px' }}>
+                          <select 
+                            value={selectedStoreId || ''} 
+                            onChange={(e) => handleStoreSelect(e.target.value)}
+                            style={{ 
+                              width: '100%', 
+                              padding: '10px', 
+                              borderRadius: '4px',
+                              border: '1px solid #ddd'
+                            }}
+                          >
+                            {pickupStores.map(store => (
+                              <option key={store.id} value={store.id}>
+                                {store.name} - {store.city}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        
+                        {selectedStore && (
+                          <AddressCard>
+                            <AddressDetails>
+                              <AddressName>{selectedStore.name}</AddressName>
+                              <AddressText>
+                                {selectedStore.street}, {selectedStore.city}, {selectedStore.state}
+                              </AddressText>
+                              <AddressPhone>{selectedStore.phone}</AddressPhone>
+                              {selectedStore.openingHours && (
+                                <div style={{ fontSize: '14px', marginTop: '8px', color: '#666' }}>
+                                  <strong>Opening Hours:</strong> {getStoreHoursForToday(selectedStore)}
+                                </div>
+                              )}
+                              {selectedStore.pickupInstructions && (
+                                <div style={{ fontSize: '14px', marginTop: '8px', color: '#666' }}>
+                                  <strong>Pickup Instructions:</strong> {selectedStore.pickupInstructions}
+                                </div>
+                              )}
+                            </AddressDetails>
+                          </AddressCard>
+                        )}
+                      </>
+                    )}
+                  </AddressContainer>
+                )}
+                
+                <VoucherContainer>
+                  <Text weight="500" style={{ marginBottom: '10px' }}>Apply Voucher</Text>
+                  <VoucherForm>
+                    <VoucherInput 
+                      type="text" 
+                      placeholder="Enter voucher code" 
+                      value={voucherCode} 
+                      onChange={(e) => setVoucherCode(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleApplyVoucher()}
+                    />
+                    <Button 
+                      variant="primary" 
+                      size="small" 
+                      onClick={handleApplyVoucher} 
+                      disabled={isApplyingVoucher || !voucherCode.trim()}
+                    >
+                      {isApplyingVoucher ? 'Applying...' : 'Apply'}
+                    </Button>
+                  </VoucherForm>
+                  {voucherMessage && (
+                    <VoucherMessage type={voucherMessage.type}>
+                      {voucherMessage.text}
+                    </VoucherMessage>
+                  )}
+                  {appliedVoucher && (
+                    <AppliedVoucher>
+                      <Text>Applied: <strong>{appliedVoucher.code}</strong> ({getDiscountText()})</Text>
+                      <Button variant="outline" size="small" onClick={handleRemoveVoucher}>
+                        Remove
+                      </Button>
+                    </AppliedVoucher>
+                  )}
+                </VoucherContainer>
+                
+                <TotalRow className="grand-total" final>
                   <Text>Total</Text>
                   <Text>{formatCurrency(total)}</Text>
                 </TotalRow>
                 
-                <Button variant="primary" fullWidth={true}>
+                <Button 
+                  variant="primary" 
+                  fullWidth={true}
+                  disabled={(deliveryOption === 'home' && !selectedAddress) || 
+                           (deliveryOption === 'pickup' && !selectedStoreId)}
+                  onClick={handleCheckoutClick}
+                >
                   Proceed to checkout
                 </Button>
+                {deliveryOption === 'home' && !selectedAddress && (
+                  <Text size="sm" style={{ color: 'red', marginTop: '5px', textAlign: 'center' }}>
+                    Please select a delivery address
+                  </Text>
+                )}
+                {deliveryOption === 'pickup' && !selectedStoreId && (
+                  <Text size="sm" style={{ color: 'red', marginTop: '5px', textAlign: 'center' }}>
+                    Please select a pickup store
+                  </Text>
+                )}
               </SummarySection>
             </CartContainer>
           )}
         </SectionContainer>
       </MainContent>
       
+      {/* Address Selection Modal */}
+      {showAddressModal && (
+        <AddressModal>
+          <ModalContent>
+            <ModalHeader>
+              <Text size="lg" weight="500">
+                {activeTab === 'select' ? 'Select Delivery Address' : 'Add New Address'}
+              </Text>
+              <CloseButton onClick={() => setShowAddressModal(false)}>&times;</CloseButton>
+            </ModalHeader>
+            
+            <ModalTabs>
+              <ModalTab 
+                active={activeTab === 'select'} 
+                onClick={() => setActiveTab('select')}
+              >
+                Select Address
+              </ModalTab>
+              <ModalTab 
+                active={activeTab === 'add'} 
+                onClick={() => setActiveTab('add')}
+              >
+                Add New Address
+              </ModalTab>
+            </ModalTabs>
+            
+            {addressAddedMessage && (
+              <div style={{ 
+                padding: '10px', 
+                backgroundColor: '#e6f7e6', 
+                borderRadius: '4px', 
+                marginBottom: '15px',
+                color: '#2e7d32',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <span>{addressAddedMessage}</span>
+                <button 
+                  onClick={() => setAddressAddedMessage(null)} 
+                  style={{ 
+                    background: 'none', 
+                    border: 'none', 
+                    cursor: 'pointer',
+                    fontSize: '16px',
+                    color: '#2e7d32'
+                  }}
+                >
+                  &times;
+                </button>
+              </div>
+            )}
+            
+            {activeTab === 'select' ? (
+              <AddressSelector 
+                userId={userId}
+                selectedAddressId={selectedAddressId}
+                onAddressSelect={handleAddressSelect}
+                onAddNewClick={() => setActiveTab('add')}
+              />
+            ) : (
+              <AddressForm 
+                onSubmit={handleAddressSubmit}
+                onCancel={() => setActiveTab('select')}
+              />
+            )}
+          </ModalContent>
+        </AddressModal>
+      )}
+      
+      {/* Checkout Options Modal */}
+      {showCheckoutOptions && (
+        <CheckoutOptions
+          subtotal={total}
+          onClose={() => setShowCheckoutOptions(false)}
+          onProceed={handlePaymentSelection}
+        />
+      )}
+      
       <Footer />
     </PageContainer>
   );
+};
+
+// Helper function to get store hours for today
+const getStoreHoursForToday = (store: StoreAddress) => {
+  if (!store.openingHours) return 'Not available';
+  
+  const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const today = days[new Date().getDay()];
+  const hours = store.openingHours[today as keyof typeof store.openingHours];
+  
+  if (!hours.isOpen) return 'Closed today';
+  return `${hours.open} - ${hours.close}`;
 };
 
 export default CartPage;

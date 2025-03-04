@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import AdminLayout from '../../components/admin/AdminLayout';
-import { FlexBox, Text, Button } from '../../styles/GlobalComponents';
+import { FlexBox, Text, Button, Tooltip } from '../../styles/GlobalComponents';
 
 const PageContainer = styled.div`
   display: flex;
@@ -364,50 +364,83 @@ const UsersPage: React.FC = () => {
       <PageContainer>
         <FlexBox justify="space-between" align="center">
           <Text size="xl" weight="bold">Manage Users</Text>
-          <Button variant="primary" onClick={() => console.log('Add user clicked')}>
-            Add New User
-          </Button>
+          <Tooltip 
+            content="Create a new user account"
+            position="left"
+          >
+            <Button variant="primary" onClick={() => console.log('Add user clicked')}>
+              Add New User
+            </Button>
+          </Tooltip>
         </FlexBox>
         
         <FiltersContainer>
-          <SearchInput 
-            type="text" 
-            placeholder="Search users by name or email..." 
-            value={searchQuery} 
-            onChange={(e) => setSearchQuery(e.target.value)} 
-          />
+          <div style={{ position: 'relative', flex: 1 }}>
+            <Tooltip 
+              content="Search by name or email (case-insensitive)"
+              position="bottom"
+            >
+              <SearchInput 
+                type="text" 
+                placeholder="Search users by name or email..." 
+                value={searchQuery} 
+                onChange={(e) => setSearchQuery(e.target.value)} 
+              />
+            </Tooltip>
+          </div>
           
-          <FilterSelect 
-            value={roleFilter} 
-            onChange={(e) => setRoleFilter(e.target.value)}
-          >
-            <option value="">All Roles</option>
-            <option value="admin">Admin</option>
-            <option value="store-manager">Store Manager</option>
-            <option value="inventory-manager">Inventory Manager</option>
-            <option value="cashier">Cashier</option>
-            <option value="delivery-staff">Delivery Staff</option>
-            <option value="customer">Customer</option>
-          </FilterSelect>
+          <div style={{ position: 'relative' }}>
+            <Tooltip 
+              content="Filter users by their system role and permissions"
+              position="bottom"
+            >
+              <FilterSelect 
+                value={roleFilter} 
+                onChange={(e) => setRoleFilter(e.target.value)}
+              >
+                <option value="">All Roles</option>
+                <option value="admin">Admin</option>
+                <option value="store-manager">Store Manager</option>
+                <option value="inventory-manager">Inventory Manager</option>
+                <option value="cashier">Cashier</option>
+                <option value="delivery-staff">Delivery Staff</option>
+                <option value="customer">Customer</option>
+              </FilterSelect>
+            </Tooltip>
+          </div>
           
-          <FilterSelect 
-            value={statusFilter} 
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="">All Statuses</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </FilterSelect>
+          <div style={{ position: 'relative' }}>
+            <Tooltip 
+              content="Filter by account status (active or inactive)"
+              position="bottom"
+            >
+              <FilterSelect 
+                value={statusFilter} 
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </FilterSelect>
+            </Tooltip>
+          </div>
           
-          <FilterSelect 
-            value={activityFilter} 
-            onChange={(e) => setActivityFilter(e.target.value)}
-          >
-            <option value="">All Activity Levels</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </FilterSelect>
+          <div style={{ position: 'relative' }}>
+            <Tooltip 
+              content="Filter by how frequently users engage with the system"
+              position="bottom"
+            >
+              <FilterSelect 
+                value={activityFilter} 
+                onChange={(e) => setActivityFilter(e.target.value)}
+              >
+                <option value="">All Activity Levels</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </FilterSelect>
+            </Tooltip>
+          </div>
         </FiltersContainer>
         
         <Text size="md">Showing {filteredUsers.length} users</Text>

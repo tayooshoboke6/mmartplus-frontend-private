@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { Link } from 'react-router-dom';
 import TouchSlider from '../common/TouchSlider';
+import { Banner } from '../../models/Promotion';
+import { getActiveBanners } from '../../services/PromotionService';
 
 const BannerContent = styled.div`
   padding: 30px;
@@ -111,47 +113,23 @@ const ActionButton = styled(Link)`
   }
 `;
 
-// Sample banner data - in a real application, this would come from an API
-// and be manageable by admins
-const banners = [
-  {
-    id: 1,
-    label: 'Monthly Promotion',
-    title: 'SHOP & SAVE BIG',
-    description: 'Get up to 30% off on all groceries and household essentials',
-    image: '/banners/groceries-banner.png',
-    bgColor: '#0066b2',
-    imgBgColor: '#e0f2ff',
-    link: '/promotions'
-  },
-  {
-    id: 2,
-    label: 'Flash Sale',
-    title: 'FRESH PRODUCE DEALS',
-    description: 'Limited time offer on fresh fruits and vegetables',
-    image: '/banners/fresh-produce.png',
-    bgColor: '#4CAF50',
-    imgBgColor: '#e8f5e9',
-    link: '/flash-sale'
-  },
-  {
-    id: 3,
-    label: 'New Arrivals',
-    title: 'PREMIUM HOME ESSENTIALS',
-    description: 'Discover our new range of kitchen and household products',
-    image: '/banners/home-essentials.png',
-    bgColor: '#FF9800',
-    imgBgColor: '#fff3e0',
-    link: '/new-arrivals'
-  }
-];
-
 const HeroBanner: React.FC = () => {
-  const [_, setCurrentBanner] = React.useState(0);
+  const [currentBanner, setCurrentBanner] = useState(0);
+  const [banners, setBanners] = useState<Banner[]>([]);
+  
+  useEffect(() => {
+    // Fetch active banners from the service
+    setBanners(getActiveBanners());
+  }, []);
   
   const handleSlideChange = (index: number) => {
     setCurrentBanner(index);
   };
+  
+  // Don't render if there are no active banners
+  if (banners.length === 0) {
+    return null;
+  }
   
   return (
     <div style={{ borderRadius: '8px', overflow: 'hidden', margin: '20px 0' }}>

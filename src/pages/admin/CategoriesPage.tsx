@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { Link } from 'react-router-dom';
 import AdminLayout from '../../components/admin/AdminLayout';
-import { FlexBox, Text, Button } from '../../styles/GlobalComponents';
-import ViewInArIcon from '@mui/icons-material/ViewInAr';
+import { FlexBox, Text, Button, Tooltip } from '../../styles/GlobalComponents';
 
 const Container = styled.div`
   display: flex;
@@ -24,6 +23,7 @@ const CategoryForm = styled.div`
   
   @media (max-width: 768px) {
     width: 100%;
+    margin-bottom: 20px;
   }
 `;
 
@@ -33,6 +33,10 @@ const CategoryList = styled.div`
   border-radius: 8px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
   padding: 20px;
+  
+  @media (max-width: 768px) {
+    width: 100%;
+  }
 `;
 
 const FormGroup = styled.div`
@@ -154,21 +158,67 @@ const CategoryTable = styled.table`
   tr:hover {
     background-color: #f8f9fa;
   }
+  
+  @media (max-width: 768px) {
+    th, td {
+      padding: 10px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    th:nth-child(3), 
+    td:nth-child(3) {
+      display: none; /* Hide Parent column on small screens */
+    }
+  }
 `;
 
 const ActionButton = styled.button`
   background: none;
   border: none;
-  color: #0066b2;
   cursor: pointer;
-  margin-right: 10px;
+  padding: 6px 10px;
+  font-size: 14px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  display: inline-block;
+  text-align: center;
   
   &:hover {
-    text-decoration: underline;
+    background-color: #f0f0f0;
+  }
+  
+  &.edit {
+    color: #0066b2;
+    margin-right: 8px;
   }
   
   &.delete {
     color: #dc3545;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 5px 8px;
+    font-size: 13px;
+  }
+  
+  @media (max-width: 480px) {
+    display: block;
+    margin-bottom: 5px;
+    width: 100%;
+    
+    &.edit {
+      margin-right: 0;
+      margin-bottom: 5px;
+    }
+  }
+`;
+
+const ActionButtonsContainer = styled.div`
+  display: flex;
+  
+  @media (max-width: 480px) {
+    flex-direction: column;
   }
 `;
 
@@ -195,27 +245,6 @@ const CategoryBadge = styled.span<{ color: string }>`
   background-color: ${props => props.color};
   color: white;
   margin-left: 8px;
-`;
-
-const AdvancedFeaturesButton = styled(Link)`
-  display: inline-flex;
-  align-items: center;
-  background-color: #6200ea;
-  color: white;
-  padding: 8px 16px;
-  border-radius: 4px;
-  text-decoration: none;
-  font-weight: 500;
-  margin-left: 12px;
-  transition: background-color 0.2s;
-  
-  &:hover {
-    background-color: #3700b3;
-  }
-  
-  svg {
-    margin-right: 8px;
-  }
 `;
 
 // Mock Category Data
@@ -584,31 +613,37 @@ const CategoriesPage: React.FC = () => {
 
   return (
     <AdminLayout title="Categories">
-      <FlexBox justify="space-between" align="center" mb="20px">
+      <FlexBox style={{ marginBottom: '20px' }}>
         <Text size="xl" weight="bold">Category Management</Text>
-        <div>
-          <Button 
-            type="button" 
-            onClick={resetForm}
-          >
-            {editMode ? 'Cancel Edit' : 'New Category'}
-          </Button>
-          <AdvancedFeaturesButton to="/admin/categories/manage">
-            <ViewInArIcon fontSize="small" />
-            3D Category Manager
-          </AdvancedFeaturesButton>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {editMode && (
+            <Button 
+              variant="outlined"
+              type="button" 
+              onClick={resetForm}
+            >
+              Cancel Edit
+            </Button>
+          )}
         </div>
       </FlexBox>
       
       <Container>
         <CategoryForm>
           <Text size="lg" weight="bold" style={{ marginBottom: '20px' }}>
-            {editMode ? 'Edit Category' : 'Add New Category'}
+            {editMode ? 'Edit Category' : 'Create a New Category'}
           </Text>
           
           <form onSubmit={handleSubmit}>
             <FormGroup>
-              <Label htmlFor="name">Category Name*</Label>
+              <Label htmlFor="name">
+                <Tooltip 
+                  content="Enter a descriptive name for the category"
+                  position="right"
+                >
+                  Category Name*
+                </Tooltip>
+              </Label>
               <Input
                 id="name"
                 name="name"
@@ -619,7 +654,14 @@ const CategoriesPage: React.FC = () => {
             </FormGroup>
             
             <FormGroup>
-              <Label htmlFor="slug">Slug*</Label>
+              <Label htmlFor="slug">
+                <Tooltip 
+                  content="URL-friendly version of the name. Will auto-generate if empty"
+                  position="right"
+                >
+                  Slug*
+                </Tooltip>
+              </Label>
               <Input
                 id="slug"
                 name="slug"
@@ -630,7 +672,14 @@ const CategoriesPage: React.FC = () => {
             </FormGroup>
             
             <FormGroup>
-              <Label htmlFor="parentId">Parent Category</Label>
+              <Label htmlFor="parentId">
+                <Tooltip 
+                  content="Select a parent category or leave as 'None' for top-level categories"
+                  position="right"
+                >
+                  Parent Category
+                </Tooltip>
+              </Label>
               <Select
                 id="parentId"
                 name="parentId"
@@ -650,7 +699,14 @@ const CategoriesPage: React.FC = () => {
             </FormGroup>
             
             <FormGroup>
-              <Label htmlFor="color">Category Color</Label>
+              <Label htmlFor="color">
+                <Tooltip 
+                  content="Color to represent this category in the UI"
+                  position="right"
+                >
+                  Category Color
+                </Tooltip>
+              </Label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Input
                   id="color"
@@ -670,7 +726,14 @@ const CategoriesPage: React.FC = () => {
             </FormGroup>
             
             <FormGroup>
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">
+                <Tooltip 
+                  content="Short description of what products are in this category"
+                  position="right"
+                >
+                  Description
+                </Tooltip>
+              </Label>
               <Textarea
                 id="description"
                 name="description"
@@ -680,7 +743,14 @@ const CategoriesPage: React.FC = () => {
             </FormGroup>
             
             <FormGroup>
-              <Label htmlFor="image">Category Image</Label>
+              <Label htmlFor="image">
+                <Tooltip 
+                  content="Image representing this category (JPG, PNG, WebP - 500x500px recommended)"
+                  position="right"
+                >
+                  Category Image
+                </Tooltip>
+              </Label>
               <Input
                 id="image"
                 name="image"
@@ -701,15 +771,26 @@ const CategoriesPage: React.FC = () => {
             </FormGroup>
             
             <FlexBox gap="10px" justify="space-between">
-              <Button 
-                type="button" 
-                onClick={resetForm}
-              >
-                Cancel
-              </Button>
-              <Button type="submit">
-                {editMode ? 'Update Category' : 'Add Category'}
-              </Button>
+              {editMode ? (
+                <>
+                  <Button 
+                    type="button" 
+                    onClick={resetForm}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit">
+                    Update Category
+                  </Button>
+                </>
+              ) : (
+                <Button 
+                  type="submit" 
+                  style={{ width: '100%' }}
+                >
+                  Create Category
+                </Button>
+              )}
             </FlexBox>
           </form>
         </CategoryForm>
@@ -753,13 +834,20 @@ const CategoriesPage: React.FC = () => {
                   </td>
                   <td>{category.productCount}</td>
                   <td>
-                    <ActionButton onClick={() => handleEditCategory(category)}>Edit</ActionButton>
-                    <ActionButton 
-                      className="delete" 
-                      onClick={() => handleDeleteCategory(category.id)}
-                    >
-                      Delete
-                    </ActionButton>
+                    <ActionButtonsContainer>
+                      <ActionButton 
+                        className="edit" 
+                        onClick={() => handleEditCategory(category)}
+                      >
+                        Edit
+                      </ActionButton>
+                      <ActionButton 
+                        className="delete" 
+                        onClick={() => handleDeleteCategory(category.id)}
+                      >
+                        Delete
+                      </ActionButton>
+                    </ActionButtonsContainer>
                   </td>
                 </tr>
               ))}

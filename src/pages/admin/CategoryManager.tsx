@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import api from '../../services/api';
-import { Model3DUploadResponse } from '../../services/modelService';
-import CategoryModelGenerator from '../../components/admin/CategoryModelGenerator';
-import Model3DUploader from '../../components/admin/Model3DUploader';
-import ModelViewer from '../../components/common/ModelViewer';
 
 // Styled Components
 const Container = styled.div`
   padding: 24px;
   max-width: 1200px;
   margin: 0 auto;
+  
+  @media (max-width: 768px) {
+    padding: 16px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 12px;
+  }
 `;
 
 const Title = styled.h1`
@@ -20,18 +24,53 @@ const Title = styled.h1`
   color: #333;
 `;
 
+const HeaderContainer = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  
+  @media (max-width: 768px) {
+    margin-bottom: 16px;
+  }
+  
+  @media (max-width: 480px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+`;
+
 const StyledPaper = styled.div`
   padding: 24px;
   background-color: white;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   margin-bottom: 24px;
+  
+  @media (max-width: 768px) {
+    padding: 16px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 12px;
+  }
 `;
 
 const Grid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 24px;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+  }
+  
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
 `;
 
 const Card = styled.div`
@@ -62,7 +101,13 @@ const CardMedia = styled.div<{ backgroundUrl?: string }>`
 
 const CardContent = styled.div`
   padding: 16px;
-  flex-grow: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  
+  @media (max-width: 480px) {
+    padding: 12px;
+  }
 `;
 
 const CardTitle = styled.h3`
@@ -163,71 +208,6 @@ const TextField = styled.input`
   }
 `;
 
-const TabsContainer = styled.div`
-  border-bottom: 1px solid #ddd;
-  margin-bottom: 16px;
-`;
-
-const TabsRow = styled.div`
-  display: flex;
-`;
-
-const Tab = styled.button<{ active: boolean }>`
-  padding: 12px 16px;
-  border: none;
-  background-color: transparent;
-  cursor: pointer;
-  border-bottom: ${props => props.active ? '2px solid #1976d2' : 'none'};
-  color: ${props => props.active ? '#1976d2' : '#666'};
-  font-weight: ${props => props.active ? '500' : 'normal'};
-  
-  &:hover {
-    background-color: rgba(0, 0, 0, 0.05);
-  }
-`;
-
-const Dialog = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 1000;
-`;
-
-const DialogContent = styled.div`
-  background-color: white;
-  border-radius: 8px;
-  max-width: 800px;
-  width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
-  position: relative;
-`;
-
-const DialogTitle = styled.div`
-  padding: 16px 24px;
-  border-bottom: 1px solid #eee;
-  font-size: 18px;
-  font-weight: 500;
-`;
-
-const DialogBody = styled.div`
-  padding: 24px;
-`;
-
-const DialogActions = styled.div`
-  padding: 16px 24px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  border-top: 1px solid #eee;
-`;
-
 const LoadingSpinner = styled.div`
   display: inline-block;
   width: 40px;
@@ -252,16 +232,6 @@ const Divider = styled.hr`
 `;
 
 // Icon Components
-const ViewInArIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M15 8h.01"></path>
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-    <path d="M9 3v18"></path>
-    <path d="M14 9l-2 2-2-2"></path>
-    <path d="M12 11v4"></path>
-  </svg>
-);
-
 const EditIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
@@ -287,11 +257,6 @@ interface Category {
   parent_id: number | null;
   order: number;
   is_active: boolean;
-  model_url?: string | null;
-  model_public_id?: string | null;
-  model_front_view?: string | null;
-  model_angle_view?: string | null;
-  model_animated_view?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -303,11 +268,6 @@ interface CategoryFormData {
   parent_id: number | null;
   image_url: string | null;
   is_active: boolean;
-  model_url: string | null;
-  model_public_id: string | null;
-  model_front_view: string | null;
-  model_angle_view: string | null;
-  model_animated_view: string | null;
 }
 
 /**
@@ -321,16 +281,10 @@ const CategoryManager: React.FC = () => {
     description: '',
     parent_id: null,
     image_url: null,
-    is_active: true,
-    model_url: null,
-    model_public_id: null,
-    model_front_view: null,
-    model_angle_view: null,
-    model_animated_view: null
+    is_active: true
   });
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
-  const [modelDialogOpen, setModelDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
 
   // Fetch categories on component mount
@@ -368,7 +322,7 @@ const CategoryManager: React.FC = () => {
   };
 
   // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
@@ -395,12 +349,7 @@ const CategoryManager: React.FC = () => {
       description: '',
       parent_id: null,
       image_url: null,
-      is_active: true,
-      model_url: null,
-      model_public_id: null,
-      model_front_view: null,
-      model_angle_view: null,
-      model_animated_view: null
+      is_active: true
     });
     setSelectedCategory(null);
   };
@@ -413,12 +362,7 @@ const CategoryManager: React.FC = () => {
       description: category.description || '',
       parent_id: category.parent_id,
       image_url: category.image_url,
-      is_active: category.is_active,
-      model_url: category.model_url || null,
-      model_public_id: category.model_public_id || null,
-      model_front_view: category.model_front_view || null,
-      model_angle_view: category.model_angle_view || null,
-      model_animated_view: category.model_animated_view || null
+      is_active: category.is_active
     });
     setOpenDialog(true);
   };
@@ -435,104 +379,70 @@ const CategoryManager: React.FC = () => {
     }
   };
 
-  // Handle 3D model dialog for a category
-  const handleOpenModelDialog = (category: Category) => {
-    setSelectedCategory(category);
-    setModelDialogOpen(true);
-  };
-
-  // Handle 3D model generation or upload success
-  const handleModelGenerated = async (result: Model3DUploadResponse, categoryId: number) => {
-    try {
-      // Update the category with the new 3D model data
-      await api.put(`/api/categories/${categoryId}`, {
-        model_url: result.model_url,
-        model_public_id: result.public_id,
-        model_front_view: result.front_view,
-        model_angle_view: result.angle_view,
-        model_animated_view: result.animated_view
-      });
-      
-      // Refresh categories
-      fetchCategories();
-      
-      // Close the dialog after a short delay
-      setTimeout(() => {
-        setModelDialogOpen(false);
-      }, 2000);
-    } catch (error) {
-      console.error('Error updating category with 3D model:', error);
-    }
-  };
-
   return (
     <Container>
-      <Title>Category Management</Title>
-      <Button variant="contained" onClick={() => {
-        resetForm();
-        setOpenDialog(true);
-      }}>
-        Add Category
-      </Button>
-
-      <StyledPaper>
-        <TabsContainer>
-          <TabsRow>
-            <Tab active={activeTab === 0} onClick={() => setActiveTab(0)}>All Categories</Tab>
-            <Tab active={activeTab === 1} onClick={() => setActiveTab(1)}>With 3D Models</Tab>
-          </TabsRow>
-        </TabsContainer>
-        
-        {loading ? (
-          <LoadingSpinner />
-        ) : (
+      <HeaderContainer>
+        <Title>Category Management</Title>
+        <Button 
+          variant="contained" 
+          onClick={() => {
+            setSelectedCategory(null);
+            setFormData({
+              name: '',
+              description: '',
+              parent_id: null,
+              image_url: null,
+              is_active: true
+            });
+            setOpenDialog(true);
+          }}
+          style={{ 
+            backgroundColor: '#0071BC',
+            padding: '10px 16px',
+            borderRadius: '6px',
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          Add New Category
+        </Button>
+      </HeaderContainer>
+      
+      {categories.length > 0 && (
+        <StyledPaper>
           <Grid>
-            {categories
-              .filter(category => 
-                activeTab === 0 || 
-                (activeTab === 1 && category.model_url)
-              )
-              .map(category => (
+            {categories.map(category => (
               <Card key={category.id}>
                 <CardMedia backgroundUrl={category.image_url || "https://via.placeholder.com/400x200?text=No+Image"} />
                 <CardContent>
                   <CardTitle>{category.name}</CardTitle>
                   <CardDescription>{category.description || 'No description'}</CardDescription>
                   
-                  {category.model_url && (
-                    <div>
-                      <IconButton onClick={() => handleOpenModelDialog(category)}>
-                        <ViewInArIcon />
-                      </IconButton>
-                      <IconButton onClick={() => handleEditCategory(category)}>
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton onClick={() => handleDeleteCategory(category.id)}>
-                        <DeleteIcon />
-                      </IconButton>
-                    </div>
-                  )}
+                  <IconButton onClick={() => handleEditCategory(category)}>
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton onClick={() => handleDeleteCategory(category.id)}>
+                    <DeleteIcon />
+                  </IconButton>
                 </CardContent>
               </Card>
             ))}
-            
-            {categories.length === 0 && (
-              <div>
-                <p>No categories found</p>
-              </div>
-            )}
           </Grid>
-        )}
-      </StyledPaper>
-
-      {/* Category Form Dialog */}
+        </StyledPaper>
+      )}
+      
+      {loading && (
+        <LoadingSpinner />
+      )}
+      
+      {/* Category Dialog */}
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
         <DialogContent>
           <DialogTitle>
-            {selectedCategory ? `Edit Category: ${selectedCategory.name}` : 'Add New Category'}
+            {selectedCategory ? `Edit Category: ${selectedCategory.name}` : 'Create New Category'}
           </DialogTitle>
           <DialogBody>
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleFormSubmit}>
               <TextField
                 label="Category Name"
                 name="name"
@@ -554,24 +464,6 @@ const CategoryManager: React.FC = () => {
                 multiline
                 rows={3}
               />
-              {selectedCategory && (
-                <div>
-                  <Divider />
-                  <DialogTitle>3D Model Settings</DialogTitle>
-                  <DialogBody>
-                    {selectedCategory.model_url ? (
-                      <div>
-                        <p>This category has a 3D model. You can manage it from the 3D Model tab after saving.</p>
-                        <Button variant="outlined" onClick={() => handleOpenModelDialog(selectedCategory)}>
-                          View 3D Model
-                        </Button>
-                      </div>
-                    ) : (
-                      <p>No 3D model has been set for this category. You can add one from the 3D Model tab after saving.</p>
-                    )}
-                  </DialogBody>
-                </div>
-              )}
               <DialogActions>
                 <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
                 <Button type="submit" variant="contained">Save</Button>
@@ -580,48 +472,71 @@ const CategoryManager: React.FC = () => {
           </DialogBody>
         </DialogContent>
       </Dialog>
-      
-      {/* 3D Model Dialog */}
-      <Dialog open={modelDialogOpen} onClose={() => setModelDialogOpen(false)}>
-        <DialogContent>
-          <DialogTitle>
-            {selectedCategory?.model_url 
-              ? `Manage 3D Model for ${selectedCategory?.name}` 
-              : `Add 3D Model for ${selectedCategory?.name}`
-            }
-          </DialogTitle>
-          <DialogBody>
-            {selectedCategory && (
-              <div>
-                {selectedCategory.model_url ? (
-                  <div>
-                    <ModelViewer
-                      frontView={selectedCategory.model_front_view || undefined}
-                      angleView={selectedCategory.model_angle_view || undefined}
-                      animatedView={selectedCategory.model_animated_view || undefined}
-                      name={selectedCategory.name}
-                    />
-                    <CategoryModelGenerator
-                      categoryName={selectedCategory.name}
-                      onModelGenerated={(result) => handleModelGenerated(result, selectedCategory.id)}
-                    />
-                  </div>
-                ) : (
-                  <CategoryModelGenerator
-                    categoryName={selectedCategory.name}
-                    onModelGenerated={(result) => handleModelGenerated(result, selectedCategory.id)}
-                  />
-                )}
-              </div>
-            )}
-          </DialogBody>
-          <DialogActions>
-            <Button onClick={() => setModelDialogOpen(false)}>Close</Button>
-          </DialogActions>
-        </DialogContent>
-      </Dialog>
     </Container>
   );
 };
+
+const Dialog = styled.div<{ open: boolean }>`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: ${props => props.open ? 'flex' : 'none'};
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+`;
+
+const DialogContent = styled.div`
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  
+  @media (max-width: 600px) {
+    max-width: 90%;
+    margin: 0 auto;
+  }
+`;
+
+const DialogTitle = styled.h2`
+  margin: 0;
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+  
+  @media (max-width: 480px) {
+    padding: 15px;
+    font-size: 1.2rem;
+  }
+`;
+
+const DialogBody = styled.div`
+  padding: 20px;
+  
+  @media (max-width: 480px) {
+    padding: 15px;
+  }
+`;
+
+const DialogActions = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+  
+  @media (max-width: 480px) {
+    flex-direction: column-reverse;
+    gap: 8px;
+    
+    button {
+      width: 100%;
+    }
+  }
+`;
 
 export default CategoryManager;

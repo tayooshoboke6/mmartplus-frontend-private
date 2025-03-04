@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import AdminLayout from '../../components/admin/AdminLayout';
-import { FlexBox, Text, Button } from '../../styles/GlobalComponents';
+import { FlexBox, Text, Button, Tooltip } from '../../styles/GlobalComponents';
 import { formatCurrency } from '../../utils/formatCurrency';
 
 const SearchFiltersContainer = styled.div`
@@ -342,30 +342,35 @@ const ProductsPage: React.FC = () => {
         >
           All Products
         </FilterTag>
+
         <FilterTag 
           active={stockFilter === 'in_stock'} 
           onClick={() => setStockFilter('in_stock')}
         >
           In Stock
         </FilterTag>
+
         <FilterTag 
           active={stockFilter === 'out_of_stock'} 
           onClick={() => setStockFilter('out_of_stock')}
         >
           Out of Stock
         </FilterTag>
+
         <FilterTag 
           active={stockFilter === 'low_stock'} 
           onClick={() => setStockFilter('low_stock')}
         >
           Low Stock
         </FilterTag>
+
         <FilterTag 
           active={expiryFilter === 'expiring_soon'} 
           onClick={() => setExpiryFilter('expiring_soon')}
         >
           Expiring Soon
         </FilterTag>
+
         <FilterTag 
           active={expiryFilter === 'expired'} 
           onClick={() => setExpiryFilter('expired')}
@@ -375,35 +380,41 @@ const ProductsPage: React.FC = () => {
       </QuickFilter>
       
       <SearchFiltersContainer>
-        <SearchInput 
-          type="text" 
-          placeholder="Search products..." 
-          value={searchQuery} 
-          onChange={(e) => setSearchQuery(e.target.value)} 
-        />
+        <div style={{ position: 'relative', flex: 1 }}>
+          <SearchInput 
+            type="text" 
+            placeholder="Search products..." 
+            value={searchQuery} 
+            onChange={(e) => setSearchQuery(e.target.value)} 
+          />
+        </div>
         
-        <FilterSelect 
-          value={categoryFilter} 
-          onChange={(e) => setCategoryFilter(e.target.value)}
-        >
-          <option value="">All Categories</option>
-          {categories.map(category => (
-            <option key={category} value={category}>{category}</option>
-          ))}
-        </FilterSelect>
+        <div style={{ position: 'relative' }}>
+          <FilterSelect 
+            value={categoryFilter} 
+            onChange={(e) => setCategoryFilter(e.target.value)}
+          >
+            <option value="">All Categories</option>
+            {categories.map(category => (
+              <option key={category} value={category}>{category}</option>
+            ))}
+          </FilterSelect>
+        </div>
         
-        <FilterSelect 
-          value={sortBy} 
-          onChange={(e) => setSortBy(e.target.value)}
-        >
-          <option value="newest">Newest First</option>
-          <option value="oldest">Oldest First</option>
-          <option value="price_high">Price: High to Low</option>
-          <option value="price_low">Price: Low to High</option>
-          <option value="name_asc">Name: A to Z</option>
-          <option value="name_desc">Name: Z to A</option>
-          <option value="expiry_soon">Expiry: Soonest First</option>
-        </FilterSelect>
+        <div style={{ position: 'relative' }}>
+          <FilterSelect 
+            value={sortBy} 
+            onChange={(e) => setSortBy(e.target.value)}
+          >
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="price_high">Price: High to Low</option>
+            <option value="price_low">Price: Low to High</option>
+            <option value="name_asc">Name: A to Z</option>
+            <option value="name_desc">Name: Z to A</option>
+            <option value="expiry_soon">Expiry: Soonest First</option>
+          </FilterSelect>
+        </div>
       </SearchFiltersContainer>
       
       <TableContainer>

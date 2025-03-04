@@ -18,13 +18,17 @@ const SidebarContainer = styled.div`
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
   overflow: hidden;
   width: 100%;
+  height: auto;
+  max-height: fit-content;
+  display: flex;
+  flex-direction: column;
 `;
 
 const UserInfo = styled.div`
   padding: 15px;
   display: flex;
   align-items: center;
-  background-color: #0066cc;
+  background-color: #0071BC;
   color: white;
 `;
 
@@ -37,13 +41,14 @@ const UserIcon = styled.div`
   align-items: center;
   justify-content: center;
   margin-right: 10px;
-  color: #0066cc;
+  color: #0071BC;
 `;
 
 const MenuList = styled.ul`
   list-style-type: none;
   padding: 0;
   margin: 0;
+  flex-grow: 0;
 `;
 
 const MenuItem = styled.li<{ active: boolean }>`
@@ -56,19 +61,20 @@ const MenuItem = styled.li<{ active: boolean }>`
     display: flex;
     align-items: center;
     padding: 12px 15px;
-    color: ${props => props.active ? '#0066cc' : '#333'};
-    background-color: ${props => props.active ? '#f5f9ff' : 'transparent'};
+    color: ${props => props.active ? 'white' : '#333'};
+    background-color: ${props => props.active ? '#0071BC' : 'transparent'};
     text-decoration: none;
     font-weight: ${props => props.active ? '600' : 'normal'};
     transition: all 0.2s ease;
 
     &:hover {
-      background-color: #f5f9ff;
-      color: #0066cc;
+      background-color: ${props => props.active ? '#0071BC' : '#f5f9ff'};
+      color: ${props => props.active ? 'white' : '#0071BC'};
     }
 
     svg {
       margin-right: 10px;
+      color: ${props => props.active ? 'white' : '#0071BC'};
     }
   }
 `;
@@ -78,7 +84,7 @@ const AccountSidebar: React.FC = () => {
   const currentPath = location.pathname;
 
   const menuItems = [
-    { path: '/account', label: 'My M-Mart Account', icon: <FaUser size={18} /> },
+    { path: '/account', label: 'My Profile', icon: <FaUser size={18} /> },
     { path: '/account/orders', label: 'Orders', icon: <FaShoppingBag size={18} /> },
     { path: '/account/inbox', label: 'Inbox', icon: <FaEnvelope size={18} /> },
     { path: '/account/reviews', label: 'Pending Reviews', icon: <FaStar size={18} /> },
@@ -107,7 +113,7 @@ const AccountSidebar: React.FC = () => {
         <UserIcon>
           <FaUser size={16} />
         </UserIcon>
-        <span>My M-Mart Account</span>
+        <span>My M-Mart+ Account</span>
       </UserInfo>
       <MenuList>
         {menuItems.map((item) => (

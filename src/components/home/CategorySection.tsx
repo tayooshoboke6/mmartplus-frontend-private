@@ -180,6 +180,8 @@ const CategorySection: React.FC = () => {
   // Touch swipe functionality
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [isSwiping, setIsSwiping] = useState(false);
+  const [dragTranslateX, setDragTranslateX] = useState(0);
   const trackRef = useRef<HTMLDivElement>(null);
   
   // In the future, this will fetch categories from the API
@@ -218,30 +220,98 @@ const CategorySection: React.FC = () => {
     setCurrentIndex(prev => Math.min(maxIndex, prev + 1));
   };
   
-  // Touch handlers for swipe functionality
+  // Get the sensitivity setting from localStorage or use the default value
+  const getSensitivity = () => {
+    const storedSensitivity = localStorage.getItem('sliderSensitivity');
+    return storedSensitivity ? parseInt(storedSensitivity) : 50; // Default to 50 if not set
+  };
+  
+  // Calculate minimum swipe distance based on sensitivity
+  // Higher sensitivity = smaller swipe distance required
+  const getMinSwipeDistance = () => {
+    const baseSensitivity = 50; // This corresponds to 50px swipe distance
+    const baseDistance = 50;
+    
+    // Convert sensitivity to a distance value (inversely proportional)
+    // Higher sensitivity = lower distance required
+    const currentSensitivity = getSensitivity();
+    return Math.max(10, Math.round(baseDistance * (baseSensitivity / currentSensitivity)));
+  };
+  
   const onTouchStart = (e: TouchEvent) => {
     setTouchStart(e.targetTouches[0].clientX);
+    setIsSwiping(true);
+    setDragTranslateX(-(currentIndex * (100 / 6))); // Initialize drag position to current position
   };
   
   const onTouchMove = (e: TouchEvent) => {
     if (!touchStart) return;
-    setTouchEnd(e.targetTouches[0].clientX);
+    
+    const currentTouch = e.targetTouches[0].clientX;
+    const diff = touchStart - currentTouch;
+    
+    // Calculate the percentage to move based on screen width
+    const containerWidth = trackRef.current?.offsetWidth || 1;
+    const percentageMoved = (diff / containerWidth) * 100;
+    
+    // Calculate the new position with the drag offset
+    const newPosition = -(currentIndex * (100 / 6)) - (percentageMoved / 6);
+    
+    // Add boundaries to prevent dragging too far beyond the first/last slide
+    // Allow some elasticity (5% overflow) for a natural feel
+    if (newPosition > 5) {
+      // Dragging past the first slide (left edge)
+      setDragTranslateX(5);
+    } else if (newPosition < -(maxIndex * (100 / 6) + 5)) {
+      // Dragging past the last slide (right edge)
+      setDragTranslateX(-(maxIndex * (100 / 6) + 5));
+    } else {
+      // Normal dragging within bounds
+      setDragTranslateX(newPosition);
+    }
+    
+    setTouchEnd(currentTouch);
   };
   
   const onTouchEnd = () => {
     if (!touchStart || !touchEnd) return;
     
-    const distance = touchStart - touchEnd;
-    const minSwipeDistance = 30;
+    setIsSwiping(false);
     
-    if (distance > minSwipeDistance && currentIndex < maxIndex) {
-      // Swipe left - go to next category
-      handleNext();
-    } else if (distance < -minSwipeDistance && currentIndex > 0) {
-      // Swipe right - go to previous category
-      handlePrev();
+    const distance = touchStart - touchEnd;
+    const minSwipeDistance = getMinSwipeDistance();
+    
+    // Calculate which category set to snap to based on the current drag position
+    // Get the current drag percentage relative to the item width
+    const itemWidth = 100 / 6;
+    const currentDragPercentage = Math.abs(dragTranslateX - (-(currentIndex * itemWidth)));
+    
+    // If dragged more than 25% of an item width, move to the next/previous set
+    let targetIndex = currentIndex;
+    
+    if (currentDragPercentage > (itemWidth / 4)) {
+      if (distance > 0 && currentIndex < maxIndex) {
+        // Dragged left significantly, go to next set
+        targetIndex = currentIndex + 1;
+      } else if (distance < 0 && currentIndex > 0) {
+        // Dragged right significantly, go to previous set
+        targetIndex = currentIndex - 1;
+      }
+    } else {
+      // For smaller drags, use the swipe velocity/direction
+      if (distance > minSwipeDistance && currentIndex < maxIndex) {
+        // Swipe left - go to next set of categories
+        targetIndex = currentIndex + 1;
+      } else if (distance < -minSwipeDistance && currentIndex > 0) {
+        // Swipe right - go to previous set of categories
+        targetIndex = currentIndex - 1;
+      }
     }
     
+    // Update the current index
+    setCurrentIndex(targetIndex);
+    
+    // Reset touch values
     setTouchStart(null);
     setTouchEnd(null);
   };
@@ -293,7 +363,10 @@ const CategorySection: React.FC = () => {
         
         <CategoriesTrack 
           ref={trackRef}
-          style={{ transform: `translateX(-${currentIndex * (100 / 6)}%)` }}
+          style={{ 
+            transform: `translateX(${isSwiping ? dragTranslateX : -(currentIndex * (100 / 6))}%)`,
+            transition: isSwiping ? 'none' : 'transform 0.3s ease-out'
+          }}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}

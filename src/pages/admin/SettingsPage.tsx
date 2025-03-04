@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { FlexBox, Text, Button } from '../../styles/GlobalComponents';
+import Tooltip from '../../components/common/Tooltip';
 
 const SettingsContainer = styled.div`
   display: flex;
@@ -167,7 +168,8 @@ const SettingsPage: React.FC = () => {
     primaryColor: '#0066b2',
     secondaryColor: '#ffd700',
     accentColor: '#28a745',
-    darkMode: false
+    darkMode: false,
+    sliderSensitivity: 50 // Default value (50% sensitivity)
   });
   
   // Notification Settings
@@ -218,6 +220,17 @@ const SettingsPage: React.FC = () => {
     });
   };
   
+  const handleSliderSensitivityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value);
+    setAppearanceSettings({
+      ...appearanceSettings,
+      sliderSensitivity: value
+    });
+    
+    // Save to localStorage for immediate use by sliders
+    localStorage.setItem('sliderSensitivity', value.toString());
+  };
+  
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -229,6 +242,17 @@ const SettingsPage: React.FC = () => {
     
     alert('Settings saved successfully!');
   };
+  
+  // Load slider sensitivity from localStorage on component mount
+  useEffect(() => {
+    const storedSensitivity = localStorage.getItem('sliderSensitivity');
+    if (storedSensitivity) {
+      setAppearanceSettings(prev => ({
+        ...prev,
+        sliderSensitivity: parseInt(storedSensitivity)
+      }));
+    }
+  }, []);
   
   return (
     <AdminLayout title="Settings">
@@ -242,7 +266,9 @@ const SettingsPage: React.FC = () => {
           <form>
             <FormRow>
               <FormGroup>
-                <Label htmlFor="storeName">Store Name</Label>
+                <Tooltip content="Name of your store displayed to customers" position="right">
+                  <Label htmlFor="storeName">Store Name</Label>
+                </Tooltip>
                 <Input
                   id="storeName"
                   name="storeName"
@@ -252,7 +278,9 @@ const SettingsPage: React.FC = () => {
               </FormGroup>
               
               <FormGroup>
-                <Label htmlFor="storeEmail">Store Email</Label>
+                <Tooltip content="Official email address for customer communications" position="right">
+                  <Label htmlFor="storeEmail">Store Email</Label>
+                </Tooltip>
                 <Input
                   id="storeEmail"
                   name="storeEmail"
@@ -265,7 +293,9 @@ const SettingsPage: React.FC = () => {
             
             <FormRow>
               <FormGroup>
-                <Label htmlFor="storePhone">Store Phone</Label>
+                <Tooltip content="Contact phone number for customer support" position="right">
+                  <Label htmlFor="storePhone">Store Phone</Label>
+                </Tooltip>
                 <Input
                   id="storePhone"
                   name="storePhone"
@@ -275,7 +305,9 @@ const SettingsPage: React.FC = () => {
               </FormGroup>
               
               <FormGroup>
-                <Label htmlFor="currencySymbol">Currency Symbol</Label>
+                <Tooltip content="Currency symbol displayed with prices (e.g., ₦, $, €)" position="right">
+                  <Label htmlFor="currencySymbol">Currency Symbol</Label>
+                </Tooltip>
                 <Input
                   id="currencySymbol"
                   name="currencySymbol"
@@ -286,7 +318,9 @@ const SettingsPage: React.FC = () => {
             </FormRow>
             
             <FormGroup>
-              <Label htmlFor="storeAddress">Store Address</Label>
+              <Tooltip content="Physical address of your business location" position="right">
+                <Label htmlFor="storeAddress">Store Address</Label>
+              </Tooltip>
               <Textarea
                 id="storeAddress"
                 name="storeAddress"
@@ -297,7 +331,9 @@ const SettingsPage: React.FC = () => {
             
             <FormRow>
               <FormGroup>
-                <Label htmlFor="defaultLanguage">Default Language</Label>
+                <Tooltip content="Default language for the store interface" position="right">
+                  <Label htmlFor="defaultLanguage">Default Language</Label>
+                </Tooltip>
                 <Select
                   id="defaultLanguage"
                   name="defaultLanguage"
@@ -485,6 +521,32 @@ const SettingsPage: React.FC = () => {
                 <SwitchSlider checked={appearanceSettings.darkMode} />
                 Dark Mode
               </SwitchLabel>
+            </FormGroup>
+            
+            <FormGroup>
+              <Label htmlFor="sliderSensitivity">
+                Touch Slider Sensitivity
+                <Tooltip content="Higher values make sliders more responsive to touch gestures" position="right">
+                  <span style={{ marginLeft: '5px', cursor: 'help' }}>ⓘ</span>
+                </Tooltip>
+              </Label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ flex: 1 }}>
+                  <input
+                    id="sliderSensitivity"
+                    type="range"
+                    min="10"
+                    max="100"
+                    step="5"
+                    value={appearanceSettings.sliderSensitivity}
+                    onChange={handleSliderSensitivityChange}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <div style={{ width: '40px', textAlign: 'center' }}>
+                  {appearanceSettings.sliderSensitivity}%
+                </div>
+              </div>
             </FormGroup>
           </form>
         </SettingsCard>

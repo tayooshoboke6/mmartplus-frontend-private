@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { FlexBox, Text, Button } from '../../styles/GlobalComponents';
+import Tooltip from '../../components/common/Tooltip';
 
 const FormContainer = styled.div`
   background-color: white;
@@ -200,6 +201,7 @@ const ProductFormPage: React.FC = () => {
     discount: '',
     taxable: true,
     productType: 'pieces',
+    expiryDate: '',
     sizes: { S: 0, M: 0, L: 0, XL: 0, XXL: 0 }
   });
   
@@ -226,6 +228,7 @@ const ProductFormPage: React.FC = () => {
           discount: '10',
           taxable: true,
           productType: 'pieces',
+          expiryDate: '',
           sizes: { S: 0, M: 0, L: 0, XL: 0, XXL: 0 }
         });
         
@@ -306,7 +309,9 @@ const ProductFormPage: React.FC = () => {
             <SectionTitle>Basic Information</SectionTitle>
             <FormRow>
               <FormGroup>
-                <Label htmlFor="name">Product Name*</Label>
+                <Tooltip content="Enter the full name of the product" position="right">
+                  <Label htmlFor="name">Product Name*</Label>
+                </Tooltip>
                 <Input
                   id="name"
                   name="name"
@@ -317,7 +322,9 @@ const ProductFormPage: React.FC = () => {
               </FormGroup>
               
               <FormGroup>
-                <Label htmlFor="category">Category*</Label>
+                <Tooltip content="Select the appropriate category for your product" position="right">
+                  <Label htmlFor="category">Category*</Label>
+                </Tooltip>
                 <Select
                   id="category"
                   name="category"
@@ -334,7 +341,9 @@ const ProductFormPage: React.FC = () => {
             </FormRow>
             
             <FormGroup>
-              <Label htmlFor="description">Product Description*</Label>
+              <Tooltip content="Provide a detailed description of the product features and benefits" position="right">
+                <Label htmlFor="description">Product Description*</Label>
+              </Tooltip>
               <Textarea
                 id="description"
                 name="description"
@@ -346,7 +355,9 @@ const ProductFormPage: React.FC = () => {
             
             <FormRow>
               <FormGroup>
-                <Label htmlFor="price">Price (₦)*</Label>
+                <Tooltip content="Set the selling price in Naira (₦)" position="right">
+                  <Label htmlFor="price">Price (₦)*</Label>
+                </Tooltip>
                 <Input
                   id="price"
                   name="price"
@@ -360,7 +371,9 @@ const ProductFormPage: React.FC = () => {
               </FormGroup>
               
               <FormGroup>
-                <Label htmlFor="discount">Discount (%)</Label>
+                <Tooltip content="Percentage discount to apply to the product price" position="right">
+                  <Label htmlFor="discount">Discount (%)</Label>
+                </Tooltip>
                 <Input
                   id="discount"
                   name="discount"
@@ -372,13 +385,33 @@ const ProductFormPage: React.FC = () => {
                 />
               </FormGroup>
             </FormRow>
+            
+            <FormRow>
+              <FormGroup>
+                <Tooltip content="Date when the product expires (if applicable)" position="right">
+                  <Label htmlFor="expiryDate">Expiry Date</Label>
+                </Tooltip>
+                <Input
+                  id="expiryDate"
+                  name="expiryDate"
+                  type="date"
+                  value={formData.expiryDate}
+                  onChange={handleInputChange}
+                />
+              </FormGroup>
+              <FormGroup>
+                {/* Empty form group to maintain grid layout */}
+              </FormGroup>
+            </FormRow>
           </FormSection>
           
           <FormSection>
             <SectionTitle>Inventory</SectionTitle>
             <FormRow>
               <FormGroup>
-                <Label htmlFor="sku">SKU (Stock Keeping Unit)</Label>
+                <Tooltip content="Unique identifier code for inventory tracking" position="right">
+                  <Label htmlFor="sku">SKU (Stock Keeping Unit)</Label>
+                </Tooltip>
                 <Input
                   id="sku"
                   name="sku"
@@ -388,7 +421,9 @@ const ProductFormPage: React.FC = () => {
               </FormGroup>
               
               <FormGroup>
-                <Label htmlFor="productType">Product Type*</Label>
+                <Tooltip content="Specify how the product is sold (individual units, packs, or clothing with sizes)" position="right">
+                  <Label htmlFor="productType">Product Type*</Label>
+                </Tooltip>
                 <Select
                   id="productType"
                   name="productType"
@@ -405,7 +440,9 @@ const ProductFormPage: React.FC = () => {
             
             {formData.productType === 'sizes' ? (
               <FormGroup>
-                <Label>Stock Quantity by Size*</Label>
+                <Tooltip content="Enter the quantity available for each size" position="right">
+                  <Label>Stock Quantity by Size*</Label>
+                </Tooltip>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px' }}>
                   {Object.keys(formData.sizes).map((size) => (
                     <div key={size}>
@@ -423,7 +460,9 @@ const ProductFormPage: React.FC = () => {
               </FormGroup>
             ) : (
               <FormGroup>
-                <Label htmlFor="stock">Stock Quantity*</Label>
+                <Tooltip content="Enter the total quantity of items available for sale" position="right">
+                  <Label htmlFor="stock">Stock Quantity*</Label>
+                </Tooltip>
                 <Input
                   id="stock"
                   name="stock"
@@ -437,15 +476,17 @@ const ProductFormPage: React.FC = () => {
             )}
             
             <FormGroup>
-              <Label>
-                <input
-                  type="checkbox"
-                  name="featured"
-                  checked={formData.featured}
-                  onChange={handleCheckboxChange}
-                />
-                {' '}Featured Product
-              </Label>
+              <Tooltip content="Mark this product to appear in featured products section" position="right">
+                <Label>
+                  <input
+                    type="checkbox"
+                    name="featured"
+                    checked={formData.featured}
+                    onChange={handleCheckboxChange}
+                  />
+                  {' '}Featured Product
+                </Label>
+              </Tooltip>
             </FormGroup>
             
             <FormGroup>

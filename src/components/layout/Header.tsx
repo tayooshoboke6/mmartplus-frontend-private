@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { getNotificationBar } from '../../services/PromotionService';
+import { NotificationBar } from '../../models/Promotion';
 
 const HeaderWrapper = styled.div`
   position: sticky;
@@ -217,10 +219,16 @@ const UserMenuItem = styled.button`
 const Header = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [notificationBar, setNotificationBar] = useState<NotificationBar | null>(null);
   const { getCartCount } = useCart();
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   const cartCount = getCartCount();
+
+  useEffect(() => {
+    const notification = getNotificationBar();
+    setNotificationBar(notification);
+  }, []);
 
   const handleAccountClick = () => {
     if (isAuthenticated) {
@@ -238,10 +246,12 @@ const Header = () => {
 
   return (
     <HeaderWrapper>
-      <TopBanner>
-        Free delivery on orders above ₦25,000! Shop now for great deals on groceries.
-        <Link to="/promotions">See Offers</Link>
-      </TopBanner>
+      {notificationBar && notificationBar.active && (
+        <TopBanner style={{ backgroundColor: notificationBar.bgColor }}>
+          {notificationBar.message}
+          <Link to={notificationBar.linkUrl}>{notificationBar.linkText}</Link>
+        </TopBanner>
+      )}
       <HeaderContainer>
         <Logo to="/">
           <img src="https://shop.mmartplus.com/images/white-logo.png" alt="M-Mart+ Logo" width="120" height="auto" />
