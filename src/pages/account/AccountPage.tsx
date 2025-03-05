@@ -14,6 +14,7 @@ import AccountSidebar from '../../components/account/AccountSidebar';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import AvatarSelector from '../../components/account/AvatarSelector';
+import EmailVerificationStatus from '../../components/account/EmailVerificationStatus';
 
 const PageContainer = styled.div`
   display: flex;
@@ -304,6 +305,8 @@ const AccountPage: React.FC = () => {
                     Edit
                   </EditButton>
                 </SectionHeader>
+                
+                <EmailVerificationStatus />
                 
                 <ProfileInfo onClick={() => setShowAvatarSelector(prev => !prev)}>
                   <ProfileImage>

@@ -1,0 +1,14 @@
+{
+  "name": "mmartplus-testing",
+  "version": "1.0.0",
+  "description": "Testing scripts for M-Mart+ application",
+  "type": "module",
+  "scripts": {
+    "test-product-sections": "node product-sections-ui-validation.js",
+    "test-promotions": "node promotions-ui-validation.js",
+    "test-integration": "node run-integration-tests.js"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  }
+}

@@ -1,9 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import styled from 'styled-components';
 import { Link } from 'react-router-dom';
-import AdminLayout from '../../components/admin/AdminLayout';
-import { FlexBox, Text, Button } from '../../styles/GlobalComponents';
-import ViewInArIcon from '@mui/icons-material/ViewInAr';
+import AdminLayout from '../../components/layouts/AdminLayout';
+import { FlexBox, Text, Button, Tooltip } from '../../styles/GlobalComponents';
+import categoryService from '../../services/categoryService';
+import { AuthContext } from '../../contexts/AuthContext';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { getCsrfCookie } from '../../services/api';
+
+interface CategoryFormData {
+  id: number | null;
+  name: string;
+  slug: string;
+  parentId: number | null;
+  description: string;
+  image: File | null;
+  color: string;
+}
+
+interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  parent_id: number | null;
+  description: string;
+  image_url: string | null;
+  color: string;
+  order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 const Container = styled.div`
   display: flex;
@@ -24,6 +51,7 @@ const CategoryForm = styled.div`
   
   @media (max-width: 768px) {
     width: 100%;
+    margin-bottom: 20px;
   }
 `;
 
@@ -33,6 +61,10 @@ const CategoryList = styled.div`
   border-radius: 8px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
   padding: 20px;
+  
+  @media (max-width: 768px) {
+    width: 100%;
+  }
 `;
 
 const FormGroup = styled.div`
@@ -154,21 +186,67 @@ const CategoryTable = styled.table`
   tr:hover {
     background-color: #f8f9fa;
   }
+  
+  @media (max-width: 768px) {
+    th, td {
+      padding: 10px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    th:nth-child(3), 
+    td:nth-child(3) {
+      display: none; /* Hide Parent column on small screens */
+    }
+  }
 `;
 
 const ActionButton = styled.button`
   background: none;
   border: none;
-  color: #0066b2;
   cursor: pointer;
-  margin-right: 10px;
+  padding: 6px 10px;
+  font-size: 14px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  display: inline-block;
+  text-align: center;
   
   &:hover {
-    text-decoration: underline;
+    background-color: #f0f0f0;
+  }
+  
+  &.edit {
+    color: #0066b2;
+    margin-right: 8px;
   }
   
   &.delete {
     color: #dc3545;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 5px 8px;
+    font-size: 13px;
+  }
+  
+  @media (max-width: 480px) {
+    display: block;
+    margin-bottom: 5px;
+    width: 100%;
+    
+    &.edit {
+      margin-right: 0;
+      margin-bottom: 5px;
+    }
+  }
+`;
+
+const ActionButtonsContainer = styled.div`
+  display: flex;
+  
+  @media (max-width: 480px) {
+    flex-direction: column;
   }
 `;
 
@@ -187,307 +265,130 @@ const SearchInput = styled.input`
   margin-bottom: 20px;
 `;
 
-const CategoryBadge = styled.span<{ color: string }>`
+const CategoryColorBadge = styled.span`
   display: inline-block;
-  padding: 3px 8px;
-  border-radius: 20px;
-  font-size: 12px;
-  background-color: ${props => props.color};
-  color: white;
-  margin-left: 8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  margin-left: 10px;
+  vertical-align: middle;
 `;
 
-const AdvancedFeaturesButton = styled(Link)`
-  display: inline-flex;
-  align-items: center;
-  background-color: #6200ea;
-  color: white;
-  padding: 8px 16px;
+const NoImagePlaceholder = styled.div`
+  width: 40px;
+  height: 40px;
+  background-color: #f0f0f0;
   border-radius: 4px;
-  text-decoration: none;
-  font-weight: 500;
-  margin-left: 12px;
-  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #aaa;
+  font-size: 12px;
+`;
+
+const ProductCount = styled.span`
+  background-color: #f0f0f0;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #666;
+`;
+
+const Alert = styled.div<{ type: 'success' | 'error' }>`
+  padding: 10px 15px;
+  margin-bottom: 15px;
+  border-radius: 4px;
+  color: white;
+  background-color: ${props => props.type === 'success' ? '#4caf50' : '#f44336'};
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const CloseButton = styled.button`
+  background: none;
+  border: none;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 10px;
+`;
+
+const DevelopmentPanel = styled.div`
+  background: #f8f9fa;
+  border: 1px solid #ddd;
+  padding: 16px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  
+  h3 {
+    margin-top: 0;
+    color: #333;
+  }
+  
+  p {
+    margin-bottom: 16px;
+    color: #666;
+  }
+  
+  small {
+    display: block;
+    margin-top: 12px;
+    color: #999;
+    font-style: italic;
+  }
+`;
+
+const DevControlsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-gap: 16px;
+  margin-top: 16px;
+`;
+
+const DevControlCard = styled.div`
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  padding: 16px;
+  
+  h4 {
+    margin-top: 0;
+    color: #333;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+  }
+  
+  label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+  }
+`;
+
+const DevButton = styled.button`
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-top: 12px;
   
   &:hover {
-    background-color: #3700b3;
-  }
-  
-  svg {
-    margin-right: 8px;
+    background: #5a6268;
   }
 `;
-
-// Mock Category Data
-const MOCK_CATEGORIES = [
-  // Main Categories
-  {
-    id: 1,
-    name: 'Food & Groceries',
-    slug: 'food-groceries',
-    parentId: null,
-    image: 'https://via.placeholder.com/40',
-    description: 'All food and grocery items',
-    productCount: 150,
-    color: '#4CAF50'
-  },
-  {
-    id: 2,
-    name: 'Household Essentials & Cleaning',
-    slug: 'household-essentials',
-    parentId: null,
-    image: 'https://via.placeholder.com/40',
-    description: 'Household and cleaning products',
-    productCount: 80,
-    color: '#2196F3'
-  },
-  {
-    id: 3,
-    name: 'Kitchen & Home Needs',
-    slug: 'kitchen-home',
-    parentId: null,
-    image: 'https://via.placeholder.com/40',
-    description: 'Kitchen and home products',
-    productCount: 60,
-    color: '#FF9800'
-  },
-  {
-    id: 4,
-    name: 'Baby & Family Care',
-    slug: 'baby-family',
-    parentId: null,
-    image: 'https://via.placeholder.com/40',
-    description: 'Products for babies and family care',
-    productCount: 45,
-    color: '#E91E63'
-  },
-  {
-    id: 5,
-    name: 'Drinks & Alcohol',
-    slug: 'drinks-alcohol',
-    parentId: null,
-    image: 'https://via.placeholder.com/40',
-    description: 'Beverages and alcoholic drinks',
-    productCount: 70,
-    color: '#9C27B0'
-  },
-  {
-    id: 6,
-    name: 'Office & General Supplies',
-    slug: 'office-general',
-    parentId: null,
-    image: 'https://via.placeholder.com/40',
-    description: 'Office supplies and general products',
-    productCount: 50,
-    color: '#607D8B'
-  },
-  
-  // Food & Groceries subcategories
-  {
-    id: 7,
-    name: 'Staples & Grains',
-    slug: 'staples-grains',
-    parentId: 1,
-    image: 'https://via.placeholder.com/40',
-    description: 'Rice, Beans, Garri, Semovita, Wheat, Yam, etc.',
-    productCount: 30,
-    color: '#4CAF50'
-  },
-  {
-    id: 8,
-    name: 'Cooking Essentials',
-    slug: 'cooking-essentials',
-    parentId: 1,
-    image: 'https://via.placeholder.com/40',
-    description: 'Flour, Baking Needs, Oils, Spices, Seasonings, Tomato Paste, etc.',
-    productCount: 25,
-    color: '#4CAF50'
-  },
-  {
-    id: 9,
-    name: 'Packaged & Frozen Foods',
-    slug: 'packaged-frozen',
-    parentId: 1,
-    image: 'https://via.placeholder.com/40',
-    description: 'Noodles, Pasta, Canned Foods, Sardines, Frozen Chicken, Fish, etc.',
-    productCount: 35,
-    color: '#4CAF50'
-  },
-  {
-    id: 10,
-    name: 'Snacks & Beverages',
-    slug: 'snacks-beverages',
-    parentId: 1,
-    image: 'https://via.placeholder.com/40',
-    description: 'Biscuits, Chocolates, Juice, Soft Drinks, Tea, Coffee, Milo, etc.',
-    productCount: 40,
-    color: '#4CAF50'
-  },
-  {
-    id: 11,
-    name: 'Dairy & Breakfast',
-    slug: 'dairy-breakfast',
-    parentId: 1,
-    image: 'https://via.placeholder.com/40',
-    description: 'Milk, Yogurt, Eggs, Cereals, Custard, etc.',
-    productCount: 20,
-    color: '#4CAF50'
-  },
-  {
-    id: 12,
-    name: 'Fruits & Vegetables',
-    slug: 'fruits-vegetables',
-    parentId: 1,
-    image: 'https://via.placeholder.com/40',
-    description: 'Fresh & Frozen Produce',
-    productCount: 30,
-    color: '#4CAF50'
-  },
-  
-  // Household Essentials & Cleaning subcategories
-  {
-    id: 13,
-    name: 'Cleaning & Laundry',
-    slug: 'cleaning-laundry',
-    parentId: 2,
-    image: 'https://via.placeholder.com/40',
-    description: 'Detergents, Soaps, Bleach, Mopping Liquids, Air Fresheners, etc.',
-    productCount: 30,
-    color: '#2196F3'
-  },
-  {
-    id: 14,
-    name: 'Toiletries & Personal Care',
-    slug: 'toiletries-personal',
-    parentId: 2,
-    image: 'https://via.placeholder.com/40',
-    description: 'Toothpaste, Tissue, Sanitary Pads, Deodorants, Perfumes, etc.',
-    productCount: 35,
-    color: '#2196F3'
-  },
-  {
-    id: 15,
-    name: 'Pest Control & Safety',
-    slug: 'pest-safety',
-    parentId: 2,
-    image: 'https://via.placeholder.com/40',
-    description: 'Insecticides, Mosquito Repellents, First Aid, Disinfectants, etc.',
-    productCount: 15,
-    color: '#2196F3'
-  },
-  
-  // Kitchen & Home Needs subcategories
-  {
-    id: 16,
-    name: 'Cookware & Storage',
-    slug: 'cookware-storage',
-    parentId: 3,
-    image: 'https://via.placeholder.com/40',
-    description: 'Pots, Pans, Plates, Cutlery, Bowls, Food Containers, Coolers, etc.',
-    productCount: 30,
-    color: '#FF9800'
-  },
-  {
-    id: 17,
-    name: 'Small Appliances',
-    slug: 'small-appliances',
-    parentId: 3,
-    image: 'https://via.placeholder.com/40',
-    description: 'Blenders, Kettles, Toasters, Fans, Irons, Rechargeable Lamps, etc.',
-    productCount: 30,
-    color: '#FF9800'
-  },
-  
-  // Baby & Family Care subcategories
-  {
-    id: 18,
-    name: 'Baby Food & Diapers',
-    slug: 'baby-food-diapers',
-    parentId: 4,
-    image: 'https://via.placeholder.com/40',
-    description: 'Formula, Wipes, Baby Toiletries, Clothing, etc.',
-    productCount: 25,
-    color: '#E91E63'
-  },
-  {
-    id: 19,
-    name: 'Health & Wellness',
-    slug: 'health-wellness',
-    parentId: 4,
-    image: 'https://via.placeholder.com/40',
-    description: 'Medicines, Multivitamins, Sanitary Products, Bandages, etc.',
-    productCount: 20,
-    color: '#E91E63'
-  },
-  
-  // Drinks & Alcohol subcategories
-  {
-    id: 20,
-    name: 'Soft Drinks & Juices',
-    slug: 'soft-drinks-juices',
-    parentId: 5,
-    image: 'https://via.placeholder.com/40',
-    description: 'Coke, Fanta, Chivita, Hollandia, etc.',
-    productCount: 25,
-    color: '#9C27B0'
-  },
-  {
-    id: 21,
-    name: 'Alcoholic Drinks',
-    slug: 'alcoholic-drinks',
-    parentId: 5,
-    image: 'https://via.placeholder.com/40',
-    description: 'Beer, Wine, Spirits, etc.',
-    productCount: 30,
-    color: '#9C27B0'
-  },
-  {
-    id: 22,
-    name: 'Water & Energy Drinks',
-    slug: 'water-energy-drinks',
-    parentId: 5,
-    image: 'https://via.placeholder.com/40',
-    description: 'Bottled water and energy drinks',
-    productCount: 15,
-    color: '#9C27B0'
-  },
-  
-  // Office & General Supplies subcategories
-  {
-    id: 23,
-    name: 'Stationery & Packaging',
-    slug: 'stationery-packaging',
-    parentId: 6,
-    image: 'https://via.placeholder.com/40',
-    description: 'Pens, Notebooks, Cartons, Cellotape, Nylon Bags, etc.',
-    productCount: 30,
-    color: '#607D8B'
-  },
-  {
-    id: 24,
-    name: 'Pet & Livestock Needs',
-    slug: 'pet-livestock',
-    parentId: 6,
-    image: 'https://via.placeholder.com/40',
-    description: 'Pet Food, Animal Care Essentials',
-    productCount: 20,
-    color: '#607D8B'
-  }
-];
-
-interface CategoryFormData {
-  id: number | null;
-  name: string;
-  slug: string;
-  parentId: number | null;
-  description: string;
-  image: string | null;
-  color?: string;
-}
 
 const CategoriesPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [editMode, setEditMode] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<CategoryFormData>({
     id: null,
     name: '',
@@ -497,6 +398,86 @@ const CategoriesPage: React.FC = () => {
     image: null,
     color: '#4CAF50'
   });
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [alert, setAlert] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  
+  // Access auth context for admin login
+  const { loginAsAdmin } = useContext(AuthContext);
+
+  const handleAdminLogin = async () => {
+    try {
+      if (loginAsAdmin) {
+        const result = await loginAsAdmin();
+        
+        if (result.success) {
+          // Force a CSRF token refresh
+          await getCsrfCookie();
+          
+          // Set a success message
+          setAlert({ 
+            type: 'success', 
+            message: 'Admin token set successfully. Refreshing data...' 
+          });
+          
+          // Add a small delay to ensure token is processed
+          setTimeout(() => {
+            // Fetch fresh data immediately with the new token
+            fetchCategories(true);
+          }, 500);
+        } else {
+          setAlert({ 
+            type: 'error', 
+            message: result.error || 'Failed to set admin token' 
+          });
+        }
+      }
+    } catch (err: any) {
+      console.error('Error setting admin token:', err);
+      setAlert({ 
+        type: 'error', 
+        message: 'Error setting admin token: ' + (err.message || 'Unknown error') 
+      });
+    }
+  };
+  
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+  
+  const fetchCategories = async (forceRefresh = false) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await categoryService.getCategories({ forceRefresh });
+      console.log('Categories API response:', response);
+      
+      // Handle different possible response formats
+      if (response.status === 'success') {
+        if (Array.isArray(response.data)) {
+          // API returns { status: 'success', data: [...categories] }
+          console.log('Setting categories from array data:', response.data.length);
+          setCategories(response.data);
+        } else if (response.data && typeof response.data === 'object') {
+          // API might return nested data object
+          const dataArray = Array.isArray(response.data.data) ? response.data.data : [];
+          console.log('Setting categories from nested data:', dataArray.length);
+          setCategories(dataArray);
+        } else {
+          setError('Unexpected API response format: data is not an array');
+          console.error('Unexpected API response data format:', response.data);
+        }
+      } else {
+        setError('Failed to fetch categories: ' + (response.message || 'Unknown error'));
+        console.error('Failed to fetch categories:', response);
+      }
+    } catch (err: any) {
+      console.error('Error fetching categories:', err);
+      setError('Failed to fetch categories: ' + (err.message || 'Unknown error'));
+    } finally {
+      setLoading(false);
+    }
+  };
   
   const resetForm = () => {
     setFormData({
@@ -508,13 +489,13 @@ const CategoriesPage: React.FC = () => {
       image: null,
       color: '#4CAF50'
     });
+    setImagePreview(null);
     setEditMode(false);
   };
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     
-    // Auto-generate slug from name if slug field hasn't been manually edited
     if (name === 'name' && !formData.slug) {
       const slug = value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       setFormData({
@@ -532,11 +513,14 @@ const CategoriesPage: React.FC = () => {
   
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const imageUrl = URL.createObjectURL(e.target.files[0]);
+      const file = e.target.files[0];
       setFormData({
         ...formData,
-        image: imageUrl
+        image: file
       });
+      
+      const imageUrl = URL.createObjectURL(file);
+      setImagePreview(imageUrl);
     }
   };
   
@@ -545,70 +529,158 @@ const CategoriesPage: React.FC = () => {
       ...formData,
       image: null
     });
+    
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+      setImagePreview(null);
+    }
   };
   
-  const handleEditCategory = (category: any) => {
+  const handleEdit = (category: Category) => {
+    const parentId = category.parent_id;
+    
     setFormData({
       id: category.id,
       name: category.name,
       slug: category.slug,
-      parentId: category.parentId,
-      description: category.description,
-      image: category.image,
-      color: category.color
+      parentId: parentId,
+      description: category.description || '',
+      image: null,
+      color: category.color || '#4CAF50'
     });
+    
+    setImagePreview(category.image_url);
+    
     setEditMode(true);
+    setAlert(null);
   };
   
-  const handleDeleteCategory = (categoryId: number) => {
+  const handleDelete = async (categoryId: number) => {
     if (window.confirm('Are you sure you want to delete this category?')) {
-      // In a real app, this would call an API to delete the category
-      console.log(`Delete category with ID: ${categoryId}`);
+      setLoading(true);
+      try {
+        await categoryService.deleteCategory(categoryId);
+        
+        // Remove category from state
+        setCategories(prevCategories => 
+          prevCategories.filter(cat => cat.id !== categoryId)
+        );
+        
+        setAlert({ type: 'success', message: 'Category deleted successfully' });
+        fetchCategories(true);
+      } catch (err: any) {
+        console.error(`Error deleting category ${categoryId}:`, err);
+        setAlert({ type: 'error', message: `Error deleting category: ${err.message || 'Unknown error'}` });
+      } finally {
+        setLoading(false);
+      }
     }
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // In a real app, this would call an API to create/update the category
-    console.log('Form data:', formData);
+    setLoading(true);
+    setError(null);
     
-    // Reset form after submission
-    resetForm();
+    try {
+      const formDataObj = new FormData();
+      formDataObj.append('name', formData.name);
+      formDataObj.append('slug', formData.slug);
+      formDataObj.append('description', formData.description || '');
+      
+      if (formData.parentId !== null) {
+        formDataObj.append('parent_id', formData.parentId.toString());
+      }
+      
+      if (formData.color) {
+        formDataObj.append('color', formData.color);
+      }
+      
+      formDataObj.append('is_active', 'true');
+      
+      if (formData.image instanceof File) {
+        formDataObj.append('image', formData.image);
+      }
+      
+      let response;
+      if (editMode && formData.id) {
+        response = await categoryService.updateCategory(formData.id, formDataObj);
+        if (response.status === 'success') {
+          setAlert({ type: 'success', message: 'Category updated successfully' });
+        } else {
+          throw new Error(response.message || 'Failed to update category');
+        }
+      } else {
+        response = await categoryService.createCategory(formDataObj);
+        if (response.status === 'success') {
+          setAlert({ type: 'success', message: 'Category created successfully' });
+        } else {
+          throw new Error(response.message || 'Failed to create category');
+        }
+      }
+      
+      fetchCategories(true);
+      
+      resetForm();
+    } catch (err: any) {
+      console.error('Error saving category:', err);
+      setError(err.message || 'An error occurred while saving the category.');
+    } finally {
+      setLoading(false);
+    }
   };
   
-  // Filter categories by search query
-  const filteredCategories = MOCK_CATEGORIES.filter(category =>
-    category.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredCategories = categories.filter(category =>
+    category?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false
   );
-
+  
   return (
     <AdminLayout title="Categories">
-      <FlexBox justify="space-between" align="center" mb="20px">
+      {alert && (
+        <Alert type={alert.type}>
+          {alert.message}
+          <CloseButton onClick={() => setAlert(null)}>×</CloseButton>
+        </Alert>
+      )}
+      
+      <FlexBox style={{ marginBottom: '20px' }}>
         <Text size="xl" weight="bold">Category Management</Text>
-        <div>
+        <div style={{ display: 'flex', gap: '10px' }}>
           <Button 
-            type="button" 
-            onClick={resetForm}
+            onClick={() => handleAdminLogin()}
+            variant="outlined"
           >
-            {editMode ? 'Cancel Edit' : 'New Category'}
+            Set Admin Token
           </Button>
-          <AdvancedFeaturesButton to="/admin/categories/manage">
-            <ViewInArIcon fontSize="small" />
-            3D Category Manager
-          </AdvancedFeaturesButton>
+          {editMode && (
+            <Button 
+              variant="outlined"
+              type="button" 
+              onClick={resetForm}
+            >
+              Cancel Edit
+            </Button>
+          )}
         </div>
       </FlexBox>
       
       <Container>
         <CategoryForm>
           <Text size="lg" weight="bold" style={{ marginBottom: '20px' }}>
-            {editMode ? 'Edit Category' : 'Add New Category'}
+            {editMode ? 'Edit Category' : 'Create a New Category'}
           </Text>
           
           <form onSubmit={handleSubmit}>
             <FormGroup>
-              <Label htmlFor="name">Category Name*</Label>
+              <Label htmlFor="name">
+                <Tooltip 
+                  content="Enter a descriptive name for the category"
+                  position="right"
+                >
+                  Category Name*
+                </Tooltip>
+              </Label>
               <Input
                 id="name"
                 name="name"
@@ -619,7 +691,14 @@ const CategoriesPage: React.FC = () => {
             </FormGroup>
             
             <FormGroup>
-              <Label htmlFor="slug">Slug*</Label>
+              <Label htmlFor="slug">
+                <Tooltip 
+                  content="URL-friendly version of the name. Will auto-generate if empty"
+                  position="right"
+                >
+                  Slug*
+                </Tooltip>
+              </Label>
               <Input
                 id="slug"
                 name="slug"
@@ -630,7 +709,14 @@ const CategoriesPage: React.FC = () => {
             </FormGroup>
             
             <FormGroup>
-              <Label htmlFor="parentId">Parent Category</Label>
+              <Label htmlFor="parentId">
+                <Tooltip 
+                  content="Select a parent category or leave as 'None' for top-level categories"
+                  position="right"
+                >
+                  Parent Category
+                </Tooltip>
+              </Label>
               <Select
                 id="parentId"
                 name="parentId"
@@ -641,7 +727,7 @@ const CategoriesPage: React.FC = () => {
                 })}
               >
                 <option value="">None (Top Level)</option>
-                {MOCK_CATEGORIES.filter(cat => cat.parentId === null).map(category => (
+                {categories.filter(cat => cat.parent_id === null).map(category => (
                   <option key={category.id} value={category.id}>
                     {category.name}
                   </option>
@@ -650,13 +736,20 @@ const CategoriesPage: React.FC = () => {
             </FormGroup>
             
             <FormGroup>
-              <Label htmlFor="color">Category Color</Label>
+              <Label htmlFor="color">
+                <Tooltip 
+                  content="Color to represent this category in the UI"
+                  position="right"
+                >
+                  Category Color
+                </Tooltip>
+              </Label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Input
                   id="color"
                   name="color"
                   type="color"
-                  value={formData.color || '#4CAF50'}
+                  value={formData.color}
                   onChange={(e) => setFormData({
                     ...formData,
                     color: e.target.value
@@ -670,7 +763,14 @@ const CategoriesPage: React.FC = () => {
             </FormGroup>
             
             <FormGroup>
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">
+                <Tooltip 
+                  content="Short description of what products are in this category"
+                  position="right"
+                >
+                  Description
+                </Tooltip>
+              </Label>
               <Textarea
                 id="description"
                 name="description"
@@ -680,7 +780,14 @@ const CategoriesPage: React.FC = () => {
             </FormGroup>
             
             <FormGroup>
-              <Label htmlFor="image">Category Image</Label>
+              <Label htmlFor="image">
+                <Tooltip 
+                  content="Image representing this category (JPG, PNG, WebP - 500x500px recommended)"
+                  position="right"
+                >
+                  Category Image
+                </Tooltip>
+              </Label>
               <Input
                 id="image"
                 name="image"
@@ -688,10 +795,10 @@ const CategoriesPage: React.FC = () => {
                 accept="image/*"
                 onChange={handleImageUpload}
               />
-              <ImageUploadPreview className={!formData.image ? 'empty' : ''}>
-                {formData.image ? (
+              <ImageUploadPreview className={!imagePreview ? 'empty' : ''}>
+                {imagePreview ? (
                   <>
-                    <img src={formData.image} alt="Category" />
+                    <img src={imagePreview} alt="Category" />
                     <RemoveImageButton onClick={removeImage}>✕</RemoveImageButton>
                   </>
                 ) : (
@@ -701,70 +808,122 @@ const CategoriesPage: React.FC = () => {
             </FormGroup>
             
             <FlexBox gap="10px" justify="space-between">
-              <Button 
-                type="button" 
-                onClick={resetForm}
-              >
-                Cancel
-              </Button>
-              <Button type="submit">
-                {editMode ? 'Update Category' : 'Add Category'}
-              </Button>
+              {editMode ? (
+                <>
+                  <Button 
+                    type="button" 
+                    onClick={resetForm}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit">
+                    Update Category
+                  </Button>
+                </>
+              ) : (
+                <Button 
+                  type="submit" 
+                  style={{ width: '100%' }}
+                >
+                  Create Category
+                </Button>
+              )}
             </FlexBox>
           </form>
         </CategoryForm>
         
         <CategoryList>
-          <Text size="lg" weight="bold" style={{ marginBottom: '20px' }}>
-            All Categories
-          </Text>
+          <FlexBox style={{ marginBottom: '20px' }}>
+            <Text size="lg" weight="bold">All Categories</Text>
+            <SearchInput
+              type="text"
+              placeholder="Search categories..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </FlexBox>
           
-          <SearchInput
-            type="text"
-            placeholder="Search categories..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+          {loading && <LoadingSpinner />}
           
-          <CategoryTable>
-            <thead>
-              <tr>
-                <th></th>
-                <th>Name</th>
-                <th>Parent</th>
-                <th>Products</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredCategories.map(category => (
-                <tr key={category.id}>
-                  <td>
-                    <CategoryImage src={category.image} alt={category.name} />
-                  </td>
-                  <td>
-                    {category.name}
-                    <CategoryBadge color={category.color || '#4CAF50'}></CategoryBadge>
-                  </td>
-                  <td>
-                    {category.parentId 
-                      ? MOCK_CATEGORIES.find(c => c.id === category.parentId)?.name 
-                      : 'None'}
-                  </td>
-                  <td>{category.productCount}</td>
-                  <td>
-                    <ActionButton onClick={() => handleEditCategory(category)}>Edit</ActionButton>
-                    <ActionButton 
-                      className="delete" 
-                      onClick={() => handleDeleteCategory(category.id)}
-                    >
-                      Delete
-                    </ActionButton>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </CategoryTable>
+          {error && (
+            <div style={{ marginBottom: '20px', color: 'red' }}>
+              {error}
+            </div>
+          )}
+          
+          {!loading && !error && (
+            filteredCategories.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '20px' }}>
+                <Text color="gray">No categories found. Create your first category.</Text>
+              </div>
+            ) : (
+              <CategoryTable>
+                <thead>
+                  <tr>
+                    <th style={{ width: '60px' }}></th>
+                    <th>Name</th>
+                    <th>Slug</th>
+                    <th>Parent</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredCategories.map(category => (
+                    <tr key={category.id}>
+                      <td>
+                        {category.image_url ? (
+                          <CategoryImage 
+                            src={`${category.image_url}`}
+                            alt={category.name} 
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/40x40?text=No+Image';
+                            }}
+                          />
+                        ) : (
+                          <NoImagePlaceholder>No img</NoImagePlaceholder>
+                        )}
+                      </td>
+                      <td>
+                        {category.name}
+                        <CategoryColorBadge style={{ backgroundColor: category.color || '#4CAF50' }} />
+                      </td>
+                      <td>{category.slug}</td>
+                      <td>
+                        {category.parent_id 
+                          ? categories.find(c => c.id === category.parent_id)?.name || 'Unknown' 
+                          : 'None'}
+                      </td>
+                      <td>
+                        <span style={{ 
+                          color: category.is_active ? 'green' : 'red',
+                          fontWeight: 'bold'
+                        }}>
+                          {category.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td>
+                        <ActionButtonsContainer>
+                          <ActionButton 
+                            className="edit" 
+                            onClick={() => handleEdit(category)}
+                          >
+                            Edit
+                          </ActionButton>
+                          <ActionButton 
+                            className="delete" 
+                            onClick={() => handleDelete(category.id)}
+                          >
+                            Delete
+                          </ActionButton>
+                        </ActionButtonsContainer>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </CategoryTable>
+            )
+          )}
         </CategoryList>
       </Container>
     </AdminLayout>

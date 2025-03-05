@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { PromotionService } from '../../services/PromotionService';
+import { NotificationBar } from '../../models/Promotion';
+import productService, { Product } from '../../services/productService';
+import { debounce } from 'lodash';
 
 const HeaderWrapper = styled.div`
   position: sticky;
@@ -68,6 +72,11 @@ const SearchBar = styled.div`
   position: relative;
   max-width: 600px;
   
+  form {
+    width: 100%;
+    position: relative;
+  }
+  
   input {
     width: 100%;
     padding: 10px 15px;
@@ -103,6 +112,63 @@ const SearchBar = styled.div`
     width: 100%;
     max-width: 100%;
   }
+`;
+
+const SearchSuggestions = styled.div`
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  right: 0;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 5px;
+`;
+
+const SuggestionItem = styled.div`
+  padding: 10px 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #f0f0f0;
+  
+  &:hover {
+    background-color: #f5f5f5;
+  }
+  
+  &:last-child {
+    border-bottom: none;
+  }
+`;
+
+const ProductImage = styled.img`
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+`;
+
+const ProductInfo = styled.div`
+  flex: 1;
+`;
+
+const ProductName = styled.div`
+  font-weight: 500;
+`;
+
+const ProductPrice = styled.div`
+  font-size: 12px;
+  color: #0066b2;
+`;
+
+const NoResults = styled.div`
+  padding: 10px 15px;
+  color: #666;
+  text-align: center;
 `;
 
 const HeaderActions = styled.div`
@@ -216,11 +282,83 @@ const UserMenuItem = styled.button`
 
 const Header = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<Product[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [noMatches, setNoMatches] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [notificationBar, setNotificationBar] = useState<NotificationBar | null>(null);
   const { getCartCount } = useCart();
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   const cartCount = getCartCount();
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const fetchNotificationBar = async () => {
+      try {
+        const notification = await PromotionService.getNotificationBar();
+        setNotificationBar(notification);
+      } catch (error) {
+        console.error("Error loading notification bar:", error);
+      }
+    };
+
+    fetchNotificationBar();
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Debounced search for product suggestions
+  const fetchProductSuggestions = useRef(
+    debounce(async (query: string) => {
+      if (query.trim().length < 2) {
+        setSuggestions([]);
+        setNoMatches(false);
+        setIsSearching(false);
+        setShowSuggestions(false);
+        return;
+      }
+      
+      try {
+        setIsSearching(true);
+        setShowSuggestions(true);
+        const result = await productService.searchProducts(query, 1, 5);
+        if (result.products && result.products.data) {
+          setSuggestions(result.products.data);
+          setNoMatches(result.products.data.length === 0);
+        } else {
+          setSuggestions([]);
+          setNoMatches(true);
+        }
+      } catch (error) {
+        console.error('Error fetching suggestions:', error);
+        setSuggestions([]);
+        setNoMatches(true);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300)
+  ).current;
+
+  useEffect(() => {
+    fetchProductSuggestions(searchQuery);
+    
+    return () => {
+      fetchProductSuggestions.cancel();
+    };
+  }, [searchQuery, fetchProductSuggestions]);
 
   const handleAccountClick = () => {
     if (isAuthenticated) {
@@ -235,30 +373,114 @@ const Header = () => {
     setShowUserMenu(false);
     navigate('/');
   };
+  
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      if (suggestions.length === 1) {
+        navigate(`/product/${suggestions[0].slug}`);
+        setShowSuggestions(false);
+        return;
+      }
+      
+      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+      setShowSuggestions(false);
+    }
+  };
+  
+  const handleProductSelect = (product: Product) => {
+    navigate(`/product/${product.slug}`);
+    setShowSuggestions(false);
+    setSearchQuery(''); 
+  };
+  
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    // We'll let the debounced function in the useEffect handle the suggestions
+  };
+  
+  const handleSearchFocus = () => {
+    if (searchQuery.trim().length >= 2) {
+      setShowSuggestions(true);
+    }
+  };
+
+  console.log('Search state:', { 
+    searchQuery, 
+    showSuggestions, 
+    suggestionsCount: suggestions.length, 
+    isSearching, 
+    noMatches 
+  });
 
   return (
     <HeaderWrapper>
-      <TopBanner>
-        Free delivery on orders above ₦25,000! Shop now for great deals on groceries.
-        <Link to="/promotions">See Offers</Link>
-      </TopBanner>
+      {notificationBar && notificationBar.active && (
+        <TopBanner style={{ backgroundColor: notificationBar.bgColor }}>
+          {notificationBar.message}
+          <Link to={notificationBar.linkUrl}>{notificationBar.linkText}</Link>
+        </TopBanner>
+      )}
       <HeaderContainer>
         <Logo to="/">
           <img src="https://shop.mmartplus.com/images/white-logo.png" alt="M-Mart+ Logo" width="120" height="auto" />
         </Logo>
         
-        <SearchBar>
-          <input 
-            type="text" 
-            placeholder="Search Products, Brands and Categories" 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <button>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-search" viewBox="0 0 16 16">
-              <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
-            </svg>
-          </button>
+        <SearchBar ref={searchRef}>
+          <form onSubmit={handleSearch}>
+            <input 
+              type="text" 
+              placeholder="Search Products, Brands and Categories" 
+              value={searchQuery}
+              onChange={handleSearchChange}
+              onFocus={handleSearchFocus}
+            />
+            <button type="submit">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-search" viewBox="0 0 16 16">
+                <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
+              </svg>
+            </button>
+          </form>
+          
+          {showSuggestions && (
+            <SearchSuggestions>
+              {isSearching ? (
+                <NoResults>Loading suggestions...</NoResults>
+              ) : noMatches ? (
+                <NoResults>No matching products found</NoResults>
+              ) : suggestions.length > 0 ? (
+                suggestions.map(product => (
+                  <SuggestionItem 
+                    key={product.id} 
+                    onClick={() => handleProductSelect(product)}
+                  >
+                    <ProductImage 
+                      src={product.image_urls && product.image_urls.length > 0 ? product.image_urls[0] : 'https://via.placeholder.com/40'} 
+                      alt={product.name} 
+                    />
+                    <ProductInfo>
+                      <ProductName>{product.name}</ProductName>
+                      <ProductPrice>
+                        {product.sale_price ? (
+                          <>
+                            <span style={{ textDecoration: 'line-through', marginRight: '5px', color: '#888' }}>
+                              {product.formatted_price}
+                            </span>
+                            {product.formatted_sale_price}
+                          </>
+                        ) : (
+                          product.formatted_price
+                        )}
+                      </ProductPrice>
+                    </ProductInfo>
+                  </SuggestionItem>
+                ))
+              ) : (
+                <NoResults>Type to search for products</NoResults>
+              )}
+            </SearchSuggestions>
+          )}
         </SearchBar>
         
         <HeaderActions>

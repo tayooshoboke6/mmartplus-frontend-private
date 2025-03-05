@@ -6,7 +6,6 @@ import Footer from '../components/layout/Footer';
 import { Text, Button } from '../styles/GlobalComponents';
 import { formatCurrency } from '../utils/formatCurrency';
 import { useCart } from '../contexts/CartContext';
-import Category3DDisplay from '../components/category/Category3DDisplay';
 
 // Mock Categories with new hierarchy
 const MOCK_CATEGORIES = [
@@ -467,11 +466,6 @@ const MOCK_PRODUCTS = [
   }
 ];
 
-// Update the mock category with 3D model fields for testing
-MOCK_CATEGORIES[0].model_front_view = 'https://via.placeholder.com/400x400?text=3D+Front+View';
-MOCK_CATEGORIES[0].model_angle_view = 'https://via.placeholder.com/400x400?text=3D+Angle+View';
-MOCK_CATEGORIES[0].model_animated_view = 'https://via.placeholder.com/400x400?text=3D+Animated+View';
-
 // Styled Components
 const PageContainer = styled.div`
   display: flex;
@@ -650,9 +644,6 @@ interface Category {
   description: string;
   productCount: number;
   color: string;
-  model_front_view?: string;
-  model_angle_view?: string;
-  model_animated_view?: string;
 }
 
 const CategoryProductsPage: React.FC = () => {
@@ -807,16 +798,6 @@ const CategoryProductsPage: React.FC = () => {
             <Text size="md" color="#666">{category.description}</Text>
           </CategoryInfo>
         </CategoryHeader>
-        
-        {/* Add 3D model display if available */}
-        {category.model_front_view && (
-          <Category3DDisplay
-            categoryName={category.name}
-            frontView={category.model_front_view}
-            angleView={category.model_angle_view}
-            animatedView={category.model_animated_view}
-          />
-        )}
         
         {products.length > 0 ? (
           <ProductsGrid>

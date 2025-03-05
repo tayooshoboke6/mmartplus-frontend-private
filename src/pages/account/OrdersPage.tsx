@@ -7,6 +7,7 @@ import OrderCard from '../../components/account/OrderCard';
 import OrderFilters from '../../components/account/OrderFilters';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
+import { toast } from 'react-toastify';
 
 const PageContainer = styled.div`
   display: flex;
@@ -131,7 +132,13 @@ const OrdersContent = styled.div`
 const OrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [filters, setFilters] = useState<OrderFilterOptions>({});
+  const [filters, setFilters] = useState<OrderFilterOptions>({
+    page: 1,
+    limit: 10,
+    sortBy: 'date',
+    sortOrder: 'desc'
+  });
+  const [totalCount, setTotalCount] = useState<number>(0);
   
   useEffect(() => {
     fetchOrders();
@@ -140,21 +147,37 @@ const OrdersPage: React.FC = () => {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      // In a real app, you would use the API call:
-      // const response = await orderService.getOrders(filters);
+      console.log('Fetching orders with filters:', filters);
+      const response = await orderService.getOrders(filters);
+      console.log('Orders response:', response);
       
-      // For development, we'll use mock data
-      const response = orderService.getMockOrders();
-      setOrders(response.orders);
+      if (response && response.orders) {
+        setOrders(response.orders);
+        setTotalCount(response.total_count || 0);
+        // Log order details for debugging
+        if (response.orders.length > 0) {
+          console.log('First order sample:', response.orders[0]);
+        } else {
+          console.log('No orders returned from API');
+        }
+      } else {
+        console.error('Invalid response format from orders API:', response);
+        setOrders([]);
+        setTotalCount(0);
+        toast.error('Received invalid data from the server. Please try again.');
+      }
     } catch (error) {
       console.error('Error fetching orders:', error);
+      setOrders([]);
+      setTotalCount(0);
+      toast.error('Failed to load orders. Please try again.');
     } finally {
       setLoading(false);
     }
   };
   
   const handleFilterChange = (newFilters: OrderFilterOptions) => {
-    setFilters(newFilters);
+    setFilters({ ...filters, ...newFilters, page: 1 }); // Reset to first page when filters change
   };
   
   // Function to redirect to shop page

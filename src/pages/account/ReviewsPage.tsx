@@ -325,39 +325,58 @@ const ReviewsPage: React.FC = () => {
   const [reviewText, setReviewText] = useState('');
   
   useEffect(() => {
-    // Simulate API call to fetch pending reviews
-    setTimeout(() => {
-      setPendingReviews([
-        {
-          id: 1,
-          orderId: 'MM78945',
-          productId: 101,
-          productName: 'Golden Penny Semovita - 1kg',
-          productImage: '/images/products/golden-penny-semovita.jpg',
-          price: 1200,
-          orderDate: '2025-02-25'
-        },
-        {
-          id: 2,
-          orderId: 'MM78945',
-          productId: 102,
-          productName: 'Dano Milk Powder - 400g',
-          productImage: '/images/products/dano-milk.jpg',
-          price: 1800,
-          orderDate: '2025-02-25'
-        },
-        {
-          id: 3,
-          orderId: 'MM78856',
-          productId: 103,
-          productName: 'Indomie Chicken Flavor - Pack of 40',
-          productImage: '/images/products/indomie-chicken.jpg',
-          price: 5500,
-          orderDate: '2025-03-01'
-        }
-      ]);
-      setLoading(false);
-    }, 1000);
+    // Fetch pending reviews from API
+    const fetchPendingReviews = async () => {
+      setLoading(true);
+      try {
+        // For now we'll create an empty array as we're still implementing the backend
+        // This would normally be an API call like:
+        // const response = await api.get('/user/pending-reviews');
+        // setPendingReviews(response.data);
+        
+        // Empty array for new users
+        setPendingReviews([]);
+        
+        // Uncomment to test with mock data if needed
+        /*
+        setPendingReviews([
+          {
+            id: 1,
+            orderId: 'MM78945',
+            productId: 101,
+            productName: 'Golden Penny Semovita - 1kg',
+            productImage: '/images/products/golden-penny-semovita.jpg',
+            price: 1200,
+            orderDate: '2025-02-25'
+          },
+          {
+            id: 2,
+            orderId: 'MM78945',
+            productId: 102,
+            productName: 'Dano Milk Powder - 400g',
+            productImage: '/images/products/dano-milk.jpg',
+            price: 1800,
+            orderDate: '2025-02-25'
+          },
+          {
+            id: 3,
+            orderId: 'MM78856',
+            productId: 103,
+            productName: 'Indomie Chicken Flavor - Pack of 40',
+            productImage: '/images/products/indomie-chicken.jpg',
+            price: 5500,
+            orderDate: '2025-03-01'
+          }
+        ]);
+        */
+      } catch (error) {
+        console.error('Error fetching pending reviews:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchPendingReviews();
   }, []);
   
   const openReviewModal = (item: ReviewItem) => {

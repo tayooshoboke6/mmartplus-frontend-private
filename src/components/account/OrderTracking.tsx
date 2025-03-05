@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { OrderStatus } from '../../services/orderService';
+import { OrderStatus, OrderStatusEnum } from '../../services/orderService';
 import { 
   FaClipboardCheck, 
   FaCog, 
@@ -110,17 +110,17 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({
   // Determine which steps are active and completed based on order status
   const getStepStatus = (stepStatus: OrderStatus) => {
     const statusOrder = {
-      [OrderStatus.PENDING]: 0,
-      [OrderStatus.PROCESSING]: 1,
-      [OrderStatus.SHIPPED]: 2,
-      [OrderStatus.DELIVERED]: 3,
-      [OrderStatus.CANCELLED]: 4
+      [OrderStatusEnum.PENDING]: 0,
+      [OrderStatusEnum.PROCESSING]: 1,
+      [OrderStatusEnum.SHIPPED]: 2,
+      [OrderStatusEnum.DELIVERED]: 3,
+      [OrderStatusEnum.CANCELLED]: 4
     };
     
     // If order is cancelled, only the cancelled step is active
-    if (status === OrderStatus.CANCELLED) {
+    if (status === OrderStatusEnum.CANCELLED) {
       return {
-        active: stepStatus === OrderStatus.CANCELLED,
+        active: stepStatus === OrderStatusEnum.CANCELLED,
         completed: false
       };
     }
@@ -153,104 +153,101 @@ const OrderTracking: React.FC<OrderTrackingProps> = ({
       
       <TrackingSteps>
         <Step 
-          active={getStepStatus(OrderStatus.PENDING).active}
-          completed={getStepStatus(OrderStatus.PENDING).completed}
+          active={getStepStatus(OrderStatusEnum.PENDING).active}
+          completed={getStepStatus(OrderStatusEnum.PENDING).completed}
         >
           <StepIcon 
-            active={getStepStatus(OrderStatus.PENDING).active}
-            completed={getStepStatus(OrderStatus.PENDING).completed}
+            active={getStepStatus(OrderStatusEnum.PENDING).active}
+            completed={getStepStatus(OrderStatusEnum.PENDING).completed}
           >
             <FaClipboardCheck size={24} />
           </StepIcon>
           <StepLabel 
-            active={getStepStatus(OrderStatus.PENDING).active}
-            completed={getStepStatus(OrderStatus.PENDING).completed}
+            active={getStepStatus(OrderStatusEnum.PENDING).active}
+            completed={getStepStatus(OrderStatusEnum.PENDING).completed}
           >
             Order Placed
           </StepLabel>
         </Step>
         
         <Step 
-          active={getStepStatus(OrderStatus.PROCESSING).active}
-          completed={getStepStatus(OrderStatus.PROCESSING).completed}
+          active={getStepStatus(OrderStatusEnum.PROCESSING).active}
+          completed={getStepStatus(OrderStatusEnum.PROCESSING).completed}
         >
           <StepIcon 
-            active={getStepStatus(OrderStatus.PROCESSING).active}
-            completed={getStepStatus(OrderStatus.PROCESSING).completed}
+            active={getStepStatus(OrderStatusEnum.PROCESSING).active}
+            completed={getStepStatus(OrderStatusEnum.PROCESSING).completed}
           >
             <FaCog size={24} />
           </StepIcon>
           <StepLabel 
-            active={getStepStatus(OrderStatus.PROCESSING).active}
-            completed={getStepStatus(OrderStatus.PROCESSING).completed}
+            active={getStepStatus(OrderStatusEnum.PROCESSING).active}
+            completed={getStepStatus(OrderStatusEnum.PROCESSING).completed}
           >
             Processing
           </StepLabel>
         </Step>
         
         <Step 
-          active={getStepStatus(OrderStatus.SHIPPED).active}
-          completed={getStepStatus(OrderStatus.SHIPPED).completed}
+          active={getStepStatus(OrderStatusEnum.SHIPPED).active}
+          completed={getStepStatus(OrderStatusEnum.SHIPPED).completed}
         >
           <StepIcon 
-            active={getStepStatus(OrderStatus.SHIPPED).active}
-            completed={getStepStatus(OrderStatus.SHIPPED).completed}
+            active={getStepStatus(OrderStatusEnum.SHIPPED).active}
+            completed={getStepStatus(OrderStatusEnum.SHIPPED).completed}
           >
             <FaTruck size={24} />
           </StepIcon>
           <StepLabel 
-            active={getStepStatus(OrderStatus.SHIPPED).active}
-            completed={getStepStatus(OrderStatus.SHIPPED).completed}
+            active={getStepStatus(OrderStatusEnum.SHIPPED).active}
+            completed={getStepStatus(OrderStatusEnum.SHIPPED).completed}
           >
             Shipped
           </StepLabel>
         </Step>
         
         <Step 
-          active={getStepStatus(OrderStatus.DELIVERED).active}
-          completed={getStepStatus(OrderStatus.DELIVERED).completed}
+          active={getStepStatus(OrderStatusEnum.DELIVERED).active}
+          completed={getStepStatus(OrderStatusEnum.DELIVERED).completed}
         >
           <StepIcon 
-            active={getStepStatus(OrderStatus.DELIVERED).active}
-            completed={getStepStatus(OrderStatus.DELIVERED).completed}
+            active={getStepStatus(OrderStatusEnum.DELIVERED).active}
+            completed={getStepStatus(OrderStatusEnum.DELIVERED).completed}
           >
             <FaCheckCircle size={24} />
           </StepIcon>
           <StepLabel 
-            active={getStepStatus(OrderStatus.DELIVERED).active}
-            completed={getStepStatus(OrderStatus.DELIVERED).completed}
+            active={getStepStatus(OrderStatusEnum.DELIVERED).active}
+            completed={getStepStatus(OrderStatusEnum.DELIVERED).completed}
           >
             Delivered
           </StepLabel>
         </Step>
         
         <Step 
-          active={getStepStatus(OrderStatus.CANCELLED).active}
-          completed={getStepStatus(OrderStatus.CANCELLED).completed}
+          active={getStepStatus(OrderStatusEnum.CANCELLED).active}
+          completed={getStepStatus(OrderStatusEnum.CANCELLED).completed}
         >
           <StepIcon 
-            active={getStepStatus(OrderStatus.CANCELLED).active}
-            completed={getStepStatus(OrderStatus.CANCELLED).completed}
+            active={getStepStatus(OrderStatusEnum.CANCELLED).active}
+            completed={getStepStatus(OrderStatusEnum.CANCELLED).completed}
           >
             <FaTimesCircle size={24} />
           </StepIcon>
           <StepLabel 
-            active={getStepStatus(OrderStatus.CANCELLED).active}
-            completed={getStepStatus(OrderStatus.CANCELLED).completed}
+            active={getStepStatus(OrderStatusEnum.CANCELLED).active}
+            completed={getStepStatus(OrderStatusEnum.CANCELLED).completed}
           >
             Cancelled
           </StepLabel>
         </Step>
       </TrackingSteps>
       
-      {(trackingNumber || expectedDelivery) && (
+      {trackingNumber && (
         <TrackingInfo>
-          {trackingNumber && (
-            <TrackingNumber>
-              Tracking Number: <strong>{trackingNumber}</strong>
-            </TrackingNumber>
-          )}
-          
+          <TrackingNumber>
+            Tracking Number: {trackingNumber}
+          </TrackingNumber>
           {expectedDelivery && (
             <DeliveryInfo>
               Expected Delivery: {formatDeliveryDate(expectedDelivery)}

@@ -170,6 +170,24 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
     handleImageChange(newIndex);
   };
   
+  // Get the sensitivity setting from localStorage or use the default value
+  const getSensitivity = () => {
+    const storedSensitivity = localStorage.getItem('sliderSensitivity');
+    return storedSensitivity ? parseInt(storedSensitivity) : 50; // Default to 50 if not set
+  };
+  
+  // Calculate minimum swipe distance based on sensitivity
+  // Higher sensitivity = smaller swipe distance required
+  const getMinSwipeDistance = () => {
+    const baseSensitivity = 50; // This corresponds to 50px swipe distance
+    const baseDistance = 50;
+    
+    // Convert sensitivity to a distance value (inversely proportional)
+    // Higher sensitivity = lower distance required
+    const currentSensitivity = getSensitivity();
+    return Math.max(10, Math.round(baseDistance * (baseSensitivity / currentSensitivity)));
+  };
+  
   // Touch swipe handlers
   const onTouchStart = (e: TouchEvent) => {
     setTouchStart(e.targetTouches[0].clientX);
@@ -184,7 +202,7 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
     if (!touchStart || !touchEnd) return;
     
     const distance = touchStart - touchEnd;
-    const minSwipeDistance = 50;
+    const minSwipeDistance = getMinSwipeDistance();
     
     if (distance > minSwipeDistance) {
       // Swipe left - go to next image

@@ -1,406 +1,347 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import AdminLayout from '../../components/admin/AdminLayout';
-import { FlexBox, Text } from '../../styles/GlobalComponents';
-import { formatCurrency } from '../../utils/formatCurrency';
+import AdminLayout from '../../components/layouts/AdminLayout';
+import StatsCard from '../../components/admin/StatsCard';
+import SalesChart from '../../components/admin/SalesChart';
+import RecentOrdersTable from '../../components/admin/RecentOrdersTable';
+import PopularProductsTable from '../../components/admin/PopularProductsTable';
+import LowStockTable from '../../components/admin/LowStockTable';
+import { FiDollarSign, FiShoppingBag, FiUsers, FiClock } from 'react-icons/fi';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import { DashboardStats } from '../../types/order';
+import orderService from '../../services/orderService';
+import { useAuth } from '../../contexts/AuthContext';
 
-const DashboardGrid = styled.div`
+// Mock data for development mode
+const MOCK_DASHBOARD_STATS: DashboardStats = {
+  total_sales: 15789.50,
+  daily_sales: [
+    { date: '2023-01-01', total_sales: 2100 },
+    { date: '2023-01-02', total_sales: 1800 },
+    { date: '2023-01-03', total_sales: 2400 },
+    { date: '2023-01-04', total_sales: 2700 },
+    { date: '2023-01-05', total_sales: 3000 },
+    { date: '2023-01-06', total_sales: 2800 },
+    { date: '2023-01-07', total_sales: 3500 },
+    { date: '2023-01-08', total_sales: 3200 },
+    { date: '2023-01-09', total_sales: 3800 },
+    { date: '2023-01-10', total_sales: 4000 },
+    { date: '2023-01-11', total_sales: 3600 },
+    { date: '2023-01-12', total_sales: 4200 },
+  ],
+  total_orders: 263,
+  pending_orders: 12,
+  total_customers: 182,
+  recent_orders: [
+    { id: 1, order_number: 'ORD-001', user: { name: 'John Doe' }, total: 100, status: 'Completed', created_at: '2023-01-01' },
+    { id: 2, order_number: 'ORD-002', user: { name: 'Jane Doe' }, total: 200, status: 'Processing', created_at: '2023-01-02' },
+    { id: 3, order_number: 'ORD-003', user: { name: 'Bob Smith' }, total: 300, status: 'Pending', created_at: '2023-01-03' },
+    { id: 4, order_number: 'ORD-004', user: { name: 'Alice Johnson' }, total: 400, status: 'Cancelled', created_at: '2023-01-04' },
+  ],
+  popular_products: [
+    { id: 1, name: 'Organic Almond Milk', total_quantity_sold: 87 },
+    { id: 2, name: 'Fresh Farm Eggs', total_quantity_sold: 72 },
+    { id: 3, name: 'Organic Bananas', total_quantity_sold: 68 },
+    { id: 4, name: 'Whole Grain Bread', total_quantity_sold: 65 },
+    { id: 5, name: 'Free Range Chicken', total_quantity_sold: 54 },
+  ],
+  low_stock_products: [
+    { id: 1, name: 'Organic Almond Milk', stock: 10, min_stock: 5 },
+    { id: 2, name: 'Fresh Farm Eggs', stock: 20, min_stock: 10 },
+    { id: 3, name: 'Organic Bananas', stock: 30, min_stock: 15 },
+    { id: 4, name: 'Whole Grain Bread', stock: 40, min_stock: 20 },
+    { id: 5, name: 'Free Range Chicken', stock: 50, min_stock: 25 },
+  ]
+};
+
+const Dashboard = styled.div`
+  margin: 0;
+`;
+
+const GridContainer = styled.div`
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  margin-bottom: 30px;
+  gap: 24px;
+  margin-bottom: 24px;
   
-  @media (max-width: 1024px) {
+  @media (max-width: 1200px) {
     grid-template-columns: repeat(2, 1fr);
   }
   
-  @media (max-width: 600px) {
+  @media (max-width: 576px) {
     grid-template-columns: 1fr;
   }
 `;
 
-const StatCard = styled.div`
-  background-color: #fff;
+const Card = styled.div`
+  background: white;
   border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 24px;
+  margin-bottom: 24px;
+  
+  h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 16px 0;
+  }
+`;
+
+const TwoColumns = styled.div`
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  
+  @media (max-width: 992px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const LoadingContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 400px;
+`;
+
+const ErrorContainer = styled.div`
+  background: #fee2e2;
+  border: 1px solid #ef4444;
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 24px;
+  color: #b91c1c;
+  
+  h2 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 12px 0;
+  }
+  
+  p {
+    margin: 0 0 16px 0;
+  }
+`;
+
+const RetryButton = styled.button`
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-weight: 600;
+  cursor: pointer;
   
   &:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    background: #dc2626;
   }
 `;
 
-const StatValue = styled.div`
-  font-size: 28px;
-  font-weight: bold;
-  margin: 10px 0;
-  color: #0066b2;
-`;
-
-const StatLabel = styled.div`
-  color: #666;
-  font-size: 14px;
-`;
-
-const StatChangeIndicator = styled.div<{ isPositive?: boolean }>`
-  display: flex;
-  align-items: center;
-  color: ${props => props.isPositive ? '#28a745' : '#dc3545'};
-  font-size: 14px;
-  
-  svg {
-    margin-right: 4px;
-  }
-`;
-
-const ChartContainer = styled.div`
-  background-color: #fff;
+const AdminDevControls = styled.div`
+  background: #f7f7f7;
+  border: 1px solid #ddd;
   border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
-  min-height: 300px;
+  padding: 24px;
+  margin-bottom: 24px;
 `;
 
-const ChartPlaceholder = styled.div`
-  height: 250px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #f9f9f9;
-  border-radius: 4px;
-  color: #666;
-`;
-
-const RecentOrdersTable = styled.table`
-  width: 100%;
-  border-collapse: collapse;
+const Button = styled.button`
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-weight: 600;
+  cursor: pointer;
   
-  th, td {
-    padding: 12px 15px;
-    text-align: left;
-    border-bottom: 1px solid #e0e0e0;
-  }
-  
-  th {
-    background-color: #f5f5f5;
-    font-weight: 500;
-  }
-  
-  tr:last-child td {
-    border-bottom: none;
-  }
-  
-  tbody tr:hover {
-    background-color: #f9f9f9;
-  }
-`;
-
-const StatusBadge = styled.span<{ status: string }>`
-  display: inline-block;
-  padding: 4px 8px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-  
-  ${props => {
-    switch(props.status) {
-      case 'completed':
-        return 'background-color: #e6f7e6; color: #2e7d32;';
-      case 'processing':
-        return 'background-color: #e3f2fd; color: #1565c0;';
-      case 'pending':
-        return 'background-color: #fff8e1; color: #f57f17;';
-      case 'cancelled':
-        return 'background-color: #feebee; color: #b71c1c;';
-      default:
-        return 'background-color: #f5f5f5; color: #757575;';
-    }
-  }}
-`;
-
-const CategoryCard = styled.div`
-  display: flex;
-  align-items: center;
-  padding: 15px;
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  margin-bottom: 15px;
-  
-  &:last-child {
-    margin-bottom: 0;
-  }
-`;
-
-const CategoryIcon = styled.div`
-  width: 45px;
-  height: 45px;
-  border-radius: 8px;
-  background-color: #e3f2fd;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 15px;
-  
-  svg {
-    color: #0066b2;
-    width: 22px;
-    height: 22px;
-  }
-`;
-
-const CategoryInfo = styled.div`
-  flex: 1;
-`;
-
-const CategoryProgressOuter = styled.div`
-  height: 6px;
-  background-color: #f1f1f1;
-  border-radius: 3px;
-  margin-top: 8px;
-  overflow: hidden;
-`;
-
-const CategoryProgressInner = styled.div<{ width: string, color: string }>`
-  height: 100%;
-  width: ${props => props.width};
-  background-color: ${props => props.color};
-  border-radius: 3px;
-`;
-
-const InventoryAlertCard = styled.div`
-  padding: 15px;
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  margin-bottom: 15px;
-  border-left: 4px solid #f57f17;
-  
-  &:last-child {
-    margin-bottom: 0;
+  &:hover {
+    background: #0e9f86;
   }
 `;
 
 const DashboardPage: React.FC = () => {
-  // Mock data for recent orders
-  const recentOrders = [
-    { id: 'ORD93849', customer: 'John Doe', date: '2025-03-01', total: 12500, status: 'completed', items: 7 },
-    { id: 'ORD93820', customer: 'Sarah Miller', date: '2025-03-01', total: 8750, status: 'processing', items: 5 },
-    { id: 'ORD93810', customer: 'Michael Brown', date: '2025-02-28', total: 32000, status: 'pending', items: 12 },
-    { id: 'ORD93788', customer: 'Emma Wilson', date: '2025-02-28', total: 5300, status: 'completed', items: 3 },
-    { id: 'ORD93774', customer: 'David Clark', date: '2025-02-27', total: 18900, status: 'cancelled', items: 8 },
-  ];
+  const { isAuthenticated, isAdmin, loginAsAdmin } = useAuth();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   
-  // Mock data for popular categories
-  const popularCategories = [
-    { 
-      name: 'Fresh Produce', 
-      count: 124, 
-      sales: 875000, 
-      percentage: '75%', 
-      color: '#4CAF50',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M14 10.5a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0 0 1h3a.5.5 0 0 0 .5-.5m0-3a.5.5 0 0 0-.5-.5h-7a.5.5 0 0 0 0 1h7a.5.5 0 0 0 .5-.5m0-3a.5.5 0 0 0-.5-.5h-11a.5.5 0 0 0 0 1h11a.5.5 0 0 0 .5-.5"/>
-        </svg>
-      )
-    },
-    { 
-      name: 'Dairy & Eggs', 
-      count: 86, 
-      sales: 650000, 
-      percentage: '62%', 
-      color: '#2196F3',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M14 10.5a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0 0 1h3a.5.5 0 0 0 .5-.5m0-3a.5.5 0 0 0-.5-.5h-7a.5.5 0 0 0 0 1h7a.5.5 0 0 0 .5-.5m0-3a.5.5 0 0 0-.5-.5h-11a.5.5 0 0 0 0 1h11a.5.5 0 0 0 .5-.5"/>
-        </svg>
-      ) 
-    },
-    { 
-      name: 'Meat & Seafood', 
-      count: 78, 
-      sales: 520000, 
-      percentage: '58%', 
-      color: '#F44336',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M14 10.5a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0 0 1h3a.5.5 0 0 0 .5-.5m0-3a.5.5 0 0 0-.5-.5h-7a.5.5 0 0 0 0 1h7a.5.5 0 0 0 .5-.5m0-3a.5.5 0 0 0-.5-.5h-11a.5.5 0 0 0 0 1h11a.5.5 0 0 0 .5-.5"/>
-        </svg>
-      ) 
-    },
-    { 
-      name: 'Household Supplies', 
-      count: 95, 
-      sales: 480000, 
-      percentage: '45%', 
-      color: '#FF9800',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M14 10.5a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0 0 1h3a.5.5 0 0 0 .5-.5m0-3a.5.5 0 0 0-.5-.5h-7a.5.5 0 0 0 0 1h7a.5.5 0 0 0 .5-.5m0-3a.5.5 0 0 0-.5-.5h-11a.5.5 0 0 0 0 1h11a.5.5 0 0 0 .5-.5"/>
-        </svg>
-      ) 
-    },
-  ];
+  // Development mode check
+  const isDevelopment = import.meta.env.DEV;
   
-  // Mock data for low stock alerts
-  const lowStockAlerts = [
-    { name: 'Fresh Milk (1L)', current: 5, minimum: 10 },
-    { name: 'Premium Rice (5kg)', current: 3, minimum: 15 },
-    { name: 'Laundry Detergent', current: 8, minimum: 20 },
-  ];
+  useEffect(() => {
+    fetchDashboardStats();
+  }, []);
   
-  return (
-    <AdminLayout title="Dashboard">
-      <DashboardGrid>
-        <StatCard>
-          <StatLabel>Total Revenue</StatLabel>
-          <StatValue>{formatCurrency(2485000)}</StatValue>
-          <StatChangeIndicator isPositive={true}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-              <path d="m7.247 4.86-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z"/>
-            </svg>
-            18% from last month
-          </StatChangeIndicator>
-        </StatCard>
-        
-        <StatCard>
-          <StatLabel>Orders</StatLabel>
-          <StatValue>184</StatValue>
-          <StatChangeIndicator isPositive={true}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-              <path d="m7.247 4.86-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z"/>
-            </svg>
-            12% from last month
-          </StatChangeIndicator>
-        </StatCard>
-        
-        <StatCard>
-          <StatLabel>Products</StatLabel>
-          <StatValue>856</StatValue>
-          <Text size="sm" color="#666">
-            24 new products added this month
-          </Text>
-        </StatCard>
-        
-        <StatCard>
-          <StatLabel>Low Stock Items</StatLabel>
-          <StatValue>15</StatValue>
-          <StatChangeIndicator isPositive={false}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-              <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
-            </svg>
-            5 more than last week
-          </StatChangeIndicator>
-        </StatCard>
-      </DashboardGrid>
+  const fetchDashboardStats = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Check if we're using a development token
+      const token = localStorage.getItem('mmartToken');
+      const isDevelopmentToken = token && token.includes('dev-admin-token');
       
-      <FlexBox direction="column" gap="20px">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '20px' }}>
-          <div style={{ gridColumn: 'span 8' }}>
-            <ChartContainer>
-              <Text size="lg" weight="bold" style={{ marginBottom: '15px' }}>Sales Overview</Text>
-              <ChartPlaceholder>
-                Sales Chart will be displayed here
-              </ChartPlaceholder>
-            </ChartContainer>
-          </div>
-          
-          <div style={{ gridColumn: 'span 4' }}>
-            <ChartContainer>
-              <Text size="lg" weight="bold" style={{ marginBottom: '15px' }}>Popular Categories</Text>
+      if (isDevelopmentToken && process.env.NODE_ENV === 'development') {
+        // Use mock data in development mode
+        console.log('Using mock dashboard stats for development');
+        setStats(MOCK_DASHBOARD_STATS);
+        setLoading(false);
+        return;
+      }
+      
+      // Fetch real data from API
+      const response = await orderService.getDashboardStats();
+      setStats(response.data);
+    } catch (err: any) {
+      console.error('Error fetching dashboard stats:', err);
+      
+      // If this error was due to our development token, use mock data
+      if (err.isDevelopmentError) {
+        console.log('Using mock data instead due to development mode');
+        setStats(MOCK_DASHBOARD_STATS);
+      } else {
+        setError(err.message || 'Failed to load dashboard data');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Handle admin login for development testing
+  const handleAdminLogin = async () => {
+    if (isDevelopment) {
+      const result = await loginAsAdmin();
+      if (result.success) {
+        alert('Successfully logged in as admin for development testing');
+        window.location.reload(); // Reload to apply changes
+      } else {
+        alert(`Admin login failed: ${result.error}`);
+      }
+    }
+  };
+  
+  if (loading) {
+    return (
+      <AdminLayout title="Dashboard" description="Overview of your store's performance">
+        <LoadingContainer>
+          <LoadingSpinner size="lg" />
+        </LoadingContainer>
+      </AdminLayout>
+    );
+  }
+
+  if (error && !stats) {
+    return (
+      <AdminLayout title="Dashboard" description="Overview of your store's performance">
+        <ErrorContainer>
+          <h2>Error Loading Dashboard</h2>
+          <p>{error}</p>
+          <RetryButton onClick={fetchDashboardStats}>Retry</RetryButton>
+        </ErrorContainer>
+      </AdminLayout>
+    );
+  }
+
+  return (
+    <AdminLayout title="Dashboard" description="Overview of your store's performance">
+      <Dashboard>
+        {stats && (
+          <>
+            <GridContainer>
+              <StatsCard
+                title="Total Sales"
+                value={`₦${stats.total_sales.toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`}
+                icon={<FiDollarSign size={24} />}
+                color="#10b981"
+              />
+              <StatsCard
+                title="Total Orders"
+                value={stats.total_orders.toString()}
+                icon={<FiShoppingBag size={24} />}
+                color="#3b82f6"
+              />
+              <StatsCard
+                title="Total Customers"
+                value={stats.total_customers.toString()}
+                icon={<FiUsers size={24} />}
+                color="#8b5cf6"
+              />
+              <StatsCard
+                title="Pending Orders"
+                value={stats.pending_orders.toString()}
+                icon={<FiClock size={24} />}
+                color="#f59e0b"
+              />
+            </GridContainer>
+            
+            <Card>
+              <h2>Sales Overview</h2>
+              <SalesChart data={stats.daily_sales.map(item => ({
+                date: item.date,
+                amount: item.total_sales
+              }))} />
+            </Card>
+            
+            <TwoColumns>
+              <Card>
+                <h2>Recent Orders</h2>
+                <RecentOrdersTable orders={stats.recent_orders.map(order => ({
+                  id: order.id,
+                  order_number: order.order_number,
+                  customer_name: order.user?.name || order.customer_name || 'Anonymous',
+                  total: order.total,
+                  status: order.status,
+                  created_at: order.created_at
+                }))} />
+              </Card>
               
-              {popularCategories.map((category, index) => (
-                <CategoryCard key={index}>
-                  <CategoryIcon>
-                    {category.icon}
-                  </CategoryIcon>
-                  <CategoryInfo>
-                    <Text size="md" weight="bold">{category.name}</Text>
-                    <Text size="sm" color="#666">{category.count} products • {formatCurrency(category.sales)}</Text>
-                    <CategoryProgressOuter>
-                      <CategoryProgressInner width={category.percentage} color={category.color} />
-                    </CategoryProgressOuter>
-                  </CategoryInfo>
-                </CategoryCard>
-              ))}
-            </ChartContainer>
-          </div>
-        </div>
+              <Card>
+                <h2>Popular Products</h2>
+                <PopularProductsTable products={stats.popular_products.map(product => ({
+                  id: product.id,
+                  name: product.name,
+                  image: '',  // The backend doesn't provide images, use empty string or default image
+                  price: 0,   // The backend doesn't provide price information
+                  quantity_sold: product.total_quantity_sold
+                }))} />
+              </Card>
+            </TwoColumns>
+            
+            <Card>
+              <h2>Low Stock Products</h2>
+              <LowStockTable products={stats.low_stock_products.map(product => ({
+                id: product.id,
+                name: product.name,
+                image: '',  // The backend doesn't provide images, use empty string or default image
+                current_stock: product.stock,
+                min_stock: 10  // Fixed default value as backend doesn't provide min_stock
+              }))} />
+            </Card>
+          </>
+        )}
         
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: '20px' }}>
-          <div style={{ gridColumn: 'span 8' }}>
-            <ChartContainer>
-              <FlexBox justify="space-between" align="center" style={{ marginBottom: '15px' }}>
-                <Text size="lg" weight="bold">Recent Orders</Text>
-                <a href="/admin/orders" style={{ color: '#0066b2', textDecoration: 'none' }}>View All</a>
-              </FlexBox>
-              
-              <RecentOrdersTable>
-                <thead>
-                  <tr>
-                    <th>Order ID</th>
-                    <th>Customer</th>
-                    <th>Items</th>
-                    <th>Date</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentOrders.map(order => (
-                    <tr key={order.id}>
-                      <td>{order.id}</td>
-                      <td>{order.customer}</td>
-                      <td>{order.items}</td>
-                      <td>{order.date}</td>
-                      <td>{formatCurrency(order.total)}</td>
-                      <td>
-                        <StatusBadge status={order.status}>
-                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                        </StatusBadge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </RecentOrdersTable>
-            </ChartContainer>
-          </div>
-          
-          <div style={{ gridColumn: 'span 4' }}>
-            <ChartContainer>
-              <FlexBox justify="space-between" align="center" style={{ marginBottom: '15px' }}>
-                <Text size="lg" weight="bold">Inventory Alerts</Text>
-                <a href="/admin/products" style={{ color: '#0066b2', textDecoration: 'none' }}>View All</a>
-              </FlexBox>
-              
-              {lowStockAlerts.map((item, index) => (
-                <InventoryAlertCard key={index}>
-                  <Text size="md" weight="bold">{item.name}</Text>
-                  <FlexBox justify="space-between" align="center" style={{ marginTop: '5px' }}>
-                    <Text size="sm" color="#666">Current Stock: <strong>{item.current}</strong></Text>
-                    <Text size="sm" color="#666">Minimum Required: <strong>{item.minimum}</strong></Text>
-                  </FlexBox>
-                  <FlexBox justify="flex-end" style={{ marginTop: '10px' }}>
-                    <a href={`/admin/products`} style={{ fontSize: '14px', color: '#0066b2', textDecoration: 'none' }}>
-                      Restock Now
-                    </a>
-                  </FlexBox>
-                </InventoryAlertCard>
-              ))}
-              
-              <FlexBox justify="center" style={{ marginTop: '15px' }}>
-                <a href="/admin/products" style={{ color: '#0066b2', textDecoration: 'none' }}>
-                  View All Low Stock Items
-                </a>
-              </FlexBox>
-            </ChartContainer>
-          </div>
-        </div>
-      </FlexBox>
+        {/* Admin Controls - only shown in development mode */}
+        {isDevelopment && (
+          <AdminDevControls>
+            <h3>Development Controls</h3>
+            <p>These controls are only visible in development mode</p>
+            
+            {!isAuthenticated || !isAdmin ? (
+              <Button onClick={handleAdminLogin}>
+                Login as Admin for Testing
+              </Button>
+            ) : (
+              <div>
+                <p><strong>Status:</strong> Logged in as Admin</p>
+                <Button onClick={fetchDashboardStats}>
+                  Refresh Dashboard Data
+                </Button>
+              </div>
+            )}
+          </AdminDevControls>
+        )}
+      </Dashboard>
     </AdminLayout>
   );
 };

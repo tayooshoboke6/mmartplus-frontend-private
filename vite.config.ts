@@ -29,5 +29,9 @@ export default defineConfig({
     commonjsOptions: {
       transformMixedEsModules: true
     }
+  },
+  define: {
+    // Handle process.env for libraries that still use it
+    'process.env': {}
   }
 })

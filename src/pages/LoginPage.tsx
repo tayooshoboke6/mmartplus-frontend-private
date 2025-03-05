@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
+import { initializeSession } from '../services/api';
 
 // Styled components
 const PageContainer = styled.div`
@@ -250,10 +251,31 @@ const LoginPage: React.FC = () => {
     }
     
     try {
-      await login({ email, password });
-      // Redirect will happen in the useEffect above
+      setIsSubmitting(true);
+      const result = await login({ email, password });
+      if (result && result.success) {
+        // Initialize session timeout handling
+        initializeSession();
+        
+        // Add a slight delay before redirecting to ensure session is properly initialized
+        setTimeout(() => {
+          console.log("Login successful, redirecting to", from);
+          // Redirect will happen in the useEffect based on isAuthenticated
+        }, 500);
+        
+        console.log("Login successful, session will expire in 60 minutes");
+      }
     } catch (err) {
       // Error will be handled by the AuthContext
+      // Check if this is an email verification error
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      if (errorMessage.toLowerCase().includes('email verification') || 
+          errorMessage.toLowerCase().includes('verify your email')) {
+        // Navigate to email verification page with the email
+        navigate('/verify-email', { state: { email } });
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
   

@@ -357,7 +357,9 @@ const SignupPage: React.FC = () => {
       
       console.log('Mapped to backend fields:', registrationData);
       await register(registrationData);
-      // Redirect will happen in the useEffect above
+      
+      // After successful registration, redirect to email verification page
+      navigate('/verify-email', { state: { email: formData.email } });
     } catch (err) {
       console.error('Registration error:', err);
       // Error will be handled by the AuthContext

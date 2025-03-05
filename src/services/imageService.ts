@@ -123,7 +123,7 @@ const imageService = {
       formData.append('folder', folder);
       
       // Make the API call to the backend, which will handle the Cloudinary upload
-      const response = await api.post<UploadResponse>('/api/upload', formData, {
+      const response = await api.post<UploadResponse>('/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -155,7 +155,7 @@ const imageService = {
       formData.append('image', compressedFile);
       formData.append('folder', 'profiles');
       
-      const response = await api.post<UploadResponse>('/api/upload/profile', formData, {
+      const response = await api.post<UploadResponse>('/upload/profile', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -186,7 +186,7 @@ const imageService = {
       formData.append('image', compressedFile);
       formData.append('folder', 'products');
       
-      const response = await api.post<UploadResponse>('/api/upload/product', formData, {
+      const response = await api.post<UploadResponse>('/upload/product', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -217,7 +217,7 @@ const imageService = {
       formData.append('image', compressedFile);
       formData.append('folder', 'categories');
       
-      const response = await api.post<UploadResponse>('/api/upload/category', formData, {
+      const response = await api.post<UploadResponse>('/upload/category', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }

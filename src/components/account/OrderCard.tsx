@@ -131,19 +131,26 @@ interface OrderCardProps {
 const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
   // Format date
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-NG', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-NG', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'Invalid Date';
+    }
   };
   
   // Get payment method icon
   const getPaymentIcon = () => {
-    switch (order.payment_method) {
+    const paymentMethod = order.payment_method || 'card';
+    switch (paymentMethod) {
       case 'card':
         return <FaCreditCard />;
       case 'bank_transfer':
@@ -157,6 +164,7 @@ const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
   
   // Format payment method for display
   const formatPaymentMethod = (method: string) => {
+    if (!method) return 'Unknown';
     switch (method) {
       case 'card':
         return 'Credit/Debit Card';
@@ -168,22 +176,34 @@ const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
         return method;
     }
   };
+
+  // Get the order number or ID
+  const getOrderIdentifier = () => {
+    return order.order_number || `Order #${order.id}`;
+  };
+
+  // Get items count safely
+  const getItemsCount = () => {
+    // Try to get items_count from order, or count items array if available, or default to 0
+    const count = order.items_count || (order.items ? order.items.length : 0);
+    return `${count} ${count === 1 ? 'item' : 'items'}`;
+  };
   
   return (
     <Card>
       <CardHeader>
-        <OrderNumber>{order.order_number}</OrderNumber>
+        <OrderNumber>{getOrderIdentifier()}</OrderNumber>
         <OrderDate>{formatDate(order.created_at)}</OrderDate>
       </CardHeader>
       
       <CardBody>
         <OrderInfo>
-          <OrderStatusBadge status={order.status} />
-          <OrderTotal>{formatCurrency(order.total)}</OrderTotal>
+          <OrderStatusBadge status={order.status || 'pending'} />
+          <OrderTotal>{formatCurrency(order.total || 0)}</OrderTotal>
         </OrderInfo>
         
         <ItemsCount>
-          {order.items_count} {order.items_count === 1 ? 'item' : 'items'}
+          {getItemsCount()}
         </ItemsCount>
         
         <PaymentMethod>

@@ -15,7 +15,7 @@ export interface CartItem {
 
 interface CartContextType {
   cartItems: CartItem[];
-  addToCart: (item: CartItem) => void;
+  addItem: (item: CartItem) => void;
   removeFromCart: (id: number) => void;
   updateQuantity: (id: number, quantity: number) => void;
   clearCart: () => void;
@@ -51,7 +51,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [cartItems]);
 
   // Add item to cart
-  const addToCart = (item: CartItem) => {
+  const addItem = (item: CartItem) => {
     setCartItems(prevItems => {
       // Check if item already exists in cart
       const existingItemIndex = prevItems.findIndex(i => i.id === item.id);
@@ -102,14 +102,14 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Buy now function - add to cart and navigate to cart page
   const buyNow = (item: CartItem) => {
-    addToCart(item);
+    addItem(item);
     navigate('/cart');
   };
 
   return (
     <CartContext.Provider value={{
       cartItems,
-      addToCart,
+      addItem,
       removeFromCart,
       updateQuantity,
       clearCart,

@@ -1,0 +1,10 @@
+{
+  "name": "api-test",
+  "version": "1.0.0",
+  "description": "Simple test script for API endpoints",
+  "main": "test-api.js",
+  "type": "module",
+  "scripts": {
+    "test": "node test-api.js"
+  }
+}

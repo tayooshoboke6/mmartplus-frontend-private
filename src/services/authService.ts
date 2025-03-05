@@ -1,4 +1,5 @@
-import api from './api';
+import api, { getCsrfCookie } from './api';
+import emailVerificationService from './emailVerificationService';
 
 // Types
 export interface LoginCredentials {
@@ -54,7 +55,7 @@ const authService = {
   register: async (userData: RegisterData): Promise<AuthResponse> => {
     try {
       console.log('Sending registration data to API:', userData);
-      const response = await api.post<AuthResponse>('/api/auth/register', userData);
+      const response = await api.post<AuthResponse>('/auth/register', userData);
       
       if (response.data.success && response.data.token) {
         localStorage.setItem('mmartToken', response.data.token);
@@ -95,41 +96,48 @@ const authService = {
     try {
       console.log('Sending login data to API:', credentials);
       
-      // For demo purposes - bypass API for admin login
-      if (credentials.email === 'admin@mmartplus.com' && credentials.password === 'Admin123@') {
-        // Create mock admin response
-        const mockAdminResponse: AuthResponse = {
-          success: true,
-          token: 'mock-admin-token',
-          user: {
-            id: 999,
-            first_name: 'Admin',
-            last_name: 'User',
-            email: 'admin@mmartplus.com',
-            role: 'admin',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }
-        };
-        
-        // Store admin data
-        localStorage.setItem('mmartToken', mockAdminResponse.token);
-        localStorage.setItem('mmartUser', JSON.stringify(mockAdminResponse.user));
-        
-        return mockAdminResponse;
-      }
+      // Get CSRF cookie first
+      await getCsrfCookie();
       
-      // Normal API flow for non-admin users
-      const response = await api.post<AuthResponse>('/api/auth/login', {
+      // Standard API flow for all users
+      const response = await api.post<any>('/login', {
         email: credentials.email,
         password: credentials.password
       });
       
-      if (response.data.success && response.data.token) {
-        localStorage.setItem('mmartToken', response.data.token);
-        localStorage.setItem('mmartUser', JSON.stringify(response.data.user));
+      console.log('Login response received:', response.data);
+      
+      // Extract user data from response
+      const userData = response.data.data?.user;
+      
+      // Determine if user has admin role from Laravel's roles relationship
+      let isAdmin = false;
+      if (userData && userData.roles && Array.isArray(userData.roles)) {
+        isAdmin = userData.roles.some(role => role.name === 'admin');
       }
-      return response.data;
+      
+      // Create user object with correct role
+      const user: User = {
+        ...userData,
+        role: isAdmin ? 'admin' : 'user' // Set role based on the roles array
+      };
+      
+      console.log('Processed user with role:', user);
+      
+      // Map the Laravel response structure to our AuthResponse
+      const authResponse: AuthResponse = {
+        success: response.data.status === 'success',
+        message: response.data.message,
+        token: response.data.data?.token,
+        user: user
+      };
+      
+      if (authResponse.success && authResponse.token) {
+        localStorage.setItem('mmartToken', authResponse.token);
+        localStorage.setItem('mmartUser', JSON.stringify(authResponse.user));
+      }
+      
+      return authResponse;
     } catch (error: any) {
       console.error('Login API error:', error);
       
@@ -157,7 +165,7 @@ const authService = {
   // Logout user
   logout: async (): Promise<void> => {
     try {
-      await api.post('/api/auth/logout');
+      await api.post('/logout');
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
@@ -169,7 +177,7 @@ const authService = {
   // Get current user profile
   getCurrentUser: async (): Promise<User | null> => {
     try {
-      const response = await api.get('/api/auth/user');
+      const response = await api.get('/auth/user');
       return response.data.user;
     } catch (error) {
       console.error('Get current user error:', error);
@@ -180,7 +188,7 @@ const authService = {
   // Update user profile
   updateProfile: async (userData: Partial<User>): Promise<User> => {
     try {
-      const response = await api.put('/api/auth/user', userData);
+      const response = await api.put('/auth/user', userData);
       
       if (response.data.success && response.data.user) {
         // Update user in storage
@@ -199,29 +207,117 @@ const authService = {
     return !!localStorage.getItem('mmartToken');
   },
 
-  // Get user from local storage
-  getUser: (): User | null => {
-    const userJSON = localStorage.getItem('mmartUser');
-    if (userJSON) {
-      try {
-        return JSON.parse(userJSON);
-      } catch (e) {
-        return null;
-      }
-    }
-    return null;
-  },
-
   // Save user to local storage
-  saveUser: (user: User): void => {
+  saveUser(user: User): void {
     localStorage.setItem('mmartUser', JSON.stringify(user));
   },
 
   // Check if user is admin
   isAdmin: (): boolean => {
-    const user = authService.getUser();
-    return !!user && user.role === 'admin';
-  }
+    try {
+      const userStr = localStorage.getItem('mmartUser');
+      if (!userStr) return false;
+      
+      const user = JSON.parse(userStr);
+      
+      // Check for different variations of admin role
+      const role = user?.role?.toLowerCase?.();
+      return role === 'admin';
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+      return false;
+    }
+  },
+  
+  // Get user from local storage
+  getUser: (): User | null => {
+    try {
+      const userStr = localStorage.getItem('mmartUser');
+      if (!userStr) return null;
+      
+      const user = JSON.parse(userStr);
+      
+      // Ensure user has a role property (default to 'user' if missing)
+      if (user && !user.role) {
+        user.role = 'user';
+      }
+      
+      return user;
+    } catch (error) {
+      console.error('Error parsing user from localStorage:', error);
+      return null;
+    }
+  },
+
+  // Verify email with code
+  verifyEmail: async (code: string): Promise<void> => {
+    return emailVerificationService.verifyEmail(code);
+  },
+  
+  // Send email verification code
+  sendVerificationCode: async (): Promise<void> => {
+    await emailVerificationService.sendVerificationCode();
+  },
+  
+  // Refresh user session
+  refreshSession: async (): Promise<boolean> => {
+    try {
+      // Get CSRF cookie first
+      await getCsrfCookie();
+      
+      // Get the current token
+      const token = localStorage.getItem('mmartToken');
+      if (!token) {
+        console.warn('No token found in localStorage, cannot refresh session');
+        return false;
+      }
+      
+      // Call the refresh endpoint
+      const response = await api.post('/auth/refresh');
+      
+      if (response.data && response.data.token) {
+        console.log('Session refreshed successfully, updating token');
+        
+        // Update token in localStorage
+        localStorage.setItem('mmartToken', response.data.token);
+        
+        // Update user data if returned
+        if (response.data.user) {
+          // Check if there's existing user data
+          const existingUser = localStorage.getItem('mmartUser');
+          const newUser = response.data.user;
+          
+          // If we have existing user data, preserve role information if not present in new data
+          if (existingUser) {
+            try {
+              const parsedExistingUser = JSON.parse(existingUser);
+              
+              // Ensure role information is preserved, especially for admins
+              if (parsedExistingUser.role === 'admin' && (!newUser.role || newUser.role !== 'admin')) {
+                console.log('Preserving admin role from existing user data');
+                newUser.role = 'admin';
+              }
+            } catch (parseError) {
+              console.error('Error parsing existing user data:', parseError);
+            }
+          }
+          
+          localStorage.setItem('mmartUser', JSON.stringify(newUser));
+        }
+        
+        // Update login timestamp
+        localStorage.setItem('mmartLoginTimestamp', new Date().getTime().toString());
+        
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Session refresh failed:', error);
+      return false;
+    }
+  },
+
 };
 
 export default authService;
