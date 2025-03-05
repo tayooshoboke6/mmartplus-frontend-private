@@ -21,8 +21,8 @@ const config = {
   
   // Feature flags - strictly enforced to be disabled in production
   features: {
-    // Mock data is only enabled in dev mode, and can be toggled with localStorage in dev only
-    useMockData: import.meta.env.DEV && (localStorage.getItem('useMockDataOnFailure') !== 'false'),
+    // Mock data is only enabled in dev mode if explicitly set to true in environment
+    useMockData: import.meta.env.DEV && (import.meta.env.VITE_USE_MOCK_DATA_ON_FAILURE === 'true'),
     
     // Social login can be enabled in any environment
     enableSocialLogin: true,
