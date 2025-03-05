@@ -254,7 +254,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title }) => {
           <MenuItem active={location.pathname.startsWith('/admin/promotions')}>
             <Link to="/admin/promotions">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                <path d="M2 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H2zm6 2.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm-6 0A.5.5 0 0 1 2.5 4h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm9 1a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm-9 0A.5.5 0 0 1 2.5 5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm9 1a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm-9 0A.5.5 0 0 1 2.5 6h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm9 1a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm-9 0A.5.5 0 0 1 2.5 7h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm9 1a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm-9 0A.5.5 0 0 1 2.5 8h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm6.5 2.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm-6.5 0a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5z"/>
+                <path d="M2 2a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H2zm6 2.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm8-6a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5zm0 2a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 0 1h-1a.5.5 0 0 1-.5-.5z"/>
               </svg>
               <MenuLabel>Promotions</MenuLabel>
             </Link>
@@ -263,9 +263,30 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title }) => {
           <MenuItem active={location.pathname.startsWith('/admin/vouchers')}>
             <Link to="/admin/vouchers">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                <path d="M8 1a2.5 2.5 0 0 1 2.5 2.5V4h-5v-.5A2.5 2.5 0 0 1 8 1zm3.5 3v-.5a3.5 3.5 0 1 0-7 0V4H1v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4h-3.5zM2 5h12v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5z"/>
+                <path d="M2 2h2v2H2V2Z"/>
+                <path d="M0 6h16v7a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6z"/>
+                <path d="M10 9H6a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2z"/>
               </svg>
               <MenuLabel>Vouchers</MenuLabel>
+            </Link>
+          </MenuItem>
+          
+          <MenuItem active={location.pathname.startsWith('/admin/voucher-management')}>
+            <Link to="/admin/voucher-management">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4zm2-1a1 1 0 0 0-1 1v1h14V4a1 1 0 0 0-1-1H2zm13 4H1v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7z"/>
+                <path d="M2 10h1v1H2v-1zm2 0h7v1H4v-1z"/>
+              </svg>
+              <MenuLabel>Voucher Management</MenuLabel>
+            </Link>
+          </MenuItem>
+          
+          <MenuItem active={location.pathname.startsWith('/admin/message-campaigns')}>
+            <Link to="/admin/message-campaigns">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v5H0V4zm11.5 1a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h1a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-1zM0 10.5A1.5 1.5 0 0 1 1.5 9h13A1.5 1.5 0 0 1 16 10.5v1A1.5 1.5 0 0 1 14.5 13h-13A1.5 1.5 0 0 1 0 11.5v-1zm1.5-.5a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h13a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-13z"/>
+              </svg>
+              <MenuLabel>Message Campaigns</MenuLabel>
             </Link>
           </MenuItem>
           

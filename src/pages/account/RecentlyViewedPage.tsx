@@ -7,12 +7,15 @@ import {
   FaShoppingCart, 
   FaHeart, 
   FaStar, 
-  FaFilter
+  FaFilter,
+  FaExclamationTriangle
 } from 'react-icons/fa';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import AccountSidebar from '../../components/account/AccountSidebar';
 import { formatCurrency } from '../../utils/formatCurrency';
+import recentlyViewedService, { RecentlyViewedProduct } from '../../services/recentlyViewedService';
+import { useCart } from '../../contexts/CartContext';
 
 // Types for recently viewed products
 interface ViewedProduct {
@@ -286,7 +289,30 @@ const Pagination = styled.div`
   margin-top: 20px;
 `;
 
-const PageButton = styled.button<{ active?: boolean }>`
+const PaginationButton = styled.button`
+  width: 60px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #ddd;
+  background-color: white;
+  color: #333;
+  border-radius: 4px;
+  margin: 0 5px;
+  cursor: pointer;
+  
+  &:hover {
+    background-color: #f5f5f5;
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const PageNumber = styled.button<{ active?: boolean }>`
   width: 36px;
   height: 36px;
   display: flex;
@@ -302,6 +328,13 @@ const PageButton = styled.button<{ active?: boolean }>`
   &:hover {
     background-color: ${props => props.active ? '#0055b3' : '#f5f5f5'};
   }
+`;
+
+const WishlistButton = styled(ActionButton)`
+  flex: 1;
+  background-color: white;
+  border-color: #ddd;
+  color: #333;
 `;
 
 const EmptyState = styled.div`
@@ -347,148 +380,48 @@ const ShopNowButton = styled(Link)`
 `;
 
 const RecentlyViewedPage: React.FC = () => {
-  const [viewedProducts, setViewedProducts] = useState<ViewedProduct[]>([]);
+  const [viewedProducts, setViewedProducts] = useState<RecentlyViewedProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 9;
+  const { addItem } = useCart();
+  const itemsPerPage = 6; // Show 6 items per page
   
   useEffect(() => {
-    // Simulate API call to fetch recently viewed products
-    setTimeout(() => {
-      setViewedProducts([
-        {
-          id: 1,
-          productId: 101,
-          name: 'Golden Penny Semovita - 1kg',
-          image: '/images/products/golden-penny-semovita.jpg',
-          price: 1200,
-          rating: 4.5,
-          category: 'Staples & Grains',
-          viewedAt: '2025-03-02T14:30:00',
-          inStock: true
-        },
-        {
-          id: 2,
-          productId: 102,
-          name: 'Dano Milk Powder - 400g',
-          image: '/images/products/dano-milk.jpg',
-          price: 1800,
-          rating: 4.2,
-          category: 'Cooking Essentials',
-          viewedAt: '2025-03-02T12:15:00',
-          inStock: true,
-          discount: 10
-        },
-        {
-          id: 3,
-          productId: 103,
-          name: 'Indomie Chicken Flavor - Pack of 40',
-          image: '/images/products/indomie-chicken.jpg',
-          price: 5500,
-          rating: 4.8,
-          category: 'Staples & Grains',
-          viewedAt: '2025-03-01T16:45:00',
-          inStock: false
-        },
-        {
-          id: 4,
-          productId: 104,
-          name: 'Devon King\'s Vegetable Oil - 5L',
-          image: '/images/products/devon-kings-oil.jpg',
-          price: 7500,
-          rating: 4.6,
-          category: 'Cooking Essentials',
-          viewedAt: '2025-03-01T10:20:00',
-          inStock: true
-        },
-        {
-          id: 5,
-          productId: 105,
-          name: 'Peak Milk Powder - 900g',
-          image: '/images/products/peak-milk.jpg',
-          price: 3500,
-          rating: 4.7,
-          category: 'Cooking Essentials',
-          viewedAt: '2025-02-28T18:10:00',
-          inStock: true,
-          discount: 15
-        },
-        {
-          id: 6,
-          productId: 106,
-          name: 'Knorr Chicken Cubes - Box of 50',
-          image: '/images/products/knorr-cubes.jpg',
-          price: 1800,
-          rating: 4.3,
-          category: 'Cooking Essentials',
-          viewedAt: '2025-02-28T15:30:00',
-          inStock: true
-        },
-        {
-          id: 7,
-          productId: 107,
-          name: 'Ariel Detergent Powder - 900g',
-          image: '/images/products/ariel-detergent.jpg',
-          price: 1500,
-          rating: 4.4,
-          category: 'Cleaning & Laundry',
-          viewedAt: '2025-02-27T11:45:00',
-          inStock: true
-        },
-        {
-          id: 8,
-          productId: 108,
-          name: 'Hypo Bleach - 1L',
-          image: '/images/products/hypo-bleach.jpg',
-          price: 950,
-          rating: 4.1,
-          category: 'Cleaning & Laundry',
-          viewedAt: '2025-02-27T09:20:00',
-          inStock: true
-        },
-        {
-          id: 9,
-          productId: 109,
-          name: 'Pampers Baby Dry - Pack of 50',
-          image: '/images/products/pampers.jpg',
-          price: 8500,
-          rating: 4.9,
-          category: 'Baby Food & Diapers',
-          viewedAt: '2025-02-26T13:15:00',
-          inStock: true,
-          discount: 5
-        },
-        {
-          id: 10,
-          productId: 110,
-          name: 'Pepsodent Toothpaste - 3 Pack',
-          image: '/images/products/pepsodent.jpg',
-          price: 1200,
-          rating: 4.0,
-          category: 'Toiletries & Personal Care',
-          viewedAt: '2025-02-26T08:40:00',
-          inStock: true
-        },
-        {
-          id: 11,
-          productId: 111,
-          name: 'Milo Chocolate Malt - 500g',
-          image: '/images/products/milo.jpg',
-          price: 2200,
-          rating: 4.7,
-          category: 'Beverages',
-          viewedAt: '2025-02-25T14:20:00',
-          inStock: true,
-          discount: 8
-        }
-      ]);
-      setLoading(false);
-    }, 1000);
+    const fetchRecentlyViewedProducts = async () => {
+      setLoading(true);
+      try {
+        const products = await recentlyViewedService.getRecentlyViewed();
+        setViewedProducts(products);
+      } catch (error) {
+        console.error('Error fetching recently viewed products:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchRecentlyViewedProducts();
   }, []);
   
-  const clearHistory = () => {
-    setViewedProducts([]);
+  const clearHistory = async () => {
+    try {
+      const success = await recentlyViewedService.clearRecentlyViewed();
+      if (success) {
+        setViewedProducts([]);
+      }
+    } catch (error) {
+      console.error('Error clearing recently viewed history:', error);
+    }
+  };
+  
+  const addToCart = (product: RecentlyViewedProduct) => {
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      quantity: 1
+    });
   };
   
   const formatViewTime = (dateString: string) => {
@@ -566,65 +499,84 @@ const RecentlyViewedPage: React.FC = () => {
                 </ToolsRow>
                 
                 <ProductGrid>
-                  {currentItems.map(product => {
-                    const originalPrice = product.discount 
-                      ? Math.round(product.price / (1 - product.discount / 100))
-                      : null;
-                      
-                    return (
-                      <ProductCard key={product.id}>
-                        <ProductImageContainer>
-                          <ProductImage to={`/product/${product.productId}`}>
-                            <img src={product.image} alt={product.name} />
-                          </ProductImage>
-                          <ViewDate>{formatViewTime(product.viewedAt)}</ViewDate>
-                          {product.discount && (
-                            <DiscountBadge>-{product.discount}%</DiscountBadge>
-                          )}
-                        </ProductImageContainer>
+                  {currentItems.map(product => (
+                    <ProductCard key={product.id}>
+                      <ProductImageContainer>
+                        <ProductImage to={`/product/${product.id}`}>
+                          <img src={product.image} alt={product.name} />
+                        </ProductImage>
                         
-                        <ProductInfo>
-                          <ProductCategory>{product.category}</ProductCategory>
-                          <ProductName to={`/product/${product.productId}`}>
-                            {product.name}
-                          </ProductName>
-                          <ProductRating>
-                            <FaStar />
-                            <span>{product.rating}</span>
-                          </ProductRating>
-                          <ProductPrice>
-                            {originalPrice && (
-                              <span>{formatCurrency(originalPrice)}</span>
-                            )}
-                            {formatCurrency(product.price)}
-                          </ProductPrice>
+                        <ViewDate>
+                          {formatViewTime(product.viewedAt)}
+                        </ViewDate>
+                        
+                        {product.discount && (
+                          <DiscountBadge>-{product.discount}%</DiscountBadge>
+                        )}
+                      </ProductImageContainer>
+                      
+                      <ProductInfo>
+                        <ProductCategory>{product.category}</ProductCategory>
+                        
+                        <ProductName to={`/product/${product.id}`}>
+                          {product.name}
+                        </ProductName>
+                        
+                        <ProductRating>
+                          {[...Array(5)].map((_, i) => (
+                            <FaStar 
+                              key={i}
+                              color={i < Math.floor(product.rating) ? '#ffc107' : '#e4e5e9'}
+                              size={14}
+                            />
+                          ))}
+                          <span>{product.rating}</span>
+                        </ProductRating>
+                        
+                        <ProductPrice>
+                          {formatCurrency(product.price)}
+                        </ProductPrice>
+                        
+                        <ProductActions>
+                          <AddToCartButton disabled={!product.inStock} onClick={() => addToCart(product)}>
+                            <FaShoppingCart size={14} style={{ marginRight: '5px' }} />
+                            {product.inStock ? 'Add to Cart' : 'Out of Stock'}
+                          </AddToCartButton>
                           
-                          <ProductActions>
-                            <AddToCartButton disabled={!product.inStock}>
-                              <FaShoppingCart size={14} style={{ marginRight: '5px' }} />
-                              {product.inStock ? 'Add to Cart' : 'Out of Stock'}
-                            </AddToCartButton>
-                            <ActionButton>
-                              <FaHeart size={14} />
-                            </ActionButton>
-                          </ProductActions>
-                        </ProductInfo>
-                      </ProductCard>
-                    );
-                  })}
+                          <WishlistButton>
+                            <FaHeart size={14} />
+                          </WishlistButton>
+                        </ProductActions>
+                      </ProductInfo>
+                    </ProductCard>
+                  ))}
                 </ProductGrid>
                 
                 {totalPages > 1 && (
                   <Pagination>
-                    {[...Array(totalPages)].map((_, index) => (
-                      <PageButton
-                        key={index + 1}
-                        active={index + 1 === currentPage}
-                        onClick={() => paginate(index + 1)}
+                    <PaginationButton 
+                      onClick={() => paginate(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      Prev
+                    </PaginationButton>
+                    
+                    {[...Array(totalPages)].map((_, i) => (
+                      <PageNumber 
+                        key={i}
+                        active={currentPage === i + 1}
+                        onClick={() => paginate(i + 1)}
                       >
-                        {index + 1}
-                      </PageButton>
+                        {i + 1}
+                      </PageNumber>
                     ))}
+                    
+                    <PaginationButton 
+                      onClick={() => paginate(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                    </PaginationButton>
                   </Pagination>
                 )}
               </>
@@ -635,10 +587,10 @@ const RecentlyViewedPage: React.FC = () => {
                 </EmptyIcon>
                 <EmptyTitle>No recently viewed products</EmptyTitle>
                 <EmptyText>
-                  Browse our products to see your viewing history here.
+                  Products you view will appear here so you can easily revisit them later.
                 </EmptyText>
                 <ShopNowButton to="/">
-                  Browse Products
+                  Start Shopping
                 </ShopNowButton>
               </EmptyState>
             )}

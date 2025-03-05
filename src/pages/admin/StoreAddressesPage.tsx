@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { Table, Button, Switch, Modal, Form, Input, Tabs, Space, Tooltip, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
-import AdminLayout from '../../components/admin/AdminLayout';
+import AdminLayout from '../../components/layouts/AdminLayout';
 import { StoreAddress, StoreAddressFormData, defaultOpeningHours } from '../../models/StoreAddress';
 import StoreAddressService from '../../services/StoreAddressService';
 import StoreAddressForm from '../../components/admin/StoreAddressForm';

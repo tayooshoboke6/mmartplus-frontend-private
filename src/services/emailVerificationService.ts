@@ -52,7 +52,7 @@ const emailVerificationService = {
   },
   
   // Verify the code that the user received via email (authenticated user)
-  verifyCode: async (code: string): Promise<VerificationResponse> => {
+  verifyEmail: async (code: string): Promise<VerificationResponse> => {
     try {
       const response = await api.post<VerificationResponse>('/email/verify', { code });
       return response.data;

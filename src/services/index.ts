@@ -4,6 +4,10 @@ export { default as categoryService } from './categoryService';
 export { default as productService } from './productService';
 export { default as VoucherService } from './VoucherService';
 export { default as AddressService } from './AddressService';
+export { default as wishlistService } from './wishlistService';
+export { default as recentlyViewedService } from './recentlyViewedService';
+export { default as inboxService } from './inboxService';
+export { default as adminMessageService } from './adminMessageService';
 
 // Re-export types
 export type { 

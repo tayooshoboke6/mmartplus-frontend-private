@@ -107,12 +107,29 @@ const authService = {
       
       console.log('Login response received:', response.data);
       
+      // Extract user data from response
+      const userData = response.data.data?.user;
+      
+      // Determine if user has admin role from Laravel's roles relationship
+      let isAdmin = false;
+      if (userData && userData.roles && Array.isArray(userData.roles)) {
+        isAdmin = userData.roles.some(role => role.name === 'admin');
+      }
+      
+      // Create user object with correct role
+      const user: User = {
+        ...userData,
+        role: isAdmin ? 'admin' : 'user' // Set role based on the roles array
+      };
+      
+      console.log('Processed user with role:', user);
+      
       // Map the Laravel response structure to our AuthResponse
       const authResponse: AuthResponse = {
         success: response.data.status === 'success',
         message: response.data.message,
         token: response.data.data?.token,
-        user: response.data.data?.user
+        user: user
       };
       
       if (authResponse.success && authResponse.token) {
@@ -148,7 +165,7 @@ const authService = {
   // Logout user
   logout: async (): Promise<void> => {
     try {
-      await api.post('/auth/logout');
+      await api.post('/logout');
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
@@ -197,19 +214,110 @@ const authService = {
 
   // Check if user is admin
   isAdmin: (): boolean => {
-    const user = JSON.parse(localStorage.getItem('mmartUser') || 'null');
-    return user && user.role === 'admin';
+    try {
+      const userStr = localStorage.getItem('mmartUser');
+      if (!userStr) return false;
+      
+      const user = JSON.parse(userStr);
+      
+      // Check for different variations of admin role
+      const role = user?.role?.toLowerCase?.();
+      return role === 'admin';
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+      return false;
+    }
   },
   
+  // Get user from local storage
+  getUser: (): User | null => {
+    try {
+      const userStr = localStorage.getItem('mmartUser');
+      if (!userStr) return null;
+      
+      const user = JSON.parse(userStr);
+      
+      // Ensure user has a role property (default to 'user' if missing)
+      if (user && !user.role) {
+        user.role = 'user';
+      }
+      
+      return user;
+    } catch (error) {
+      console.error('Error parsing user from localStorage:', error);
+      return null;
+    }
+  },
+
   // Verify email with code
   verifyEmail: async (code: string): Promise<void> => {
-    await emailVerificationService.verifyCode(code);
+    return emailVerificationService.verifyEmail(code);
   },
   
   // Send email verification code
   sendVerificationCode: async (): Promise<void> => {
     await emailVerificationService.sendVerificationCode();
   },
+  
+  // Refresh user session
+  refreshSession: async (): Promise<boolean> => {
+    try {
+      // Get CSRF cookie first
+      await getCsrfCookie();
+      
+      // Get the current token
+      const token = localStorage.getItem('mmartToken');
+      if (!token) {
+        console.warn('No token found in localStorage, cannot refresh session');
+        return false;
+      }
+      
+      // Call the refresh endpoint
+      const response = await api.post('/auth/refresh');
+      
+      if (response.data && response.data.token) {
+        console.log('Session refreshed successfully, updating token');
+        
+        // Update token in localStorage
+        localStorage.setItem('mmartToken', response.data.token);
+        
+        // Update user data if returned
+        if (response.data.user) {
+          // Check if there's existing user data
+          const existingUser = localStorage.getItem('mmartUser');
+          const newUser = response.data.user;
+          
+          // If we have existing user data, preserve role information if not present in new data
+          if (existingUser) {
+            try {
+              const parsedExistingUser = JSON.parse(existingUser);
+              
+              // Ensure role information is preserved, especially for admins
+              if (parsedExistingUser.role === 'admin' && (!newUser.role || newUser.role !== 'admin')) {
+                console.log('Preserving admin role from existing user data');
+                newUser.role = 'admin';
+              }
+            } catch (parseError) {
+              console.error('Error parsing existing user data:', parseError);
+            }
+          }
+          
+          localStorage.setItem('mmartUser', JSON.stringify(newUser));
+        }
+        
+        // Update login timestamp
+        localStorage.setItem('mmartLoginTimestamp', new Date().getTime().toString());
+        
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Session refresh failed:', error);
+      return false;
+    }
+  },
+
 };
 
 export default authService;

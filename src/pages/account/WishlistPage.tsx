@@ -13,6 +13,8 @@ import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import AccountSidebar from '../../components/account/AccountSidebar';
 import { formatCurrency } from '../../utils/formatCurrency';
+import wishlistService, { WishlistItem } from '../../services/wishlistService';
+import { useCart } from '../../contexts/CartContext';
 
 // Types for wishlist items
 interface WishlistItem {
@@ -302,62 +304,49 @@ const ShopNowButton = styled(Link)`
 const WishlistPage: React.FC = () => {
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const { addItem } = useCart();
   
   useEffect(() => {
-    // Simulate API call to fetch wishlist items
-    setTimeout(() => {
-      setWishlistItems([
-        {
-          id: 1,
-          productId: 101,
-          name: 'Golden Penny Semovita - 1kg',
-          image: '/images/products/golden-penny-semovita.jpg',
-          price: 1200,
-          rating: 4.5,
-          inStock: true,
-          dateAdded: '2025-02-15'
-        },
-        {
-          id: 2,
-          productId: 102,
-          name: 'Dano Milk Powder - 400g',
-          image: '/images/products/dano-milk.jpg',
-          price: 1800,
-          rating: 4.2,
-          inStock: true,
-          dateAdded: '2025-02-18'
-        },
-        {
-          id: 3,
-          productId: 103,
-          name: 'Indomie Chicken Flavor - Pack of 40',
-          image: '/images/products/indomie-chicken.jpg',
-          price: 5500,
-          rating: 4.8,
-          inStock: false,
-          dateAdded: '2025-02-20'
-        },
-        {
-          id: 4,
-          productId: 104,
-          name: 'Devon King\'s Vegetable Oil - 5L',
-          image: '/images/products/devon-kings-oil.jpg',
-          price: 7500,
-          rating: 4.6,
-          inStock: true,
-          dateAdded: '2025-03-01'
-        }
-      ]);
+    const fetchWishlistItems = async () => {
+      setLoading(true);
+      const items = await wishlistService.getWishlistItems();
+      setWishlistItems(items);
       setLoading(false);
-    }, 1000);
+    };
+    
+    fetchWishlistItems();
   }, []);
   
-  const removeFromWishlist = (id: number) => {
-    setWishlistItems(wishlistItems.filter(item => item.id !== id));
+  const removeFromWishlist = async (id: number) => {
+    const success = await wishlistService.removeFromWishlist(id);
+    if (success) {
+      setWishlistItems(wishlistItems.filter(item => item.id !== id));
+    }
   };
   
-  const clearWishlist = () => {
-    setWishlistItems([]);
+  const clearWishlist = async () => {
+    const success = await wishlistService.clearWishlist();
+    if (success) {
+      setWishlistItems([]);
+    }
+  };
+  
+  const addToCart = (item: WishlistItem) => {
+    addItem({
+      id: item.productId,
+      name: item.name,
+      price: item.price,
+      image: item.image,
+      quantity: 1
+    });
+  };
+  
+  const addAllToCart = () => {
+    wishlistItems.forEach(item => {
+      if (item.inStock) {
+        addToCart(item);
+      }
+    });
   };
   
   const formatDate = (dateString: string) => {
@@ -399,7 +388,7 @@ const WishlistPage: React.FC = () => {
                       <FaTrash size={14} />
                       Clear Wishlist
                     </ActionButton>
-                    <AddAllButton style={{ marginLeft: '10px' }}>
+                    <AddAllButton onClick={addAllToCart} style={{ marginLeft: '10px' }}>
                       <FaShoppingCart size={14} />
                       Add All to Cart
                     </AddAllButton>
@@ -452,6 +441,7 @@ const WishlistPage: React.FC = () => {
                             <AddToCartButton 
                               disabled={!item.inStock}
                               title={item.inStock ? 'Add to Cart' : 'Out of Stock'}
+                              onClick={() => item.inStock && addToCart(item)}
                             >
                               <FaShoppingCart size={14} />
                             </AddToCartButton>

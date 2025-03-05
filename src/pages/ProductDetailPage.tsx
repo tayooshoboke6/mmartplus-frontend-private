@@ -7,6 +7,7 @@ import Footer from '../components/layout/Footer';
 import { Text, Button, FlexBox } from '../styles/GlobalComponents';
 import { useCart } from '../contexts/CartContext';
 import { formatCurrency } from '../utils/formatCurrency';
+import recentlyViewedService from '../services/recentlyViewedService';
 
 // Styled Components
 const PageContainer = styled.div`
@@ -557,7 +558,7 @@ const SizeButton = styled.button<{ selected?: boolean }>`
 `;
 
 const ProductDetailPage = () => {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const { addToCart, buyNow, cartItems, updateQuantity, removeFromCart } = useCart();
   const navigate = useNavigate();
   const [_, setSelectedImage] = useState(0);
@@ -777,6 +778,18 @@ const ProductDetailPage = () => {
 
     return stars;
   };
+
+  // Track product view
+  useEffect(() => {
+    const trackProductView = async () => {
+      try {
+        await recentlyViewedService.addToRecentlyViewed(product);
+      } catch (error) {
+        console.error('Error tracking product view:', error);
+      }
+    };
+    trackProductView();
+  }, [product]);
 
   return (
     <PageContainer>

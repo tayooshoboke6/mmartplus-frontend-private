@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import AdminLayout from '../../components/admin/AdminLayout';
+import AdminLayout from '../../components/layouts/AdminLayout';
 import { Text, Button } from '../../styles/GlobalComponents';
 import { formatCurrency } from '../../utils/formatCurrency';
 import orderService, { OrderSummary, OrderFilterOptions, OrderStatus } from '../../services/orderService';
 import { toast } from 'react-toastify';
+import { Modal, Select as AntSelect, Spin, Tooltip } from 'antd';
+import { CheckCircleOutlined, SyncOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 
 const PageContainer = styled.div`
   display: flex;
@@ -82,6 +84,7 @@ const StatusBadge = styled.span<{ status: string }>`
   border-radius: 20px;
   font-size: 12px;
   font-weight: 500;
+  cursor: pointer;
   
   ${props => {
     switch(props.status) {
@@ -158,6 +161,10 @@ function OrdersPage() {
   const [selectedStatus, setSelectedStatus] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<OrderSummary | null>(null);
+  const [newStatus, setNewStatus] = useState<OrderStatus | ''>('');
+  const [updateLoading, setUpdateLoading] = useState(false);
 
   useEffect(() => {
     fetchOrders();
@@ -206,6 +213,39 @@ function OrdersPage() {
     setFilters({ ...filters, page });
   };
 
+  const openStatusModal = (order: OrderSummary) => {
+    setSelectedOrder(order);
+    setNewStatus(order.status as OrderStatus);
+    setStatusModalVisible(true);
+  };
+
+  const handleStatusUpdate = async () => {
+    if (!selectedOrder || !newStatus) return;
+    
+    setUpdateLoading(true);
+    try {
+      const result = await orderService.updateOrderStatus(selectedOrder.id, newStatus as OrderStatus);
+      if (result.success) {
+        toast.success(result.message || 'Order status updated successfully');
+        setStatusModalVisible(false);
+        
+        // Update the order in the list with the new status
+        setOrders(orders.map(order => 
+          order.id === selectedOrder.id 
+            ? { ...order, status: newStatus as OrderStatus } 
+            : order
+        ));
+      } else {
+        toast.error(result.message || 'Failed to update order status');
+      }
+    } catch (error) {
+      console.error('Error updating order status:', error);
+      toast.error('Failed to update order status. Please try again.');
+    } finally {
+      setUpdateLoading(false);
+    }
+  };
+
   const totalPages = Math.ceil(totalCount / (filters.limit || 10));
 
   return (
@@ -231,6 +271,7 @@ function OrdersPage() {
             <option value="shipped">Shipped</option>
             <option value="delivered">Delivered</option>
             <option value="cancelled">Cancelled</option>
+            <option value="completed">Completed</option>
           </FilterSelect>
 
           <DateInput
@@ -249,7 +290,9 @@ function OrdersPage() {
         </FiltersContainer>
 
         {loading ? (
-          <div>Loading orders...</div>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
+            <Spin size="large" tip="Loading orders..." />
+          </div>
         ) : (
           <>
             <OrdersTable>
@@ -265,23 +308,38 @@ function OrdersPage() {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => (
-                  <tr key={order.id}>
-                    <td>{order.order_number}</td>
-                    <td>{order.customer_name}</td>
-                    <td>{new Date(order.created_at).toLocaleDateString()}</td>
-                    <td>{formatCurrency(order.total)}</td>
-                    <td>
-                      <StatusBadge status={order.status}>{order.status}</StatusBadge>
-                    </td>
-                    <td>{order.items_count} items</td>
-                    <td>
-                      <ActionButton onClick={() => window.location.href = `/admin/orders/${order.id}`}>
-                        View Details
-                      </ActionButton>
+                {orders.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} style={{ textAlign: 'center', padding: '20px' }}>
+                      No orders found
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  orders.map((order) => (
+                    <tr key={order.id}>
+                      <td>{order.order_number}</td>
+                      <td>{order.customer_name}</td>
+                      <td>{new Date(order.created_at).toLocaleDateString()}</td>
+                      <td>{formatCurrency(order.total)}</td>
+                      <td>
+                        <Tooltip title="Click to change status">
+                          <StatusBadge 
+                            status={order.status} 
+                            onClick={() => openStatusModal(order)}
+                          >
+                            {order.status}
+                          </StatusBadge>
+                        </Tooltip>
+                      </td>
+                      <td>{order.items_count} items</td>
+                      <td>
+                        <ActionButton onClick={() => window.location.href = `/admin/orders/${order.id}`}>
+                          View Details
+                        </ActionButton>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </OrdersTable>
 
@@ -293,15 +351,29 @@ function OrdersPage() {
                 &lt;
               </PageButton>
               
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <PageButton
-                  key={page}
-                  active={page === filters.page}
-                  onClick={() => handlePageChange(page)}
-                >
-                  {page}
-                </PageButton>
-              ))}
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                // Show first page, last page, and pages around current page
+                let pageNum;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (filters.page! <= 3) {
+                  pageNum = i + 1;
+                } else if (filters.page! >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = filters.page! - 2 + i;
+                }
+                
+                return (
+                  <PageButton
+                    key={pageNum}
+                    active={pageNum === filters.page}
+                    onClick={() => handlePageChange(pageNum)}
+                  >
+                    {pageNum}
+                  </PageButton>
+                );
+              })}
               
               <PageButton
                 onClick={() => handlePageChange(filters.page! + 1)}
@@ -313,6 +385,55 @@ function OrdersPage() {
           </>
         )}
       </PageContainer>
+
+      {/* Status Update Modal */}
+      <Modal
+        title="Update Order Status"
+        visible={statusModalVisible}
+        onCancel={() => setStatusModalVisible(false)}
+        footer={[
+          <Button key="cancel" onClick={() => setStatusModalVisible(false)}>
+            Cancel
+          </Button>,
+          <Button 
+            key="submit" 
+            type="submit" 
+            onClick={handleStatusUpdate}
+            disabled={updateLoading}
+          >
+            {updateLoading ? <SyncOutlined spin /> : <CheckCircleOutlined />} Update Status
+          </Button>
+        ]}
+      >
+        <div style={{ padding: '10px 0' }}>
+          <p>Order: <strong>{selectedOrder?.order_number}</strong></p>
+          <p>Current Status: <StatusBadge status={selectedOrder?.status || ''}>{selectedOrder?.status}</StatusBadge></p>
+          
+          <div style={{ marginTop: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '8px' }}>New Status:</label>
+            <AntSelect
+              style={{ width: '100%' }}
+              value={newStatus}
+              onChange={(value) => setNewStatus(value as OrderStatus)}
+              placeholder="Select new status"
+            >
+              <AntSelect.Option value="pending">Pending</AntSelect.Option>
+              <AntSelect.Option value="processing">Processing</AntSelect.Option>
+              <AntSelect.Option value="shipped">Shipped</AntSelect.Option>
+              <AntSelect.Option value="delivered">Delivered</AntSelect.Option>
+              <AntSelect.Option value="completed">Completed</AntSelect.Option>
+              <AntSelect.Option value="cancelled">Cancelled</AntSelect.Option>
+            </AntSelect>
+          </div>
+          
+          {newStatus === 'cancelled' && (
+            <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#fff8e8', borderRadius: '4px' }}>
+              <ExclamationCircleOutlined style={{ color: '#faad14', marginRight: '8px' }} />
+              Warning: Cancelling an order cannot be undone and may affect inventory.
+            </div>
+          )}
+        </div>
+      </Modal>
     </AdminLayout>
   );
 }

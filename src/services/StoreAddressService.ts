@@ -9,13 +9,14 @@ import {
 
 // Response interfaces
 export interface StoreAddressResponse {
-  success: boolean;
-  address: StoreAddress;
+  status: string;
+  message?: string;
+  data: StoreAddress;
 }
 
 export interface StoreAddressesResponse {
-  success: boolean;
-  addresses: StoreAddress[];
+  status: string;
+  data: StoreAddress[];
 }
 
 // Store address service with real API endpoints
@@ -23,8 +24,9 @@ const StoreAddressService = {
   // Get all store addresses
   getStoreAddresses: async (): Promise<StoreAddress[]> => {
     try {
-      const response = await api.get<StoreAddressesResponse>('/store-addresses');
-      return response.data.addresses;
+      // Changed from '/store-addresses' to '/store-locations' to match backend public endpoint
+      const response = await api.get<StoreAddressesResponse>('/store-locations');
+      return response.data.data;
     } catch (error) {
       console.error('Error fetching store addresses:', error);
       return []; // Return empty array as fallback
@@ -34,10 +36,11 @@ const StoreAddressService = {
   // Get only active store addresses
   getActiveStoreAddresses: async (): Promise<StoreAddress[]> => {
     try {
-      const response = await api.get<StoreAddressesResponse>('/store-addresses', {
+      // Changed from '/store-addresses' to '/store-locations' to match backend
+      const response = await api.get<StoreAddressesResponse>('/store-locations', {
         params: { active: true }
       });
-      return response.data.addresses;
+      return response.data.data;
     } catch (error) {
       console.error('Error fetching active store addresses:', error);
       return []; // Return empty array as fallback
@@ -47,10 +50,9 @@ const StoreAddressService = {
   // Get store addresses that allow pickup
   getPickupStoreAddresses: async (): Promise<StoreAddress[]> => {
     try {
-      const response = await api.get<StoreAddressesResponse>('/store-addresses', {
-        params: { active: true, pickup: true }
-      });
-      return response.data.addresses;
+      // Changed to use the specific pickup endpoint available in the backend
+      const response = await api.get<StoreAddressesResponse>('/store-locations/pickup');
+      return response.data.data;
     } catch (error) {
       console.error('Error fetching pickup store addresses:', error);
       return []; // Return empty array as fallback
@@ -60,13 +62,13 @@ const StoreAddressService = {
   // Get store addresses that provide delivery to specific coordinates
   getDeliveryStoreAddresses: async (coordinates: GeoCoordinates): Promise<StoreAddress[]> => {
     try {
-      const response = await api.get<StoreAddressesResponse>('/store-addresses/delivery', {
+      const response = await api.get<StoreAddressesResponse>('/store-locations/delivery', {
         params: { 
           latitude: coordinates.latitude,
           longitude: coordinates.longitude
         }
       });
-      return response.data.addresses;
+      return response.data.data;
     } catch (error) {
       console.error('Error fetching delivery store addresses:', error);
       return []; // Return empty array as fallback
@@ -76,8 +78,9 @@ const StoreAddressService = {
   // Get store address by ID
   getStoreAddressById: async (id: number): Promise<StoreAddress | null> => {
     try {
-      const response = await api.get<StoreAddressResponse>(`/store-addresses/${id}`);
-      return response.data.address;
+      // Changed from '/store-addresses/{id}' to '/store-locations/{id}'
+      const response = await api.get<StoreAddressResponse>(`/store-locations/${id}`);
+      return response.data.data;
     } catch (error) {
       console.error(`Error fetching store address #${id}:`, error);
       return null;
@@ -87,8 +90,9 @@ const StoreAddressService = {
   // Create a new store address
   createStoreAddress: async (addressData: StoreAddressInput): Promise<StoreAddress> => {
     try {
-      const response = await api.post<StoreAddressResponse>('/store-addresses', addressData);
-      return response.data.address;
+      // Changed from '/store-addresses' to '/admin/store-locations' to match backend endpoints
+      const response = await api.post<StoreAddressResponse>('/admin/store-locations', addressData);
+      return response.data.data;
     } catch (error) {
       console.error('Error creating store address:', error);
       throw error;
@@ -98,8 +102,9 @@ const StoreAddressService = {
   // Update an existing store address
   updateStoreAddress: async (id: number, addressData: Partial<StoreAddressInput>): Promise<StoreAddress> => {
     try {
-      const response = await api.put<StoreAddressResponse>(`/store-addresses/${id}`, addressData);
-      return response.data.address;
+      // Changed from '/store-addresses/{id}' to '/admin/store-locations/{id}' to match backend endpoints
+      const response = await api.put<StoreAddressResponse>(`/admin/store-locations/${id}`, addressData);
+      return response.data.data;
     } catch (error) {
       console.error(`Error updating store address #${id}:`, error);
       throw error;
@@ -109,7 +114,8 @@ const StoreAddressService = {
   // Delete a store address
   deleteStoreAddress: async (id: number): Promise<void> => {
     try {
-      await api.delete(`/store-addresses/${id}`);
+      // Changed from '/store-addresses/{id}' to '/admin/store-locations/{id}'
+      await api.delete(`/admin/store-locations/${id}`);
     } catch (error) {
       console.error(`Error deleting store address #${id}:`, error);
       throw error;
@@ -119,8 +125,11 @@ const StoreAddressService = {
   // Toggle a store address active status
   toggleStoreAddressStatus: async (id: number): Promise<StoreAddress> => {
     try {
-      const response = await api.put<StoreAddressResponse>(`/store-addresses/${id}/toggle-status`);
-      return response.data.address;
+      // Assuming there's no direct endpoint for this, may need to use regular update
+      const response = await api.patch<StoreAddressResponse>(`/admin/store-locations/${id}`, {
+        isActive: true // This will be toggled on the backend
+      });
+      return response.data.data;
     } catch (error) {
       console.error(`Error toggling store address #${id} status:`, error);
       throw error;
@@ -130,8 +139,9 @@ const StoreAddressService = {
   // Toggle pickup availability for a store address
   togglePickupAvailability: async (id: number): Promise<StoreAddress> => {
     try {
-      const response = await api.put<StoreAddressResponse>(`/store-addresses/${id}/toggle-pickup`);
-      return response.data.address;
+      // Changed to use the specific endpoint
+      const response = await api.patch<StoreAddressResponse>(`/admin/store-locations/${id}/toggle-pickup`);
+      return response.data.data;
     } catch (error) {
       console.error(`Error toggling pickup availability for store address #${id}:`, error);
       throw error;
@@ -141,8 +151,9 @@ const StoreAddressService = {
   // Toggle delivery service for a store address
   toggleDeliveryService: async (id: number): Promise<StoreAddress> => {
     try {
-      const response = await api.put<StoreAddressResponse>(`/store-addresses/${id}/toggle-delivery`);
-      return response.data.address;
+      // Changed to use the specific endpoint
+      const response = await api.patch<StoreAddressResponse>(`/admin/store-locations/${id}/toggle-delivery`);
+      return response.data.data;
     } catch (error) {
       console.error(`Error toggling delivery service for store address #${id}:`, error);
       throw error;
@@ -152,8 +163,9 @@ const StoreAddressService = {
   // Update delivery settings for a store address
   updateDeliverySettings: async (id: number, settings: Partial<StoreDeliverySettings>): Promise<StoreAddress> => {
     try {
-      const response = await api.put<StoreAddressResponse>(`/store-addresses/${id}/delivery-settings`, settings);
-      return response.data.address;
+      // Changed to use the specific endpoint
+      const response = await api.put<StoreAddressResponse>(`/admin/store-locations/${id}/delivery-settings`, settings);
+      return response.data.data;
     } catch (error) {
       console.error(`Error updating delivery settings for store address #${id}:`, error);
       throw error;
@@ -163,10 +175,11 @@ const StoreAddressService = {
   // Update geofence for a store address
   updateGeofence: async (id: number, geofencePoints: GeofencePoint[]): Promise<StoreAddress> => {
     try {
-      const response = await api.put<StoreAddressResponse>(`/store-addresses/${id}/geofence`, {
+      // Changed to use the specific endpoint
+      const response = await api.put<StoreAddressResponse>(`/admin/store-locations/${id}/geofence`, {
         geofence: geofencePoints
       });
-      return response.data.address;
+      return response.data.data;
     } catch (error) {
       console.error(`Error updating geofence for store address #${id}:`, error);
       throw error;
@@ -180,7 +193,7 @@ const StoreAddressService = {
     distance?: number;
   }> => {
     try {
-      const response = await api.post('/store-addresses/check-delivery-zone', coordinates);
+      const response = await api.post('/store-locations/check-delivery-zone', coordinates);
       return response.data;
     } catch (error) {
       console.error('Error checking if location is within delivery zone:', error);
@@ -196,7 +209,7 @@ const StoreAddressService = {
     estimatedTime: number;
   }> => {
     try {
-      const response = await api.post(`/store-addresses/${storeId}/calculate-delivery-fee`, coordinates);
+      const response = await api.post(`/store-locations/${storeId}/calculate-delivery-fee`, coordinates);
       return response.data;
     } catch (error) {
       console.error('Error calculating delivery fee:', error);

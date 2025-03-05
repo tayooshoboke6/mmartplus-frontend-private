@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { Link } from 'react-router-dom';
 import TouchSlider from '../common/TouchSlider';
 import { Banner } from '../../models/Promotion';
-import { getActiveBanners } from '../../services/PromotionService';
+import { PromotionService } from '../../services/PromotionService';
 
 const BannerContent = styled.div`
   padding: 30px;
@@ -148,7 +148,7 @@ const HeroBanner: React.FC = () => {
     // Fetch active banners from the service
     const fetchBanners = async () => {
       try {
-        const activeBanners = await getActiveBanners();
+        const activeBanners = await PromotionService.getActiveBanners();
         if (activeBanners && activeBanners.length > 0) {
           setBanners(activeBanners);
         }

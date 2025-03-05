@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import AdminLayout from '../../components/admin/AdminLayout';
+import AdminLayout from '../../components/layouts/AdminLayout';
 import { Button, Table, Modal, Form, Input, DatePicker, Select, Switch, message, Tabs } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SendOutlined } from '@ant-design/icons';
 import moment from 'moment';
@@ -86,8 +86,24 @@ const VouchersPage: React.FC = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const vouchersData = await VoucherService.getVouchers();
-        const customersData = await VoucherService.getCustomers();
+        // Try to get vouchers from API
+        let vouchersData: Voucher[] = [];
+        try {
+          vouchersData = await VoucherService.getVouchers();
+        } catch (error) {
+          console.error('Error fetching vouchers:', error);
+          vouchersData = initialVouchers;
+        }
+        
+        // Try to get customers from API
+        let customersData: Customer[] = [];
+        try {
+          customersData = await VoucherService.getCustomers();
+        } catch (error) {
+          console.error('Error fetching customers:', error);
+          customersData = customers;
+        }
+        
         setVouchers(vouchersData);
         setCustomerList(customersData);
       } catch (error) {
@@ -100,7 +116,7 @@ const VouchersPage: React.FC = () => {
         setLoading(false);
       }
     };
-    
+
     fetchData();
   }, []);
 
@@ -251,14 +267,14 @@ const VouchersPage: React.FC = () => {
       title: 'Discount',
       key: 'discount',
       render: (record: any) => (
-        <span>{record.discount}{record.discountType === 'percentage' ? '%' : ' RM'}</span>
+        <span>{record.discount}{record.discountType === 'percentage' ? '%' : ' ₦'}</span>
       ),
     },
     {
       title: 'Min Purchase',
       dataIndex: 'minPurchase',
       key: 'minPurchase',
-      render: (value: number) => `RM ${value}`,
+      render: (value: number) => `₦ ${value}`,
     },
     {
       title: 'Valid Period',
@@ -396,7 +412,7 @@ const VouchersPage: React.FC = () => {
             >
               <Select>
                 <Option value="percentage">Percentage (%)</Option>
-                <Option value="fixed">Fixed Amount (RM)</Option>
+                <Option value="fixed">Fixed Amount (₦)</Option>
               </Select>
             </Form.Item>
           </div>
@@ -404,7 +420,7 @@ const VouchersPage: React.FC = () => {
           <div style={{ display: 'flex', gap: '16px' }}>
             <Form.Item
               name="minPurchase"
-              label="Minimum Purchase (RM)"
+              label="Minimum Purchase (₦)"
               rules={[{ required: true, message: 'Please enter minimum purchase amount' }]}
               style={{ flex: 1 }}
             >
@@ -413,7 +429,7 @@ const VouchersPage: React.FC = () => {
 
             <Form.Item
               name="maxDiscount"
-              label="Maximum Discount (RM)"
+              label="Maximum Discount (₦)"
               style={{ flex: 1 }}
             >
               <Input type="number" min={0} placeholder="Optional" />

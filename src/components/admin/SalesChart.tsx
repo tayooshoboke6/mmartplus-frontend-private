@@ -1,14 +1,16 @@
 import React from 'react';
 import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
+  ResponsiveContainer,
+  Legend,
 } from 'recharts';
 import styled from 'styled-components';
+import { format, parseISO } from 'date-fns';
 
 interface SalesData {
   date: string;
@@ -21,34 +23,32 @@ interface SalesChartProps {
 
 const ChartContainer = styled.div`
   width: 100%;
-  height: 300px;
-  background: white;
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  height: 360px;
+  
+  @media (max-width: 768px) {
+    height: 280px;
+  }
 `;
 
-const ChartTitle = styled.h3`
-  margin: 0 0 20px 0;
-  color: #333;
-  font-size: 16px;
-  font-weight: 500;
+const NoDataMessage = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #64748b;
+  font-size: 14px;
 `;
 
+// Custom tooltip component for the chart
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div
-        style={{
-          background: 'white',
-          padding: '8px 12px',
-          border: '1px solid #ddd',
-          borderRadius: '4px',
-        }}
-      >
-        <p style={{ margin: 0 }}>{`Date: ${label}`}</p>
-        <p style={{ margin: '5px 0 0 0', color: '#0071BC' }}>
-          {`Amount: ₦${payload[0].value.toLocaleString()}`}
+      <div className="bg-white p-4 shadow-md rounded-md border border-gray-200">
+        <p className="text-sm font-medium text-gray-600">
+          {format(parseISO(label), 'MMM d, yyyy')}
+        </p>
+        <p className="text-base font-semibold text-blue-600">
+          ₦{payload[0].value.toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
         </p>
       </div>
     );
@@ -57,42 +57,63 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 const SalesChart: React.FC<SalesChartProps> = ({ data }) => {
+  // Format data for the chart
+  const chartData = data?.map(item => ({
+    date: item.date,
+    sales: item.amount
+  })) || [];
+  
+  if (!data || data.length === 0) {
+    return (
+      <ChartContainer>
+        <NoDataMessage>No sales data available for the selected period</NoDataMessage>
+      </ChartContainer>
+    );
+  }
+  
+  // Format the date for display
+  const formatDate = (dateStr: string) => {
+    try {
+      return format(parseISO(dateStr), 'MMM d');
+    } catch (e) {
+      return dateStr;
+    }
+  };
+  
   return (
     <ChartContainer>
-      <ChartTitle>Sales Overview</ChartTitle>
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart
-          data={data}
-          margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+        <LineChart
+          data={chartData}
+          margin={{
+            top: 5,
+            right: 30,
+            left: 20,
+            bottom: 5,
+          }}
         >
-          <defs>
-            <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#0071BC" stopOpacity={0.1}/>
-              <stop offset="95%" stopColor="#0071BC" stopOpacity={0}/>
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} />
-          <XAxis
-            dataKey="date"
-            tick={{ fontSize: 12 }}
-            tickLine={false}
-            axisLine={false}
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+          <XAxis 
+            dataKey="date" 
+            tickFormatter={formatDate}
+            tick={{ fill: '#64748b', fontSize: 12 }}
           />
-          <YAxis
-            tick={{ fontSize: 12 }}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(value) => `₦${value.toLocaleString()}`}
+          <YAxis 
+            tickFormatter={(value) => `₦${value.toLocaleString('en-NG', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`}
+            tick={{ fill: '#64748b', fontSize: 12 }}
           />
           <Tooltip content={<CustomTooltip />} />
-          <Area
+          <Legend />
+          <Line
             type="monotone"
-            dataKey="amount"
-            stroke="#0071BC"
-            fillOpacity={1}
-            fill="url(#colorAmount)"
+            dataKey="sales"
+            stroke="#3b82f6"
+            strokeWidth={2}
+            activeDot={{ r: 8 }}
+            dot={{ strokeWidth: 2 }}
+            name="Sales"
           />
-        </AreaChart>
+        </LineChart>
       </ResponsiveContainer>
     </ChartContainer>
   );

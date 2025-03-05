@@ -5,6 +5,7 @@ import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import AccountSidebar from '../../components/account/AccountSidebar';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { getVouchers } from '../../services/voucherService';
 
 // Types for vouchers
 interface Voucher {
@@ -302,46 +303,19 @@ const VouchersPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    // Simulate API call to fetch vouchers
-    setTimeout(() => {
-      setVouchers([
-        {
-          id: 'v1',
-          code: 'WELCOME25',
-          type: 'percentage',
-          value: 25,
-          minSpend: 5000,
-          expiryDate: '2025-06-30',
-          isActive: true,
-          usageCount: 0,
-          maxUsage: 1
-        },
-        {
-          id: 'v2',
-          code: 'MMART1000',
-          type: 'fixed',
-          value: 1000,
-          minSpend: 10000,
-          expiryDate: '2025-04-15',
-          isActive: true,
-          usageCount: 0,
-          maxUsage: 2,
-          categories: ['Food & Groceries', 'Household Essentials']
-        },
-        {
-          id: 'v3',
-          code: 'FLASHSALE',
-          type: 'percentage',
-          value: 15,
-          minSpend: 3000,
-          expiryDate: '2025-02-01',
-          isActive: false,
-          usageCount: 1,
-          maxUsage: 1
-        }
-      ]);
-      setLoading(false);
-    }, 1000);
+    const fetchVouchers = async () => {
+      try {
+        setLoading(true);
+        const fetchedVouchers = await getVouchers();
+        setVouchers(fetchedVouchers);
+      } catch (err) {
+        console.error('Error fetching vouchers:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchVouchers();
   }, []);
   
   const copyToClipboard = (code: string) => {

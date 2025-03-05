@@ -4,7 +4,8 @@ export interface GeoCoordinate {
 }
 
 export interface GeofencePolygon {
-  coordinates: GeoCoordinate[];
+  type: 'Polygon';
+  coordinates: number[][][]; // GeoJSON format: [[[lng, lat], [lng, lat], ...]]
 }
 
 export interface OrderValueAdjustment {

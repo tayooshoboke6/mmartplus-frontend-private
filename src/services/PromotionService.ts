@@ -4,20 +4,26 @@ import { Banner, NotificationBar } from '../models/Promotion';
 // Response interfaces
 export interface BannerResponse {
   success: boolean;
-  banner: Banner;
+  data: {
+    banner: Banner;
+  };
 }
 
 export interface BannersResponse {
   success: boolean;
-  banners: Banner[];
+  data: {
+    banners: Banner[];
+  };
 }
 
 export interface NotificationBarResponse {
   success: boolean;
-  notificationBar: NotificationBar;
+  data: {
+    notificationBar: NotificationBar;
+  };
 }
 
-// Initial banners data
+// Example dummy data for development/testing
 const initialBanners: Banner[] = [
   {
     id: 1,
@@ -32,125 +38,141 @@ const initialBanners: Banner[] = [
   },
   {
     id: 2,
-    active: true,
-    label: 'Flash Sale',
-    title: 'FRESH PRODUCE DEALS',
-    description: 'Limited time offer on fresh fruits and vegetables',
-    image: '/banners/fresh-produce.png',
-    bgColor: '#4CAF50',
-    imgBgColor: '#e8f5e9',
-    link: '/flash-sale'
-  },
-  {
-    id: 3,
-    active: true,
+    active: false,
     label: 'New Arrivals',
-    title: 'PREMIUM HOME ESSENTIALS',
-    description: 'Discover our new range of kitchen and household products',
-    image: '/banners/home-essentials.png',
-    bgColor: '#FF9800',
-    imgBgColor: '#fff3e0',
-    link: '/new-arrivals'
+    title: 'FRESH SEASONAL PRODUCE',
+    description: 'Locally sourced fruits and vegetables just arrived!',
+    image: '/banners/produce-banner.png',
+    bgColor: '#2e7d32',
+    imgBgColor: '#e8f5e9',
+    link: '/fresh-produce'
   }
 ];
 
-// Initial notification bar data
 const initialNotificationBar: NotificationBar = {
   id: 1,
   active: true,
-  message: 'Free delivery on orders above ₦25,000! Shop now for great deals on groceries.',
-  linkText: 'See Offers',
-  linkUrl: '/promotions',
-  bgColor: '#e25822'
+  message: 'Free shipping on orders over $50! Limited time offer.',
+  linkText: 'Shop Now',
+  linkUrl: '/shop',
+  bgColor: '#ff9800'
 };
 
-// Promotion service with real API endpoints
-export const PromotionService = {
-  // Banner service methods
-  getBanners: async (): Promise<Banner[]> => {
+// Promotion service class with all API methods
+export class PromotionService {
+  // Get all banners
+  static async getBanners(): Promise<Banner[]> {
     try {
-      const response = await api.get<BannersResponse>('/banners');
-      return response.data.banners;
+      // For production, use the actual API call
+      // const response = await api.get<BannersResponse>('/promotions/banners');
+      // return response.data.data.banners;
+      
+      // For development/testing, return dummy data
+      return Promise.resolve(initialBanners);
     } catch (error) {
       console.error('Error fetching banners:', error);
-      // Return initial data as fallback if API fails
-      return initialBanners;
+      return [];
     }
-  },
-
-  getActiveBanners: async (): Promise<Banner[]> => {
+  }
+  
+  // Get all active banners
+  static async getActiveBanners(): Promise<Banner[]> {
     try {
-      const response = await api.get<BannersResponse>('/banners', {
-        params: { active: true }
-      });
-      return response.data.banners;
+      // For production, use the actual API call
+      // const response = await api.get<BannersResponse>('/promotions/banners/active');
+      // return response.data.data.banners;
+      
+      // For development/testing, filter dummy data
+      const activeBanners = initialBanners.filter(banner => banner.active);
+      return Promise.resolve(activeBanners);
     } catch (error) {
       console.error('Error fetching active banners:', error);
-      // Return active initial data as fallback
-      return initialBanners.filter(banner => banner.active);
+      return [];
     }
-  },
-
-  updateBanner: async (updatedBanner: Banner): Promise<Banner> => {
+  }
+  
+  // Get notification bar
+  static async getNotificationBar(): Promise<NotificationBar | null> {
     try {
-      const response = await api.put<BannerResponse>(`/banners/${updatedBanner.id}`, updatedBanner);
-      return response.data.banner;
-    } catch (error) {
-      console.error(`Error updating banner #${updatedBanner.id}:`, error);
-      throw error;
-    }
-  },
-
-  toggleBannerStatus: async (id: number): Promise<Banner> => {
-    try {
-      const response = await api.put<BannerResponse>(`/banners/${id}/toggle-status`);
-      return response.data.banner;
-    } catch (error) {
-      console.error(`Error toggling banner #${id} status:`, error);
-      throw error;
-    }
-  },
-
-  // Notification bar service methods
-  getNotificationBar: async (): Promise<NotificationBar> => {
-    try {
-      const response = await api.get<NotificationBarResponse>('/notification-bar');
-      return response.data.notificationBar;
+      // For production, use the actual API call
+      // const response = await api.get<NotificationBarResponse>('/promotions/notification-bar');
+      // return response.data.data.notificationBar;
+      
+      // For development/testing, return dummy data
+      return Promise.resolve(initialNotificationBar);
     } catch (error) {
       console.error('Error fetching notification bar:', error);
-      // Return initial data as fallback
-      return initialNotificationBar;
+      return null;
     }
-  },
-
-  updateNotificationBar: async (updatedNotificationBar: NotificationBar): Promise<NotificationBar> => {
+  }
+  
+  // Update banner
+  static async updateBanner(banner: Banner): Promise<Banner> {
     try {
-      const response = await api.put<NotificationBarResponse>('/notification-bar', updatedNotificationBar);
-      return response.data.notificationBar;
+      // For production, use the actual API call
+      // const response = await api.put<BannerResponse>(`/promotions/banners/${banner.id}`, banner);
+      // return response.data.data.banner;
+      
+      // For development/testing, update dummy data
+      const updatedBanner = { ...banner };
+      return Promise.resolve(updatedBanner);
+    } catch (error) {
+      console.error('Error updating banner:', error);
+      throw error;
+    }
+  }
+  
+  // Update notification bar
+  static async updateNotificationBar(notificationBar: NotificationBar): Promise<NotificationBar> {
+    try {
+      // For production, use the actual API call
+      // const response = await api.put<NotificationBarResponse>('/promotions/notification-bar', notificationBar);
+      // return response.data.data.notificationBar;
+      
+      // For development/testing, update dummy data
+      const updatedNotificationBar = { ...notificationBar };
+      return Promise.resolve(updatedNotificationBar);
     } catch (error) {
       console.error('Error updating notification bar:', error);
       throw error;
     }
-  },
-
-  toggleNotificationBarStatus: async (): Promise<NotificationBar> => {
+  }
+  
+  // Toggle banner status
+  static async toggleBannerStatus(id: number): Promise<Banner> {
     try {
-      const response = await api.put<NotificationBarResponse>('/notification-bar/toggle-status');
-      return response.data.notificationBar;
+      // For production, use the actual API call
+      // const response = await api.patch<BannerResponse>(`/promotions/banners/${id}/toggle`);
+      // return response.data.data.banner;
+      
+      // For development/testing, update dummy data
+      const banner = initialBanners.find(b => b.id === id);
+      if (!banner) throw new Error('Banner not found');
+      
+      const updatedBanner = { ...banner, active: !banner.active };
+      return Promise.resolve(updatedBanner);
+    } catch (error) {
+      console.error('Error toggling banner status:', error);
+      throw error;
+    }
+  }
+  
+  // Toggle notification bar status
+  static async toggleNotificationBarStatus(): Promise<NotificationBar> {
+    try {
+      // For production, use the actual API call
+      // const response = await api.patch<NotificationBarResponse>('/promotions/notification-bar/toggle');
+      // return response.data.data.notificationBar;
+      
+      // For development/testing, update dummy data
+      const updatedNotificationBar = { 
+        ...initialNotificationBar, 
+        active: !initialNotificationBar.active 
+      };
+      return Promise.resolve(updatedNotificationBar);
     } catch (error) {
       console.error('Error toggling notification bar status:', error);
       throw error;
     }
   }
-};
-
-// Export individual functions to maintain compatibility with existing imports
-export const getBanners = PromotionService.getBanners;
-export const getActiveBanners = PromotionService.getActiveBanners;
-export const updateBanner = PromotionService.updateBanner;
-export const toggleBannerStatus = PromotionService.toggleBannerStatus;
-export const getNotificationBar = PromotionService.getNotificationBar;
-export const updateNotificationBar = PromotionService.updateNotificationBar;
-export const toggleNotificationBarStatus = PromotionService.toggleNotificationBarStatus;
-
-export default PromotionService;
+}

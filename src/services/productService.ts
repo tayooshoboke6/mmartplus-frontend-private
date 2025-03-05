@@ -56,21 +56,20 @@ export interface Review {
   };
 }
 
+export interface SingleProductResponse {
+  success: boolean;
+  product: Product;
+}
+
 export interface ProductsResponse {
   success: boolean;
-  products: {
+  data: {
     data: Product[];
     current_page: number;
     last_page: number;
     per_page: number;
     total: number;
   };
-}
-
-export interface SingleProductResponse {
-  success: boolean;
-  product: Product;
-  related_products: Product[];
 }
 
 const productService = {
@@ -91,10 +90,8 @@ const productService = {
       const response = await api.get<ProductsResponse>('/products', { params });
       return response.data;
     } catch (error: any) {
-      throw error.response?.data || {
-        success: false,
-        message: 'Failed to fetch products'
-      };
+      console.error('Error in getProducts:', error);
+      throw error;
     }
   },
   
@@ -115,7 +112,7 @@ const productService = {
       // Return mock data for development
       const mockData: ProductsResponse = {
         success: true,
-        products: {
+        data: {
           data: [
             {
               id: 1,
@@ -186,15 +183,13 @@ const productService = {
   },
 
   // Get a specific product by slug
-  getProduct: async (slug: string): Promise<SingleProductResponse> => {
+  getProduct: async (id: number): Promise<SingleProductResponse> => {
     try {
-      const response = await api.get<SingleProductResponse>(`/products/${slug}`);
+      const response = await api.get<SingleProductResponse>(`/products/${id}`);
       return response.data;
     } catch (error: any) {
-      throw error.response?.data || {
-        success: false,
-        message: 'Failed to fetch product'
-      };
+      console.error(`Error in getProduct(${id}):`, error);
+      throw error;
     }
   },
 
@@ -208,10 +203,8 @@ const productService = {
       });
       return response.data;
     } catch (error: any) {
-      throw error.response?.data || {
-        success: false,
-        message: 'Failed to create product'
-      };
+      console.error('Error in createProduct:', error);
+      throw error;
     }
   },
 
@@ -225,23 +218,64 @@ const productService = {
       });
       return response.data;
     } catch (error: any) {
-      throw error.response?.data || {
-        success: false,
-        message: 'Failed to update product'
-      };
+      console.error(`Error in updateProduct(${id}):`, error);
+      throw error;
     }
   },
 
   // Admin: Delete a product
   deleteProduct: async (id: number): Promise<{success: boolean; message: string}> => {
     try {
-      const response = await api.delete(`/products/${id}`);
-      return response.data;
+      // Check for authentication
+      const token = localStorage.getItem('mmartToken');
+      if (!token) {
+        return {
+          success: false,
+          message: 'Authentication required. Please log in.'
+        };
+      }
+      
+      // Add a timeout to the request to handle potential hang
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      try {
+        // Use the admin-specific endpoint for product deletion
+        const response = await api.delete(`/admin/products/${id}`, {
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+        return response.data;
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        
+        // Check for timeout
+        if (err.name === 'AbortError') {
+          console.error(`Product deletion timed out for ID: ${id}`);
+          return {
+            success: false,
+            message: 'Request timed out. The server may be experiencing issues.'
+          };
+        }
+        
+        // Re-throw for main error handler
+        throw err;
+      }
     } catch (error: any) {
-      throw error.response?.data || {
-        success: false,
-        message: 'Failed to delete product'
-      };
+      console.error(`Error in deleteProduct(${id}):`, error);
+      
+      // Format a response when there's a specific status code we want to handle
+      if (error.response) {
+        if (error.response.status === 409) {
+          return {
+            success: false,
+            message: 'This product cannot be deleted because it is associated with existing orders.'
+          };
+        }
+      }
+      
+      throw error;
     }
   },
 
@@ -254,10 +288,8 @@ const productService = {
       const response = await api.post(`/products/${productId}/reviews`, data);
       return response.data;
     } catch (error: any) {
-      throw error.response?.data || {
-        success: false,
-        message: 'Failed to submit review'
-      };
+      console.error('Error in submitReview:', error);
+      throw error;
     }
   },
 

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { FaEnvelope, FaTrash, FaStar, FaArchive } from 'react-icons/fa';
+import { FaEnvelope, FaTrash, FaStar, FaArchive, FaBullhorn, FaBell, FaInfoCircle } from 'react-icons/fa';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import AccountSidebar from '../../components/account/AccountSidebar';
+import inboxService, { InboxMessage } from '../../services/inboxService';
+import { Modal, Button } from 'antd';
 
 // Types for messages
 interface Message {
@@ -14,6 +16,8 @@ interface Message {
   date: string;
   read: boolean;
   starred: boolean;
+  campaignId?: string;
+  messageType?: 'system' | 'campaign' | 'notification';
 }
 
 const PageContainer = styled.div`
@@ -104,12 +108,16 @@ const MessageList = styled.div`
   margin-bottom: 20px;
 `;
 
-const MessageItem = styled.div<{ read: boolean }>`
+const MessageItem = styled.div<{ read: boolean; messageType?: string }>`
   padding: 15px;
   border-bottom: 1px solid #eee;
   display: flex;
   align-items: center;
-  background-color: ${props => props.read ? '#fff' : '#f5f9ff'};
+  background-color: ${props => {
+    if (!props.read) return '#f5f9ff';
+    if (props.messageType === 'campaign') return '#fdf9e8';
+    return '#fff';
+  }};
   
   &:hover {
     background-color: #f0f4f9;
@@ -117,9 +125,16 @@ const MessageItem = styled.div<{ read: boolean }>`
   }
 `;
 
-const MessageIcon = styled.div`
+const MessageIcon = styled.div<{ messageType?: string }>`
   margin-right: 10px;
-  color: #0066cc;
+  color: ${props => {
+    switch (props.messageType) {
+      case 'campaign': return '#e67e22';
+      case 'notification': return '#3498db';
+      case 'system': return '#27ae60';
+      default: return '#0066cc';
+    }
+  }};
 `;
 
 const MessageContent = styled.div`
@@ -173,68 +188,154 @@ const EmptyText = styled.p`
   color: #666;
 `;
 
+const MessageModalHeader = styled.div`
+  border-bottom: 1px solid #eee;
+  padding-bottom: 15px;
+  margin-bottom: 15px;
+`;
+
+const MessageModalSubject = styled.h3`
+  margin: 0 0 10px 0;
+  font-size: 20px;
+`;
+
+const MessageModalMeta = styled.div`
+  display: flex;
+  justify-content: space-between;
+  color: #666;
+  font-size: 14px;
+`;
+
+const MessageModalContent = styled.div`
+  min-height: 200px;
+`;
+
+const MessageTag = styled.span<{ type: string }>`
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  margin-left: 10px;
+  background-color: ${props => {
+    switch (props.type) {
+      case 'campaign': return '#fff3cd';
+      case 'notification': return '#cce5ff';
+      case 'system': return '#d4edda';
+      default: return '#e2e3e5';
+    }
+  }};
+  color: ${props => {
+    switch (props.type) {
+      case 'campaign': return '#856404';
+      case 'notification': return '#004085';
+      case 'system': return '#155724';
+      default: return '#383d41';
+    }
+  }};
+`;
+
 const InboxPage: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<InboxMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMessages, setSelectedMessages] = useState<number[]>([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedMessage, setSelectedMessage] = useState<InboxMessage | null>(null);
   
   useEffect(() => {
-    // Simulate API call to fetch messages
-    setTimeout(() => {
-      setMessages([
-        {
-          id: 1,
-          subject: 'Welcome to M-Mart+',
-          content: 'Thank you for creating an account with M-Mart+. We are excited to have you on board!',
-          sender: 'M-Mart+ Team',
-          date: '2025-02-25',
-          read: false,
-          starred: false
-        },
-        {
-          id: 2,
-          subject: 'Your order #MM78945 has been shipped',
-          content: 'We are pleased to inform you that your order has been shipped and is on its way to you.',
-          sender: 'M-Mart+ Orders',
-          date: '2025-02-28',
-          read: true,
-          starred: true
-        },
-        {
-          id: 3,
-          subject: 'Special Discount on Groceries',
-          content: 'Enjoy up to 25% off on all groceries this weekend! Shop now and save big on your favorite items.',
-          sender: 'M-Mart+ Promotions',
-          date: '2025-03-01',
-          read: false,
-          starred: false
-        }
-      ]);
-      setLoading(false);
-    }, 1000);
+    const fetchInboxMessages = async () => {
+      setLoading(true);
+      try {
+        const inboxMessages = await inboxService.getInboxMessages();
+        setMessages(inboxMessages);
+      } catch (error) {
+        console.error('Error fetching inbox messages:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchInboxMessages();
   }, []);
   
-  const toggleMessageRead = (id: number) => {
-    setMessages(messages.map(message => 
-      message.id === id ? { ...message, read: !message.read } : message
-    ));
+  const toggleMessageRead = async (id: number) => {
+    try {
+      // Find the message
+      const message = messages.find(msg => msg.id === id);
+      if (!message) return;
+      
+      // If it's already read, no need to mark it as read again
+      if (!message.read) {
+        await inboxService.markAsRead(id);
+      }
+      
+      // Update local state
+      setMessages(messages.map(message => 
+        message.id === id ? { ...message, read: true } : message
+      ));
+      
+      // Open the message modal
+      setSelectedMessage(message);
+      setModalVisible(true);
+    } catch (error) {
+      console.error('Error toggling message read status:', error);
+    }
   };
   
-  const toggleMessageStar = (id: number) => {
-    setMessages(messages.map(message => 
-      message.id === id ? { ...message, starred: !message.starred } : message
-    ));
+  const deleteMessages = async () => {
+    try {
+      // Delete each selected message
+      for (const messageId of selectedMessages) {
+        await inboxService.deleteMessage(messageId);
+      }
+      
+      // Update local state
+      setMessages(messages.filter(message => !selectedMessages.includes(message.id)));
+      setSelectedMessages([]);
+    } catch (error) {
+      console.error('Error deleting messages:', error);
+    }
   };
   
-  const deleteMessages = () => {
-    setMessages(messages.filter(message => !selectedMessages.includes(message.id)));
-    setSelectedMessages([]);
+  const markAsRead = async () => {
+    try {
+      // Mark each selected message as read
+      for (const messageId of selectedMessages) {
+        await inboxService.markAsRead(messageId);
+      }
+      
+      // Update local state
+      setMessages(messages.map(message => 
+        selectedMessages.includes(message.id) ? { ...message, read: true } : message
+      ));
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
   };
   
-  const markAsRead = () => {
-    setMessages(messages.map(message => 
-      selectedMessages.includes(message.id) ? { ...message, read: true } : message
-    ));
+  const getMessageIcon = (messageType?: string) => {
+    switch (messageType) {
+      case 'campaign':
+        return <FaBullhorn />;
+      case 'notification':
+        return <FaBell />;
+      case 'system':
+        return <FaInfoCircle />;
+      default:
+        return <FaEnvelope />;
+    }
+  };
+  
+  const getMessageTypeLabel = (messageType?: string) => {
+    switch (messageType) {
+      case 'campaign':
+        return 'Campaign';
+      case 'notification':
+        return 'Notification';
+      case 'system':
+        return 'System';
+      default:
+        return 'Message';
+    }
   };
   
   return (
@@ -278,17 +379,23 @@ const InboxPage: React.FC = () => {
                     <MessageItem 
                       key={message.id} 
                       read={message.read}
+                      messageType={message.messageType}
                       onClick={() => toggleMessageRead(message.id)}
                     >
-                      <MessageIcon>
-                        <FaEnvelope />
+                      <MessageIcon messageType={message.messageType}>
+                        {getMessageIcon(message.messageType)}
                       </MessageIcon>
                       <MessageContent>
                         <MessageSubject read={message.read}>
                           {message.subject}
+                          {message.messageType && (
+                            <MessageTag type={message.messageType || 'default'}>
+                              {getMessageTypeLabel(message.messageType)}
+                            </MessageTag>
+                          )}
                         </MessageSubject>
                         <MessagePreview>
-                          {message.content}
+                          {message.content.replace(/<[^>]*>?/gm, '')}
                         </MessagePreview>
                       </MessageContent>
                       <MessageMeta>
@@ -305,7 +412,7 @@ const InboxPage: React.FC = () => {
                 </EmptyIcon>
                 <EmptyTitle>Your inbox is empty</EmptyTitle>
                 <EmptyText>
-                  You don't have any messages yet. Messages from M-Mart+ will appear here.
+                  You will receive important notifications about your orders, promotions, and account updates here.
                 </EmptyText>
               </EmptyState>
             )}
@@ -314,6 +421,53 @@ const InboxPage: React.FC = () => {
       </MainContent>
       
       <Footer />
+      
+      <Modal
+        title="Message Details"
+        visible={modalVisible}
+        onCancel={() => setModalVisible(false)}
+        footer={[
+          <Button key="close" onClick={() => setModalVisible(false)}>
+            Close
+          </Button>,
+          <Button 
+            key="delete" 
+            danger 
+            onClick={() => {
+              if (selectedMessage) {
+                inboxService.deleteMessage(selectedMessage.id);
+                setMessages(messages.filter(m => m.id !== selectedMessage.id));
+                setModalVisible(false);
+              }
+            }}
+          >
+            Delete
+          </Button>
+        ]}
+        width={700}
+      >
+        {selectedMessage && (
+          <>
+            <MessageModalHeader>
+              <MessageModalSubject>
+                {selectedMessage.subject}
+                {selectedMessage.messageType && (
+                  <MessageTag type={selectedMessage.messageType || 'default'}>
+                    {getMessageTypeLabel(selectedMessage.messageType)}
+                  </MessageTag>
+                )}
+              </MessageModalSubject>
+              <MessageModalMeta>
+                <div>From: {selectedMessage.sender}</div>
+                <div>Date: {selectedMessage.date}</div>
+              </MessageModalMeta>
+            </MessageModalHeader>
+            <MessageModalContent 
+              dangerouslySetInnerHTML={{ __html: selectedMessage.content }} 
+            />
+          </>
+        )}
+      </Modal>
     </PageContainer>
   );
 };

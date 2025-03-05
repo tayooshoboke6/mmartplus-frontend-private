@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { getNotificationBar } from '../../services/PromotionService';
+import { PromotionService } from '../../services/PromotionService';
 import { NotificationBar } from '../../models/Promotion';
 import productService, { Product } from '../../services/productService';
 import { debounce } from 'lodash';
@@ -297,13 +297,13 @@ const Header = () => {
   useEffect(() => {
     const fetchNotificationBar = async () => {
       try {
-        const notification = await getNotificationBar();
+        const notification = await PromotionService.getNotificationBar();
         setNotificationBar(notification);
       } catch (error) {
-        console.error('Error fetching notification bar:', error);
+        console.error("Error loading notification bar:", error);
       }
     };
-    
+
     fetchNotificationBar();
   }, []);
 

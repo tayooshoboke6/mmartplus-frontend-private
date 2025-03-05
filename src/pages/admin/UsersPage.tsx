@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import AdminLayout from '../../components/admin/AdminLayout';
+import AdminLayout from '../../components/layouts/AdminLayout';
 import { FlexBox, Text, Button, Tooltip } from '../../styles/GlobalComponents';
 
 const PageContainer = styled.div`

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import AdminLayout from '../../components/admin/AdminLayout';
+import AdminLayout from '../../components/layouts/AdminLayout';
 import { FlexBox, Text, Button } from '../../styles/GlobalComponents';
 import Tooltip from '../../components/common/Tooltip';
 

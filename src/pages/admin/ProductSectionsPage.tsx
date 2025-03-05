@@ -14,7 +14,7 @@ import {
 import { ProductSection, ProductSectionType } from '../../models/ProductSection';
 import { Product } from '../../types/Product';
 import Tooltip from '../../components/common/Tooltip';
-import AdminLayout from '../../components/admin/AdminLayout';
+import AdminLayout from '../../components/layouts/AdminLayout';
 
 // Styled components
 const PageContainer = styled.div`
@@ -280,6 +280,74 @@ const SectionPreview = styled.div<{ bgColor: string, textColor: string }>`
   }
 `;
 
+const LoadingContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+`;
+
+const LoadingSpinner = styled.div`
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top: 4px solid #0071BC;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+
+const LoadingText = styled.p`
+  font-size: 16px;
+  color: #666;
+`;
+
+const ErrorContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  background-color: #fff0f0;
+  border-radius: 8px;
+  padding: 30px;
+  border: 1px solid #ffcccc;
+`;
+
+const ErrorIcon = styled.div`
+  font-size: 48px;
+  margin-bottom: 20px;
+`;
+
+const ErrorMessage = styled.p`
+  font-size: 16px;
+  color: #d32f2f;
+  text-align: center;
+  margin-bottom: 20px;
+`;
+
+const EmptyState = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  border: 1px dashed #ccc;
+`;
+
+const EmptyStateText = styled.p`
+  color: #666;
+  font-size: 16px;
+  text-align: center;
+`;
+
 // Default styling that matches the featured products section
 const initialFormState: Omit<ProductSection, 'id' | 'createdAt' | 'updatedAt'> = {
   title: '',
@@ -332,11 +400,31 @@ const ProductSectionsPage: React.FC = () => {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showBgColorPicker, setShowBgColorPicker] = useState(false);
   const [showTextColorPicker, setShowTextColorPicker] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   useEffect(() => {
-    // Load product sections and products
-    setSections(getProductSections());
-    setProducts(getAllProducts());
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        const sectionsData = await getProductSections();
+        setSections(sectionsData);
+        
+        const productsData = await getAllProducts();
+        setProducts(productsData);
+      } catch (error) {
+        console.error('Failed to load data:', error);
+        setError('Failed to load data. Please check your connection and try again later.');
+        toast.error('Failed to load data. Please try again later.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchData();
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -391,7 +479,7 @@ const ProductSectionsPage: React.FC = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (formData.title.trim() === '') {
@@ -404,25 +492,35 @@ const ProductSectionsPage: React.FC = () => {
       return;
     }
     
-    if (editingId) {
-      // Update existing section
-      updateProductSection({
-        ...formData,
-        id: editingId,
-        createdAt: new Date(), // This will be overwritten by the service
-        updatedAt: new Date()
-      });
-      toast.success('Product section updated successfully!');
-    } else {
-      // Create new section
-      createProductSection(formData);
-      toast.success('Product section created successfully!');
+    try {
+      setIsSubmitting(true);
+      
+      if (editingId) {
+        // Update existing section
+        await updateProductSection(editingId, {
+          ...formData,
+          updatedAt: new Date()
+        });
+        toast.success('Product section updated successfully!');
+      } else {
+        // Create new section
+        await createProductSection(formData);
+        toast.success('Product section created successfully!');
+      }
+      
+      // Reset form and refresh sections
+      setFormData(initialFormState);
+      setEditingId(null);
+      
+      // Reload sections after update
+      const updatedSections = await getProductSections();
+      setSections(updatedSections);
+    } catch (error) {
+      console.error('Error saving product section:', error);
+      toast.error('Failed to save product section. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    // Reset form and refresh sections
-    setFormData(initialFormState);
-    setEditingId(null);
-    setSections(getProductSections());
   };
 
   const handleEdit = (section: ProductSection) => {
@@ -438,21 +536,35 @@ const ProductSectionsPage: React.FC = () => {
     setEditingId(section.id);
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this section?')) {
-      deleteProductSection(id);
-      toast.info('Product section deleted');
-      setSections(getProductSections());
+      try {
+        await deleteProductSection(id);
+        toast.info('Product section deleted');
+        
+        const updatedSections = await getProductSections();
+        setSections(updatedSections);
+      } catch (error) {
+        console.error('Error deleting product section:', error);
+        toast.error('Failed to delete product section. Please try again.');
+      }
     }
   };
 
-  const handleToggleStatus = (id: number) => {
-    toggleProductSectionStatus(id);
-    setSections(getProductSections());
-    toast.info('Section status updated');
+  const handleToggleStatus = async (id: number) => {
+    try {
+      await toggleProductSectionStatus(id);
+      
+      const updatedSections = await getProductSections();
+      setSections(updatedSections);
+      toast.info('Section status updated');
+    } catch (error) {
+      console.error('Error toggling product section status:', error);
+      toast.error('Failed to update section status. Please try again.');
+    }
   };
 
-  const handleMoveUp = (index: number) => {
+  const handleMoveUp = async (index: number) => {
     if (index === 0) return;
     
     const newSections = [...sections];
@@ -462,13 +574,23 @@ const ProductSectionsPage: React.FC = () => {
     
     // Update the display order
     const orderedIds = newSections.map(section => section.id);
-    reorderProductSections(orderedIds);
     
-    // Update the state
-    setSections(newSections);
+    try {
+      await reorderProductSections(orderedIds);
+      
+      // Update the state
+      setSections(newSections);
+    } catch (error) {
+      console.error('Error reordering sections:', error);
+      toast.error('Failed to reorder sections. Please try again.');
+      
+      // Refresh sections from the server to ensure consistency
+      const updatedSections = await getProductSections();
+      setSections(updatedSections);
+    }
   };
 
-  const handleMoveDown = (index: number) => {
+  const handleMoveDown = async (index: number) => {
     if (index === sections.length - 1) return;
     
     const newSections = [...sections];
@@ -478,10 +600,20 @@ const ProductSectionsPage: React.FC = () => {
     
     // Update the display order
     const orderedIds = newSections.map(section => section.id);
-    reorderProductSections(orderedIds);
     
-    // Update the state
-    setSections(newSections);
+    try {
+      await reorderProductSections(orderedIds);
+      
+      // Update the state
+      setSections(newSections);
+    } catch (error) {
+      console.error('Error reordering sections:', error);
+      toast.error('Failed to reorder sections. Please try again.');
+      
+      // Refresh sections from the server to ensure consistency
+      const updatedSections = await getProductSections();
+      setSections(updatedSections);
+    }
   };
 
   const cancelEdit = () => {
@@ -492,184 +624,205 @@ const ProductSectionsPage: React.FC = () => {
   return (
     <AdminLayout title="Product Sections">
       <PageContainer>
-        <Card>
-          <CardTitle>
-            {editingId ? 'Edit Product Section' : 'Create New Product Section'}
-            {editingId && <Button onClick={cancelEdit}>Cancel</Button>}
-          </CardTitle>
-          
-          <form onSubmit={handleSubmit}>
-            <FormGroup>
-              <Tooltip content="The title displayed above the product section" position="right">
-                <Label htmlFor="title">Section Title</Label>
-              </Tooltip>
-              <Input
-                id="title"
-                name="title"
-                value={formData.title}
-                onChange={handleInputChange}
-                placeholder="e.g., Hot Deals, New Arrivals, About to Expire"
-              />
-            </FormGroup>
-            
-            <FormGroup>
-              <Tooltip content="The type of product section, which can be used for filtering or special styling" position="right">
-                <Label htmlFor="type">Section Type</Label>
-              </Tooltip>
-              <Select
-                id="type"
-                name="type"
-                value={formData.type}
-                onChange={handleInputChange}
-              >
-                <option value={ProductSectionType.FEATURED}>Featured Products</option>
-                <option value={ProductSectionType.HOT_DEALS}>Hot Deals</option>
-                <option value={ProductSectionType.NEW_ARRIVALS}>New Arrivals</option>
-                <option value={ProductSectionType.EXPIRING_SOON}>Expiring Soon</option>
-                <option value={ProductSectionType.BEST_SELLERS}>Best Sellers</option>
-                <option value={ProductSectionType.CUSTOM}>Custom Section</option>
-              </Select>
-            </FormGroup>
-            
-            <div style={{ display: 'flex', gap: '20px' }}>
-              <ColorPickerContainer>
-                <Tooltip content="Background color of the section" position="right">
-                  <Label>Background Color</Label>
-                </Tooltip>
-                <ColorPreview 
-                  color={formData.backgroundColor || '#f7f7f7'}
-                  onClick={() => setShowBgColorPicker(!showBgColorPicker)}
-                />
-                {showBgColorPicker && (
-                  <ColorPickerPopover>
-                    <ColorPickerCover onClick={() => setShowBgColorPicker(false)} />
-                    <ChromePicker 
-                      color={formData.backgroundColor}
-                      onChange={handleBgColorChange}
-                    />
-                    <PresetColorsContainer>
-                      {bgColorPresets.map(color => (
-                        <PresetColor 
-                          key={color} 
-                          color={color} 
-                          onClick={() => handlePresetBgColorSelect(color)}
-                          title={color}
-                        />
-                      ))}
-                    </PresetColorsContainer>
-                  </ColorPickerPopover>
-                )}
-              </ColorPickerContainer>
+        {isLoading ? (
+          <LoadingContainer>
+            <LoadingSpinner />
+            <LoadingText>Loading product sections...</LoadingText>
+          </LoadingContainer>
+        ) : error ? (
+          <ErrorContainer>
+            <ErrorIcon>⚠️</ErrorIcon>
+            <ErrorMessage>{error}</ErrorMessage>
+            <Button onClick={() => window.location.reload()}>Retry</Button>
+          </ErrorContainer>
+        ) : (
+          <>
+            <Card>
+              <CardTitle>
+                {editingId ? 'Edit Product Section' : 'Create New Product Section'}
+                {editingId && <Button onClick={cancelEdit}>Cancel</Button>}
+              </CardTitle>
               
-              <ColorPickerContainer>
-                <Tooltip content="Text color for the section title" position="right">
-                  <Label>Text Color</Label>
-                </Tooltip>
-                <ColorPreview 
-                  color={formData.textColor || '#333333'}
-                  onClick={() => setShowTextColorPicker(!showTextColorPicker)}
-                />
-                {showTextColorPicker && (
-                  <ColorPickerPopover>
-                    <ColorPickerCover onClick={() => setShowTextColorPicker(false)} />
-                    <ChromePicker 
-                      color={formData.textColor}
-                      onChange={handleTextColorChange}
+              <form onSubmit={handleSubmit}>
+                <FormGroup>
+                  <Tooltip content="The title displayed above the product section" position="right">
+                    <Label htmlFor="title">Section Title</Label>
+                  </Tooltip>
+                  <Input
+                    id="title"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleInputChange}
+                    placeholder="e.g., Hot Deals, New Arrivals, About to Expire"
+                  />
+                </FormGroup>
+                
+                <FormGroup>
+                  <Tooltip content="The type of product section, which can be used for filtering or special styling" position="right">
+                    <Label htmlFor="type">Section Type</Label>
+                  </Tooltip>
+                  <Select
+                    id="type"
+                    name="type"
+                    value={formData.type}
+                    onChange={handleInputChange}
+                  >
+                    <option value={ProductSectionType.FEATURED}>Featured Products</option>
+                    <option value={ProductSectionType.HOT_DEALS}>Hot Deals</option>
+                    <option value={ProductSectionType.NEW_ARRIVALS}>New Arrivals</option>
+                    <option value={ProductSectionType.EXPIRING_SOON}>Expiring Soon</option>
+                    <option value={ProductSectionType.BEST_SELLERS}>Best Sellers</option>
+                    <option value={ProductSectionType.CUSTOM}>Custom Section</option>
+                  </Select>
+                </FormGroup>
+                
+                <div style={{ display: 'flex', gap: '20px' }}>
+                  <ColorPickerContainer>
+                    <Tooltip content="Background color of the section" position="right">
+                      <Label>Background Color</Label>
+                    </Tooltip>
+                    <ColorPreview 
+                      color={formData.backgroundColor || '#f7f7f7'}
+                      onClick={() => setShowBgColorPicker(!showBgColorPicker)}
                     />
-                    <PresetColorsContainer>
-                      {textColorPresets.map(color => (
-                        <PresetColor 
-                          key={color} 
-                          color={color} 
-                          onClick={() => handlePresetTextColorSelect(color)}
-                          title={color}
+                    {showBgColorPicker && (
+                      <ColorPickerPopover>
+                        <ColorPickerCover onClick={() => setShowBgColorPicker(false)} />
+                        <ChromePicker 
+                          color={formData.backgroundColor}
+                          onChange={handleBgColorChange}
                         />
-                      ))}
-                    </PresetColorsContainer>
-                  </ColorPickerPopover>
-                )}
-              </ColorPickerContainer>
-            </div>
-            
-            <FormGroup>
-              <Tooltip content="Select products to display in this section" position="right">
-                <Label>Select Products</Label>
-              </Tooltip>
-              <ProductSelectionContainer>
-                {products.map(product => (
-                  <ProductCheckboxItem key={product.id}>
-                    <ProductCheckbox
-                      type="checkbox"
-                      id={`product-${product.id}`}
-                      checked={formData.productIds.includes(product.id)}
-                      onChange={(e) => handleProductSelection(product.id, e.target.checked)}
+                        <PresetColorsContainer>
+                          {bgColorPresets.map(color => (
+                            <PresetColor 
+                              key={color} 
+                              color={color} 
+                              onClick={() => handlePresetBgColorSelect(color)}
+                              title={color}
+                            />
+                          ))}
+                        </PresetColorsContainer>
+                      </ColorPickerPopover>
+                    )}
+                  </ColorPickerContainer>
+                  
+                  <ColorPickerContainer>
+                    <Tooltip content="Text color for the section title" position="right">
+                      <Label>Text Color</Label>
+                    </Tooltip>
+                    <ColorPreview 
+                      color={formData.textColor || '#333333'}
+                      onClick={() => setShowTextColorPicker(!showTextColorPicker)}
                     />
-                    <ProductName>{product.name}</ProductName>
-                    <ProductPrice>₦{product.price.toLocaleString()}</ProductPrice>
-                  </ProductCheckboxItem>
-                ))}
-              </ProductSelectionContainer>
-            </FormGroup>
-            
-            <SectionPreview 
-              bgColor={formData.backgroundColor || '#f7f7f7'} 
-              textColor={formData.textColor || '#333333'}
-            >
-              <h3>{formData.title || 'Section Preview'}</h3>
-              <p>Selected {formData.productIds.length} products</p>
-            </SectionPreview>
-            
-            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
-              <Button type="submit">
-                {editingId ? 'Update Section' : 'Create Section'}
-              </Button>
-            </div>
-          </form>
-        </Card>
-        
-        <Card>
-          <CardTitle>Manage Product Sections</CardTitle>
-          <p>Use the up and down arrows to reorder sections. Toggle sections on/off or edit their content.</p>
-          
-          <SectionsList>
-            {sections.map((section, index) => (
-              <SectionItem key={section.id}>
-                <OrderButtons>
-                  <OrderButton 
-                    onClick={() => handleMoveUp(index)} 
-                    disabled={index === 0}
-                  >
-                    ▲
-                  </OrderButton>
-                  <OrderButton 
-                    onClick={() => handleMoveDown(index)} 
-                    disabled={index === sections.length - 1}
-                  >
-                    ▼
-                  </OrderButton>
-                </OrderButtons>
+                    {showTextColorPicker && (
+                      <ColorPickerPopover>
+                        <ColorPickerCover onClick={() => setShowTextColorPicker(false)} />
+                        <ChromePicker 
+                          color={formData.textColor}
+                          onChange={handleTextColorChange}
+                        />
+                        <PresetColorsContainer>
+                          {textColorPresets.map(color => (
+                            <PresetColor 
+                              key={color} 
+                              color={color} 
+                              onClick={() => handlePresetTextColorSelect(color)}
+                              title={color}
+                            />
+                          ))}
+                        </PresetColorsContainer>
+                      </ColorPickerPopover>
+                    )}
+                  </ColorPickerContainer>
+                </div>
                 
-                <SectionInfo>
-                  <SectionTitle>{section.title}</SectionTitle>
-                  <SectionMeta>
-                    Type: {section.type} | Products: {section.productIds.length} | Order: {section.displayOrder}
-                  </SectionMeta>
-                </SectionInfo>
+                <FormGroup>
+                  <Tooltip content="Select products to display in this section" position="right">
+                    <Label>Select Products</Label>
+                  </Tooltip>
+                  <ProductSelectionContainer>
+                    {products.map(product => (
+                      <ProductCheckboxItem key={product.id}>
+                        <ProductCheckbox
+                          type="checkbox"
+                          id={`product-${product.id}`}
+                          checked={formData.productIds.includes(product.id)}
+                          onChange={(e) => handleProductSelection(product.id, e.target.checked)}
+                        />
+                        <ProductName>{product.name}</ProductName>
+                        <ProductPrice>₦{product.price.toLocaleString()}</ProductPrice>
+                      </ProductCheckboxItem>
+                    ))}
+                  </ProductSelectionContainer>
+                </FormGroup>
                 
-                <SectionActions>
-                  <ToggleButton 
-                    active={section.active}
-                    onClick={() => handleToggleStatus(section.id)}
-                  >
-                    {section.active ? 'Active' : 'Inactive'}
-                  </ToggleButton>
-                  <Button onClick={() => handleEdit(section)}>Edit</Button>
-                  <DeleteButton onClick={() => handleDelete(section.id)}>Delete</DeleteButton>
-                </SectionActions>
-              </SectionItem>
-            ))}
-          </SectionsList>
-        </Card>
+                <SectionPreview 
+                  bgColor={formData.backgroundColor || '#f7f7f7'} 
+                  textColor={formData.textColor || '#333333'}
+                >
+                  <h3>{formData.title || 'Section Preview'}</h3>
+                  <p>Selected {formData.productIds.length} products</p>
+                </SectionPreview>
+                
+                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? 'Saving...' : (editingId ? 'Update Section' : 'Create Section')}
+                  </Button>
+                </div>
+              </form>
+            </Card>
+            
+            <Card>
+              <CardTitle>Manage Product Sections</CardTitle>
+              <p>Use the up and down arrows to reorder sections. Toggle sections on/off or edit their content.</p>
+              
+              <SectionsList>
+                {sections.length === 0 ? (
+                  <EmptyState>
+                    <EmptyStateText>No product sections found. Create your first section above!</EmptyStateText>
+                  </EmptyState>
+                ) : (
+                  sections.map((section, index) => (
+                    <SectionItem key={section.id}>
+                      <OrderButtons>
+                        <OrderButton 
+                          onClick={() => handleMoveUp(index)} 
+                          disabled={index === 0}
+                        >
+                          ▲
+                        </OrderButton>
+                        <OrderButton 
+                          onClick={() => handleMoveDown(index)} 
+                          disabled={index === sections.length - 1}
+                        >
+                          ▼
+                        </OrderButton>
+                      </OrderButtons>
+                      
+                      <SectionInfo>
+                        <SectionTitle>{section.title}</SectionTitle>
+                        <SectionMeta>
+                          Type: {section.type} | Products: {section.productIds.length} | Order: {section.displayOrder}
+                        </SectionMeta>
+                      </SectionInfo>
+                      
+                      <SectionActions>
+                        <ToggleButton 
+                          active={section.active}
+                          onClick={() => handleToggleStatus(section.id)}
+                        >
+                          {section.active ? 'Active' : 'Inactive'}
+                        </ToggleButton>
+                        <Button onClick={() => handleEdit(section)}>Edit</Button>
+                        <DeleteButton onClick={() => handleDelete(section.id)}>Delete</DeleteButton>
+                      </SectionActions>
+                    </SectionItem>
+                  ))
+                )}
+              </SectionsList>
+            </Card>
+          </>
+        )}
       </PageContainer>
     </AdminLayout>
   );

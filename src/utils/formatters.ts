@@ -1,13 +1,13 @@
 /**
- * Format a number as currency
+ * Format a number as currency in Nigerian Naira
  * @param amount The amount to format
- * @returns Formatted currency string without currency symbol
+ * @returns Formatted Naira currency string with ₦ symbol
  */
 export const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('en-NG', {
+  return `₦${new Intl.NumberFormat('en-NG', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(amount);
+  }).format(amount)}`;
 };
 
 /**

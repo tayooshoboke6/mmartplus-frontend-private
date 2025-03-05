@@ -1,18 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { 
-  getBanners, 
-  getNotificationBar, 
-  updateBanner, 
-  updateNotificationBar, 
-  toggleBannerStatus, 
-  toggleNotificationBarStatus 
-} from '../../services/PromotionService';
+import { PromotionService } from '../../services/PromotionService';
 import { Banner, NotificationBar } from '../../models/Promotion';
 import { ChromePicker } from 'react-color';
 import { toast } from 'react-toastify';
 import Tooltip from '../../components/common/Tooltip';
-import AdminLayout from '../../components/admin/AdminLayout';
+import AdminLayout from '../../components/layouts/AdminLayout';
 
 // Styled components
 const PageContainer = styled.div`
@@ -23,6 +16,18 @@ const PageTitle = styled.h1`
   font-size: 24px;
   margin-bottom: 20px;
   color: #333;
+`;
+
+const HeaderSection = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+`;
+
+const TabGroup = styled.div`
+  display: flex;
+  gap: 10px;
 `;
 
 const TabsContainer = styled.div`
@@ -262,6 +267,36 @@ const BannerCardLabel = styled.span`
   margin-bottom: 8px;
 `;
 
+const EmptyMessage = styled.div`
+  padding: 20px;
+  text-align: center;
+  color: #666;
+  background: #f8f8f8;
+  border-radius: 4px;
+  margin: 20px 0;
+`;
+
+const LoadingMessage = styled.div`
+  padding: 20px;
+  text-align: center;
+  color: #0071BC;
+`;
+
+const ErrorMessage = styled.div`
+  padding: 15px;
+  text-align: center;
+  color: #e53935;
+  background: #ffebee;
+  border-radius: 4px;
+  margin: 20px 0;
+`;
+
+const ButtonRow = styled.div`
+  margin: 20px 0;
+  display: flex;
+  justify-content: flex-end;
+`;
+
 enum TabType {
   BANNERS = 'banners',
   NOTIFICATION = 'notification'
@@ -275,11 +310,37 @@ const PromotionsPage: React.FC = () => {
   const [showBgColorPicker, setShowBgColorPicker] = useState(false);
   const [showImgBgColorPicker, setShowImgBgColorPicker] = useState(false);
   const [showNotificationBgColorPicker, setShowNotificationBgColorPicker] = useState(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Load banners and notification bar data
-    setBanners(getBanners());
-    setNotificationBar(getNotificationBar());
+    const loadBanners = async () => {
+      try {
+        setLoading(true);
+        const banners = await PromotionService.getBanners();
+        setBanners(Array.isArray(banners) ? banners : []);
+      } catch (error) {
+        console.error('Error loading banners:', error);
+        setError('Failed to load banners');
+        setBanners([]);
+      }
+    };
+
+    const loadNotificationBar = async () => {
+      try {
+        const notificationBar = await PromotionService.getNotificationBar();
+        setNotificationBar(notificationBar);
+      } catch (error) {
+        console.error('Error loading notification bar:', error);
+        setError('Failed to load notification bar');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadBanners();
+    loadNotificationBar();
   }, []);
 
   const handleTabChange = (tab: TabType) => {
@@ -337,35 +398,57 @@ const PromotionsPage: React.FC = () => {
     });
   };
 
-  const handleSaveBanner = () => {
+  const handleSaveBanner = async () => {
     if (!editingBanner) return;
     
-    const updatedBanners = updateBanner(editingBanner);
-    setBanners(updatedBanners);
-    setEditingBanner(null);
-    toast.success('Banner updated successfully!');
+    try {
+      const updatedBanner = await PromotionService.updateBanner(editingBanner);
+      // Update the banner in the state
+      setBanners(prev => prev.map(b => b.id === updatedBanner.id ? updatedBanner : b));
+      setEditingBanner(null);
+      toast.success('Banner updated successfully!');
+    } catch (error) {
+      console.error('Error updating banner:', error);
+      toast.error('Failed to update banner');
+    }
   };
 
-  const handleSaveNotification = () => {
+  const handleSaveNotification = async () => {
     if (!notificationBar) return;
     
-    const updatedNotificationBar = updateNotificationBar(notificationBar);
-    setNotificationBar(updatedNotificationBar);
-    toast.success('Notification bar updated successfully!');
+    try {
+      const updatedNotificationBar = await PromotionService.updateNotificationBar(notificationBar);
+      setNotificationBar(updatedNotificationBar);
+      toast.success('Notification bar updated successfully!');
+    } catch (error) {
+      console.error('Error updating notification bar:', error);
+      toast.error('Failed to update notification bar');
+    }
   };
-
-  const handleToggleBanner = (id: number) => {
-    const updatedBanners = toggleBannerStatus(id);
-    setBanners(updatedBanners);
-    toast.info('Banner status updated!');
+  
+  const handleToggleBanner = async (id: number) => {
+    try {
+      const updatedBanner = await PromotionService.toggleBannerStatus(id);
+      // Update the banner in the state
+      setBanners(prev => prev.map(b => b.id === updatedBanner.id ? updatedBanner : b));
+      toast.info('Banner status updated!');
+    } catch (error) {
+      console.error('Error toggling banner status:', error);
+      toast.error('Failed to update banner status');
+    }
   };
-
-  const handleToggleNotification = () => {
+  
+  const handleToggleNotification = async () => {
     if (!notificationBar) return;
     
-    const updatedNotificationBar = toggleNotificationBarStatus();
-    setNotificationBar(updatedNotificationBar);
-    toast.info('Notification bar status updated!');
+    try {
+      const updatedNotificationBar = await PromotionService.toggleNotificationBarStatus();
+      setNotificationBar(updatedNotificationBar);
+      toast.info('Notification bar status updated!');
+    } catch (error) {
+      console.error('Error toggling notification bar status:', error);
+      toast.error('Failed to update notification bar status');
+    }
   };
 
   const cancelEditBanner = () => {
@@ -375,261 +458,151 @@ const PromotionsPage: React.FC = () => {
   return (
     <AdminLayout title="Promotions">
       <PageContainer>
-        <PageTitle>Manage Promotions</PageTitle>
+        <HeaderSection>
+          <PageTitle>Promotions</PageTitle>
+          <TabGroup>
+            <Tab 
+              active={activeTab === TabType.BANNERS} 
+              onClick={() => setActiveTab(TabType.BANNERS)}
+            >
+              Banner Slides
+            </Tab>
+            <Tab 
+              active={activeTab === TabType.NOTIFICATION} 
+              onClick={() => setActiveTab(TabType.NOTIFICATION)}
+            >
+              Notification Bar
+            </Tab>
+          </TabGroup>
+        </HeaderSection>
         
-        <TabsContainer>
-          <Tab 
-            active={activeTab === TabType.BANNERS} 
-            onClick={() => handleTabChange(TabType.BANNERS)}
-          >
-            Banner Slides
-          </Tab>
-          <Tab 
-            active={activeTab === TabType.NOTIFICATION} 
-            onClick={() => handleTabChange(TabType.NOTIFICATION)}
-          >
-            Notification Bar
-          </Tab>
-        </TabsContainer>
-        
-        {activeTab === TabType.BANNERS && (
+        {loading ? (
+          <LoadingMessage>Loading promotion data...</LoadingMessage>
+        ) : error ? (
+          <ErrorMessage>{error}</ErrorMessage>
+        ) : (
           <>
-            {editingBanner ? (
-              <Card>
-                <CardTitle>
-                  Edit Banner
-                  <Button onClick={cancelEditBanner}>Cancel</Button>
-                </CardTitle>
-                
-                <FormGroup>
-                  <Tooltip content="Short label displayed at the top of the banner" position="right">
-                    <Label htmlFor="label">Label</Label>
-                  </Tooltip>
-                  <Input
-                    id="label"
-                    name="label"
-                    value={editingBanner.label}
-                    onChange={handleBannerInputChange}
-                  />
-                </FormGroup>
-                
-                <FormGroup>
-                  <Tooltip content="Main headline of the banner" position="right">
-                    <Label htmlFor="title">Title</Label>
-                  </Tooltip>
-                  <Input
-                    id="title"
-                    name="title"
-                    value={editingBanner.title}
-                    onChange={handleBannerInputChange}
-                  />
-                </FormGroup>
-                
-                <FormGroup>
-                  <Tooltip content="Descriptive text explaining the promotion" position="right">
-                    <Label htmlFor="description">Description</Label>
-                  </Tooltip>
-                  <TextArea
-                    id="description"
-                    name="description"
-                    value={editingBanner.description}
-                    onChange={handleBannerInputChange}
-                  />
-                </FormGroup>
-                
-                <FormGroup>
-                  <Tooltip content="URL path to the banner image" position="right">
-                    <Label htmlFor="image">Image URL</Label>
-                  </Tooltip>
-                  <Input
-                    id="image"
-                    name="image"
-                    value={editingBanner.image}
-                    onChange={handleBannerInputChange}
-                  />
-                </FormGroup>
-                
-                <FormGroup>
-                  <Tooltip content="URL path where users will be directed when clicking the banner" position="right">
-                    <Label htmlFor="link">Link URL</Label>
-                  </Tooltip>
-                  <Input
-                    id="link"
-                    name="link"
-                    value={editingBanner.link}
-                    onChange={handleBannerInputChange}
-                  />
-                </FormGroup>
-                
-                <div style={{ display: 'flex', gap: '20px' }}>
-                  <ColorPickerContainer>
-                    <Tooltip content="Background color of the banner content area" position="right">
-                      <Label>Background Color</Label>
-                    </Tooltip>
-                    <ColorPreview 
-                      color={editingBanner.bgColor}
-                      onClick={() => setShowBgColorPicker(!showBgColorPicker)}
-                    />
-                    {showBgColorPicker && (
-                      <ColorPickerPopover>
-                        <ColorPickerCover onClick={() => setShowBgColorPicker(false)} />
-                        <ChromePicker 
-                          color={editingBanner.bgColor}
-                          onChange={handleBannerBgColorChange}
-                        />
-                      </ColorPickerPopover>
-                    )}
-                  </ColorPickerContainer>
-                  
-                  <ColorPickerContainer>
-                    <Tooltip content="Background color of the banner image area" position="right">
-                      <Label>Image Background Color</Label>
-                    </Tooltip>
-                    <ColorPreview 
-                      color={editingBanner.imgBgColor}
-                      onClick={() => setShowImgBgColorPicker(!showImgBgColorPicker)}
-                    />
-                    {showImgBgColorPicker && (
-                      <ColorPickerPopover>
-                        <ColorPickerCover onClick={() => setShowImgBgColorPicker(false)} />
-                        <ChromePicker 
-                          color={editingBanner.imgBgColor}
-                          onChange={handleBannerImgBgColorChange}
-                        />
-                      </ColorPickerPopover>
-                    )}
-                  </ColorPickerContainer>
-                </div>
-                
-                <BannerPreview bgColor={editingBanner.bgColor}>
-                  <BannerContent>
-                    <BannerCardLabel>{editingBanner.label}</BannerCardLabel>
-                    <h2 style={{ margin: '0 0 10px', fontSize: '24px' }}>{editingBanner.title}</h2>
-                    <p>{editingBanner.description}</p>
-                    <Button>Learn More</Button>
-                  </BannerContent>
-                  <BannerImage bgColor={editingBanner.imgBgColor}>
-                    <img src={editingBanner.image} alt={editingBanner.title} />
-                  </BannerImage>
-                </BannerPreview>
-                
-                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
-                  <Button onClick={handleSaveBanner}>Save Changes</Button>
-                </div>
-              </Card>
-            ) : (
+            {activeTab === TabType.BANNERS && (
               <>
                 <Card>
                   <CardTitle>Banner Slides</CardTitle>
                   <p>Manage promotional banner slides that appear on the homepage. Toggle banners on/off or edit their content.</p>
                   
+                  <ButtonRow>
+                    <Button onClick={() => handleAddBanner()}>Add New Banner</Button>
+                  </ButtonRow>
+                  
                   <BannerList>
-                    {banners.map(banner => (
-                      <BannerCard key={banner.id}>
-                        <BannerCardHeader bgColor={banner.bgColor}>
-                          <BannerCardLabel>{banner.label}</BannerCardLabel>
-                          <BannerCardTitle>{banner.title}</BannerCardTitle>
-                        </BannerCardHeader>
-                        <BannerCardBody>
-                          <p style={{ fontSize: '14px', margin: '0 0 10px' }}>{banner.description}</p>
-                          <div style={{ fontSize: '12px', color: '#666' }}>
-                            <div>Link: {banner.link}</div>
-                          </div>
-                          <BannerCardActions>
-                            <Button onClick={() => handleEditBanner(banner)}>Edit</Button>
-                            <ToggleButton 
-                              active={banner.active}
-                              onClick={() => handleToggleBanner(banner.id)}
-                            >
-                              {banner.active ? 'Active' : 'Inactive'}
-                            </ToggleButton>
-                          </BannerCardActions>
-                        </BannerCardBody>
-                      </BannerCard>
-                    ))}
+                    {Array.isArray(banners) && banners.length > 0 ? (
+                      banners.map(banner => (
+                        <BannerCard key={banner.id}>
+                          <BannerCardHeader bgColor={banner.bgColor}>
+                            <BannerCardLabel>{banner.label}</BannerCardLabel>
+                            <BannerCardTitle>{banner.title}</BannerCardTitle>
+                          </BannerCardHeader>
+                          <BannerCardBody>
+                            <p style={{ fontSize: '14px', margin: '0 0 10px' }}>{banner.description}</p>
+                            <div style={{ fontSize: '12px', color: '#666' }}>
+                              <div>Link: {banner.link}</div>
+                            </div>
+                            <BannerCardActions>
+                              <Button onClick={() => handleEditBanner(banner)}>Edit</Button>
+                              <ToggleButton 
+                                active={banner.active}
+                                onClick={() => handleToggleBanner(banner.id)}
+                              >
+                                {banner.active ? 'Active' : 'Inactive'}
+                              </ToggleButton>
+                            </BannerCardActions>
+                          </BannerCardBody>
+                        </BannerCard>
+                      ))
+                    ) : (
+                      <EmptyMessage>No banners found. Create your first banner to get started.</EmptyMessage>
+                    )}
                   </BannerList>
                 </Card>
               </>
             )}
-          </>
-        )}
-        
-        {activeTab === TabType.NOTIFICATION && notificationBar && (
-          <Card>
-            <CardTitle>
-              Notification Bar
-              <ToggleButton 
-                active={notificationBar.active}
-                onClick={handleToggleNotification}
-              >
-                {notificationBar.active ? 'Active' : 'Inactive'}
-              </ToggleButton>
-            </CardTitle>
             
-            <FormGroup>
-              <Tooltip content="The main message displayed in the notification bar" position="right">
-                <Label htmlFor="message">Message</Label>
-              </Tooltip>
-              <Input
-                id="message"
-                name="message"
-                value={notificationBar.message}
-                onChange={handleNotificationInputChange}
-              />
-            </FormGroup>
-            
-            <FormGroup>
-              <Tooltip content="Text for the clickable link in the notification bar" position="right">
-                <Label htmlFor="linkText">Link Text</Label>
-              </Tooltip>
-              <Input
-                id="linkText"
-                name="linkText"
-                value={notificationBar.linkText}
-                onChange={handleNotificationInputChange}
-              />
-            </FormGroup>
-            
-            <FormGroup>
-              <Tooltip content="URL where users will be directed when clicking the link" position="right">
-                <Label htmlFor="linkUrl">Link URL</Label>
-              </Tooltip>
-              <Input
-                id="linkUrl"
-                name="linkUrl"
-                value={notificationBar.linkUrl}
-                onChange={handleNotificationInputChange}
-              />
-            </FormGroup>
-            
-            <ColorPickerContainer>
-              <Tooltip content="Background color of the notification bar" position="right">
-                <Label>Background Color</Label>
-              </Tooltip>
-              <ColorPreview 
-                color={notificationBar.bgColor}
-                onClick={() => setShowNotificationBgColorPicker(!showNotificationBgColorPicker)}
-              />
-              {showNotificationBgColorPicker && (
-                <ColorPickerPopover>
-                  <ColorPickerCover onClick={() => setShowNotificationBgColorPicker(false)} />
-                  <ChromePicker 
-                    color={notificationBar.bgColor}
-                    onChange={handleNotificationBgColorChange}
+            {activeTab === TabType.NOTIFICATION && notificationBar && (
+              <Card>
+                <CardTitle>
+                  Notification Bar
+                  <ToggleButton 
+                    active={notificationBar.active}
+                    onClick={handleToggleNotification}
+                  >
+                    {notificationBar.active ? 'Active' : 'Inactive'}
+                  </ToggleButton>
+                </CardTitle>
+                
+                <FormGroup>
+                  <Tooltip content="The main message displayed in the notification bar" position="right">
+                    <Label htmlFor="message">Message</Label>
+                  </Tooltip>
+                  <Input
+                    id="message"
+                    name="message"
+                    value={notificationBar.message}
+                    onChange={handleNotificationInputChange}
                   />
-                </ColorPickerPopover>
-              )}
-            </ColorPickerContainer>
-            
-            <NotificationPreview bgColor={notificationBar.bgColor}>
-              {notificationBar.message}
-              <a href="#">{notificationBar.linkText}</a>
-            </NotificationPreview>
-            
-            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
-              <Button onClick={handleSaveNotification}>Save Changes</Button>
-            </div>
-          </Card>
+                </FormGroup>
+                
+                <FormGroup>
+                  <Tooltip content="Text for the clickable link in the notification bar" position="right">
+                    <Label htmlFor="linkText">Link Text</Label>
+                  </Tooltip>
+                  <Input
+                    id="linkText"
+                    name="linkText"
+                    value={notificationBar.linkText}
+                    onChange={handleNotificationInputChange}
+                  />
+                </FormGroup>
+                
+                <FormGroup>
+                  <Tooltip content="URL where users will be directed when clicking the link" position="right">
+                    <Label htmlFor="linkUrl">Link URL</Label>
+                  </Tooltip>
+                  <Input
+                    id="linkUrl"
+                    name="linkUrl"
+                    value={notificationBar.linkUrl}
+                    onChange={handleNotificationInputChange}
+                  />
+                </FormGroup>
+                
+                <ColorPickerContainer>
+                  <Tooltip content="Background color of the notification bar" position="right">
+                    <Label>Background Color</Label>
+                  </Tooltip>
+                  <ColorPreview 
+                    color={notificationBar.bgColor}
+                    onClick={() => setShowNotificationBgColorPicker(!showNotificationBgColorPicker)}
+                  />
+                  {showNotificationBgColorPicker && (
+                    <ColorPickerPopover>
+                      <ColorPickerCover onClick={() => setShowNotificationBgColorPicker(false)} />
+                      <ChromePicker 
+                        color={notificationBar.bgColor}
+                        onChange={handleNotificationBgColorChange}
+                      />
+                    </ColorPickerPopover>
+                  )}
+                </ColorPickerContainer>
+                
+                <NotificationPreview bgColor={notificationBar.bgColor}>
+                  {notificationBar.message}
+                  <a href="#">{notificationBar.linkText}</a>
+                </NotificationPreview>
+                
+                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+                  <Button onClick={handleSaveNotification}>Save Changes</Button>
+                </div>
+              </Card>
+            )}
+          </>
         )}
       </PageContainer>
     </AdminLayout>

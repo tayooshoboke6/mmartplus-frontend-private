@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import AdminLayout from '../../components/admin/AdminLayout';
+import AdminLayout from '../../components/layouts/AdminLayout';
 import { FlexBox, Text, Button } from '../../styles/GlobalComponents';
 import Tooltip from '../../components/common/Tooltip';
+import productService from '../../services/productService';
+import { toast } from 'react-toastify';
+import categoryService, { Category } from '../../services/categoryService';
+import { ProductFormData } from '../../types/Product';
 
 const FormContainer = styled.div`
   background-color: white;
@@ -177,7 +181,11 @@ const ImagePreview = styled.div`
   }
 `;
 
-// Interface for specification items
+interface Category {
+  id: number;
+  name: string;
+}
+
 interface Specification {
   id: number;
   name: string;
@@ -185,124 +193,209 @@ interface Specification {
 }
 
 const ProductFormPage: React.FC = () => {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string | undefined }>();
   const navigate = useNavigate();
-  const isEditMode = Boolean(id);
+  const isEditMode = id !== undefined && id !== 'new';
   
-  // Form state
-  const [formData, setFormData] = useState({
-    name: '',
-    price: '',
-    description: '',
-    category: '',
-    stock: '',
-    sku: '',
-    featured: false,
-    discount: '',
-    taxable: true,
-    productType: 'pieces',
-    expiryDate: '',
-    sizes: { S: 0, M: 0, L: 0, XL: 0, XXL: 0 }
-  });
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
   
-  // Mock categories
-  const categories = ['Electronics', 'Computers', 'Footwear', 'Home & Kitchen', 'Gaming', 'Clothing', 'Beauty'];
-  
-  // Mock images for preview
-  const [images, setImages] = useState<string[]>([]);
+  // Product Form State
+  const [name, setName] = useState('');
+  const [slug, setSlug] = useState('');
+  const [description, setDescription] = useState('');
+  const [shortDescription, setShortDescription] = useState('');
+  const [price, setPrice] = useState('');
+  const [sku, setSku] = useState('');
+  const [stockQuantity, setStockQuantity] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [isFeatured, setIsFeatured] = useState(false);
+  const [isActive, setIsActive] = useState(true);
+  const [expiryDate, setExpiryDate] = useState('');
+  const [images, setImages] = useState<File[]>([]);
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
+  const [currentProductImages, setCurrentProductImages] = useState<string[]>([]);
   
   useEffect(() => {
-    // If in edit mode, fetch product data
+    fetchCategories();
+    
     if (isEditMode) {
-      // This would be an API call in a real app
-      // For now, we'll use mock data
-      if (id === '1') {
-        setFormData({
-          name: 'Samsung Galaxy S21',
-          price: '450000',
-          description: 'The latest Samsung Galaxy smartphone with amazing camera and performance.',
-          category: 'Electronics',
-          stock: '24',
-          sku: 'SAM-GS21-BLK',
-          featured: true,
-          discount: '10',
-          taxable: true,
-          productType: 'pieces',
-          expiryDate: '',
-          sizes: { S: 0, M: 0, L: 0, XL: 0, XXL: 0 }
-        });
-        
-        setImages(['https://via.placeholder.com/150', 'https://via.placeholder.com/150']);
-      }
+      fetchProductDetails();
     }
-  }, [isEditMode, id]);
+  }, [id]);
   
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
-  };
-  
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: checked
-    });
-  };
-  
-  const handleSizeStockChange = (size: string, value: string) => {
-    setFormData({
-      ...formData,
-      sizes: {
-        ...formData.sizes,
-        [size]: parseInt(value) || 0
+  const fetchCategories = async () => {
+    try {
+      const response = await categoryService.getCategories();
+      if (response.success && Array.isArray(response.data)) {
+        setCategories(response.data);
       }
-    });
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      toast.error('Failed to load categories');
+    }
   };
   
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const fetchProductDetails = async () => {
+    if (!id || id === 'new') return;
+    
+    setLoading(true);
+    try {
+      const response = await productService.getProduct(id);
+      const product = response.product;
+      
+      // Populate form with product data
+      setName(product.name);
+      setSlug(product.slug || '');
+      setDescription(product.description || '');
+      setShortDescription(product.short_description || '');
+      setPrice(product.price.toString());
+      setSku(product.sku);
+      setStockQuantity(product.stock.toString());
+      setCategoryId(product.category_id.toString());
+      setIsFeatured(product.is_featured);
+      setIsActive(product.is_active);
+      setExpiryDate(product.expiry_date || '');
+      
+      // Handle images
+      if (product.images && Array.isArray(product.images)) {
+        setCurrentProductImages(product.images);
+        setImagePreviewUrls(product.images);
+      }
+      
+    } catch (error) {
+      console.error('Error fetching product details:', error);
+      toast.error('Failed to load product details');
+      navigate('/admin/products');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Generate slug from product name
+  const generateSlug = (name: string) => {
+    return name
+      .toLowerCase()
+      .replace(/[^\w\s-]/g, '') // Remove special characters
+      .replace(/\s+/g, '-')     // Replace spaces with hyphens
+      .replace(/-+/g, '-')      // Replace multiple hyphens with single hyphen
+      .trim();
+  };
+
+  // Update slug when product name changes
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setName(newName);
+    setSlug(generateSlug(newName));
+  };
+  
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const fileArray = Array.from(e.target.files);
-      const newImages = fileArray.map(file => URL.createObjectURL(file));
-      setImages([...images, ...newImages]);
+      const filesArray = Array.from(e.target.files);
+      const newImages = [...images, ...filesArray];
+      setImages(newImages);
+      
+      // Generate preview URLs
+      const newImagePreviewUrls = [...imagePreviewUrls];
+      filesArray.forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (typeof reader.result === 'string') {
+            newImagePreviewUrls.push(reader.result);
+            setImagePreviewUrls([...newImagePreviewUrls]);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
     }
   };
   
   const removeImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index));
+    // Check if it's an existing image or a new upload
+    if (index < currentProductImages.length) {
+      setCurrentProductImages(currentProductImages.filter((_, i) => i !== index));
+    } else {
+      const adjustedIndex = index - currentProductImages.length;
+      setImages(images.filter((_, i) => i !== adjustedIndex));
+    }
+    
+    setImagePreviewUrls(imagePreviewUrls.filter((_, i) => i !== index));
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitting(true);
     
-    // Calculate total stock for sizes if applicable
-    const totalStock = formData.productType === 'sizes' 
-      ? Object.values(formData.sizes).reduce((sum, qty) => sum + qty, 0)
-      : parseInt(formData.stock) || 0;
-    
-    // Prepare data for API submission
-    const productData = {
-      ...formData,
-      price: parseFloat(formData.price),
-      discount: formData.discount ? parseFloat(formData.discount) : null,
-      stock_quantity: totalStock,
-      // Include size data in metadata if product uses sizes
-      metadata: formData.productType === 'sizes' ? { sizes: formData.sizes } : {}
-    };
-    
-    // In a real app, this would send the data to an API
-    console.log('Form Data:', productData);
-    console.log('Images:', images);
-    
-    // Redirect back to products list
-    navigate('/admin/products');
+    try {
+      const formData = new FormData();
+      
+      // Append basic fields
+      formData.append('name', name);
+      formData.append('slug', slug || '');
+      formData.append('description', description || '');
+      formData.append('short_description', shortDescription || '');
+      formData.append('price', price.toString());
+      formData.append('stock', stockQuantity.toString());
+      formData.append('category_id', categoryId.toString());
+      formData.append('is_active', isActive ? '1' : '0');
+      formData.append('is_featured', isFeatured ? '1' : '0');
+      
+      // Append expiry date if present
+      if (expiryDate) {
+        formData.append('expiry_date', expiryDate);
+      }
+      
+      // Append existing images if editing
+      if (id && currentProductImages.length > 0) {
+        formData.append('existing_images', JSON.stringify(currentProductImages));
+      }
+      
+      // Append new images
+      if (images.length > 0) {
+        images.forEach((file) => {
+          formData.append('images[]', file);
+        });
+      }
+      
+      let response;
+      
+      if (id) {
+        // Update existing product
+        response = await productService.updateProduct(Number(id), formData);
+        toast.success('Product updated successfully!');
+      } else {
+        // Create new product
+        response = await productService.createProduct(formData);
+        toast.success('Product created successfully!');
+      }
+      
+      // Navigate back to products page after successful submission
+      navigate('/admin/products');
+      
+    } catch (error: any) {
+      console.error('Error submitting product form:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to save product. Please try again.';
+      toast.error(errorMessage);
+    } finally {
+      setSubmitting(false);
+    }
   };
+  
+  if (loading) {
+    return (
+      <AdminLayout>
+        <Text size="24px" weight="500">Loading product details...</Text>
+      </AdminLayout>
+    );
+  }
   
   return (
-    <AdminLayout title={isEditMode ? 'Edit Product' : 'Add New Product'}>
+    <AdminLayout>
+      <FlexBox justify="space-between" align="center" gap="20px" style={{ marginBottom: '20px' }}>
+        <Text size="24px" weight="500">{isEditMode ? 'Edit Product' : 'Add New Product'}</Text>
+      </FlexBox>
+      
       <form onSubmit={handleSubmit}>
         <FormContainer>
           <FormSection>
@@ -315,12 +408,26 @@ const ProductFormPage: React.FC = () => {
                 <Input
                   id="name"
                   name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
+                  value={name}
+                  onChange={handleNameChange}
                   required
                 />
               </FormGroup>
               
+              <FormGroup>
+                <Tooltip content="URL-friendly version of the product name" position="right">
+                  <Label htmlFor="slug">Slug</Label>
+                </Tooltip>
+                <Input
+                  id="slug"
+                  name="slug"
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value)}
+                />
+              </FormGroup>
+            </FormRow>
+            
+            <FormRow>
               <FormGroup>
                 <Tooltip content="Select the appropriate category for your product" position="right">
                   <Label htmlFor="category">Category*</Label>
@@ -328,17 +435,43 @@ const ProductFormPage: React.FC = () => {
                 <Select
                   id="category"
                   name="category"
-                  value={formData.category}
-                  onChange={handleInputChange}
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
                   required
                 >
                   <option value="">Select Category</option>
                   {categories.map(category => (
-                    <option key={category} value={category}>{category}</option>
+                    <option key={category.id} value={category.id}>{category.name}</option>
                   ))}
                 </Select>
               </FormGroup>
+              
+              <FormGroup>
+                <Tooltip content="Date when the product expires (if applicable)" position="right">
+                  <Label htmlFor="expiryDate">Expiry Date</Label>
+                </Tooltip>
+                <Input
+                  id="expiryDate"
+                  name="expiryDate"
+                  type="date"
+                  value={expiryDate}
+                  onChange={(e) => setExpiryDate(e.target.value)}
+                />
+              </FormGroup>
             </FormRow>
+            
+            <FormGroup>
+              <Tooltip content="Brief description of the product (used in listings)" position="right">
+                <Label htmlFor="shortDescription">Short Description*</Label>
+              </Tooltip>
+              <Input
+                id="shortDescription"
+                name="shortDescription"
+                value={shortDescription}
+                onChange={(e) => setShortDescription(e.target.value)}
+                required
+              />
+            </FormGroup>
             
             <FormGroup>
               <Tooltip content="Provide a detailed description of the product features and benefits" position="right">
@@ -347,12 +480,15 @@ const ProductFormPage: React.FC = () => {
               <Textarea
                 id="description"
                 name="description"
-                value={formData.description}
-                onChange={handleInputChange}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
                 required
               />
             </FormGroup>
-            
+          </FormSection>
+          
+          <FormSection>
+            <SectionTitle>Pricing & Inventory</SectionTitle>
             <FormRow>
               <FormGroup>
                 <Tooltip content="Set the selling price in Naira (₦)" position="right">
@@ -362,8 +498,8 @@ const ProductFormPage: React.FC = () => {
                   id="price"
                   name="price"
                   type="number"
-                  value={formData.price}
-                  onChange={handleInputChange}
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
                   min="0"
                   step="0.01"
                   required
@@ -371,190 +507,103 @@ const ProductFormPage: React.FC = () => {
               </FormGroup>
               
               <FormGroup>
-                <Tooltip content="Percentage discount to apply to the product price" position="right">
-                  <Label htmlFor="discount">Discount (%)</Label>
-                </Tooltip>
-                <Input
-                  id="discount"
-                  name="discount"
-                  type="number"
-                  value={formData.discount}
-                  onChange={handleInputChange}
-                  min="0"
-                  max="100"
-                />
-              </FormGroup>
-            </FormRow>
-            
-            <FormRow>
-              <FormGroup>
-                <Tooltip content="Date when the product expires (if applicable)" position="right">
-                  <Label htmlFor="expiryDate">Expiry Date</Label>
-                </Tooltip>
-                <Input
-                  id="expiryDate"
-                  name="expiryDate"
-                  type="date"
-                  value={formData.expiryDate}
-                  onChange={handleInputChange}
-                />
-              </FormGroup>
-              <FormGroup>
-                {/* Empty form group to maintain grid layout */}
-              </FormGroup>
-            </FormRow>
-          </FormSection>
-          
-          <FormSection>
-            <SectionTitle>Inventory</SectionTitle>
-            <FormRow>
-              <FormGroup>
                 <Tooltip content="Unique identifier code for inventory tracking" position="right">
-                  <Label htmlFor="sku">SKU (Stock Keeping Unit)</Label>
+                  <Label htmlFor="sku">SKU (Stock Keeping Unit)*</Label>
                 </Tooltip>
                 <Input
                   id="sku"
                   name="sku"
-                  value={formData.sku}
-                  onChange={handleInputChange}
-                />
-              </FormGroup>
-              
-              <FormGroup>
-                <Tooltip content="Specify how the product is sold (individual units, packs, or clothing with sizes)" position="right">
-                  <Label htmlFor="productType">Product Type*</Label>
-                </Tooltip>
-                <Select
-                  id="productType"
-                  name="productType"
-                  value={formData.productType}
-                  onChange={handleInputChange}
+                  value={sku}
+                  onChange={(e) => setSku(e.target.value)}
                   required
-                >
-                  <option value="pieces">Individual Pieces</option>
-                  <option value="packs">Packs/Bundles</option>
-                  <option value="sizes">Clothing (With Sizes)</option>
-                </Select>
+                />
               </FormGroup>
             </FormRow>
             
-            {formData.productType === 'sizes' ? (
+            <FormRow>
               <FormGroup>
-                <Tooltip content="Enter the quantity available for each size" position="right">
-                  <Label>Stock Quantity by Size*</Label>
-                </Tooltip>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px' }}>
-                  {Object.keys(formData.sizes).map((size) => (
-                    <div key={size}>
-                      <Label htmlFor={`size-${size}`}>{size}</Label>
-                      <Input
-                        id={`size-${size}`}
-                        type="number"
-                        value={formData.sizes[size as keyof typeof formData.sizes]}
-                        onChange={(e) => handleSizeStockChange(size, e.target.value)}
-                        min="0"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </FormGroup>
-            ) : (
-              <FormGroup>
-                <Tooltip content="Enter the total quantity of items available for sale" position="right">
-                  <Label htmlFor="stock">Stock Quantity*</Label>
+                <Tooltip content="Number of units available for sale" position="right">
+                  <Label htmlFor="stockQuantity">Stock Quantity*</Label>
                 </Tooltip>
                 <Input
-                  id="stock"
-                  name="stock"
+                  id="stockQuantity"
+                  name="stockQuantity"
                   type="number"
-                  value={formData.stock}
-                  onChange={handleInputChange}
+                  value={stockQuantity}
+                  onChange={(e) => setStockQuantity(e.target.value)}
                   min="0"
                   required
                 />
               </FormGroup>
-            )}
-            
-            <FormGroup>
-              <Tooltip content="Mark this product to appear in featured products section" position="right">
-                <Label>
-                  <input
-                    type="checkbox"
-                    name="featured"
-                    checked={formData.featured}
-                    onChange={handleCheckboxChange}
-                  />
-                  {' '}Featured Product
-                </Label>
-              </Tooltip>
-            </FormGroup>
-            
-            <FormGroup>
-              <Label>
-                <input
-                  type="checkbox"
-                  name="taxable"
-                  checked={formData.taxable}
-                  onChange={handleCheckboxChange}
-                />
-                {' '}Taxable
-              </Label>
-            </FormGroup>
+              
+              <FormGroup>
+                <div style={{ marginTop: '30px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input
+                      type="checkbox"
+                      checked={isFeatured}
+                      onChange={(e) => setIsFeatured(e.target.checked)}
+                    /> 
+                    Featured Product
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px' }}>
+                    <input
+                      type="checkbox"
+                      checked={isActive}
+                      onChange={(e) => setIsActive(e.target.checked)}
+                    /> 
+                    Active (Visible on store)
+                  </label>
+                </div>
+              </FormGroup>
+            </FormRow>
           </FormSection>
           
           <FormSection>
             <SectionTitle>Product Images</SectionTitle>
-            <Label>Upload Images</Label>
             <ImageUploadArea>
-              <label htmlFor="image-upload">
-                <UploadIcon>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
-                    <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
-                  </svg>
-                </UploadIcon>
-                <Text size="md">Drag and drop images here or click to browse</Text>
-                <Text size="sm" color="#666" style={{ marginTop: '5px' }}>
-                  Supported formats: JPG, PNG, GIF. Max size: 5MB per image.
-                </Text>
-                <input
-                  id="image-upload"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageUpload}
-                />
-              </label>
+              <UploadIcon>📷</UploadIcon>
+              <p>Drag images here or click to upload product images</p>
+              <Button type="button" onClick={() => document.getElementById('imageInput')?.click()}>
+                Select Images
+              </Button>
+              <input
+                id="imageInput"
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageChange}
+              />
             </ImageUploadArea>
             
-            {images.length > 0 && (
+            {imagePreviewUrls.length > 0 && (
               <ImagePreviewContainer>
-                {images.map((image, index) => (
+                {imagePreviewUrls.map((url, index) => (
                   <ImagePreview key={index}>
-                    <img src={image} alt={`Preview ${index}`} />
-                    <button type="button" onClick={() => removeImage(index)}>
-                      ✕
-                    </button>
+                    <img src={url} alt={`Product preview ${index + 1}`} />
+                    <button type="button" onClick={() => removeImage(index)}>×</button>
                   </ImagePreview>
                 ))}
               </ImagePreviewContainer>
             )}
           </FormSection>
           
-          <FormGroup style={{ marginTop: '30px' }}>
-            <FlexBox gap="10px" justify="flex-end">
-              <Button 
-                type="button" 
-                variant="secondary" 
-                onClick={() => navigate('/admin/products')}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" variant="primary">
-                {isEditMode ? 'Update Product' : 'Create Product'}
-              </Button>
-            </FlexBox>
-          </FormGroup>
+          <FlexBox justify="flex-end" gap="15px" style={{ marginTop: '30px' }}>
+            <Button
+              type="button"
+              onClick={() => navigate('/admin/products')}
+              disabled={submitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              primary
+              type="submit"
+              disabled={submitting}
+            >
+              {submitting ? 'Saving...' : isEditMode ? 'Update Product' : 'Create Product'}
+            </Button>
+          </FlexBox>
         </FormContainer>
       </form>
     </AdminLayout>

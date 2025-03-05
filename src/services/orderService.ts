@@ -91,6 +91,7 @@ export interface OrderFilterOptions {
   sortOrder?: 'asc' | 'desc';
   page?: number;
   limit?: number;
+  paymentStatus?: string;
 }
 
 // Response interfaces
@@ -104,39 +105,66 @@ export interface GetOrderDetailResponse {
   order: Order;
 }
 
-export interface SalesStatsResponse {
-  daily_sales: Array<{
-    date: string;
-    amount: number;
-  }>;
-  total_revenue: number;
-  total_orders: number;
-  average_order_value: number;
-}
-
+// Dashboard stats interface
 export interface DashboardStats {
-  total_revenue: number;
+  total_sales: number;
   total_orders: number;
-  total_products: number;
-  low_stock_items: number;
-  revenue_change: number;
-  orders_change: number;
-  new_products_count: number;
-  low_stock_change: number;
+  order_count: number;
+  pending_orders: number;
+  total_customers: number;
+  new_customers: number;
+  orders_by_status: Array<{ status: string; count: number }>;
   recent_orders: OrderSummary[];
+  popular_products: Array<{ id: number; name: string; total_quantity_sold: number }>;
+  low_stock_products: Array<{ id: number; name: string; stock: number }>;
+  sales_by_day: Array<{ date: string; total_sales: number }>;
+  daily_sales: Array<{ date: string; total_sales: number }>;
+  sales_by_category: Array<{ category: string; total_sales: number }>;
+  date_range: {
+    start_date: string;
+    end_date: string;
+  };
 }
 
 const orderService = {
   getOrders: async (options: OrderFilterOptions = {}): Promise<GetOrdersResponse> => {
     try {
-      const response = await api.get<any>('/orders', { params: options });
-      console.log('Orders API response:', response.data);
+      // Use the admin orders endpoint for admin users
+      const response = await api.get<any>('/admin/orders', { 
+        params: {
+          status: options.status,
+          payment_status: options.paymentStatus,
+          from_date: options.startDate,
+          to_date: options.endDate,
+          page: options.page || 1,
+          per_page: options.limit || 10
+        } 
+      });
+      
+      console.log('Admin Orders API response:', response.data);
       
       // Map the Laravel response to our expected format
       if (response.data && response.data.status === 'success' && response.data.data) {
         // The response contains Laravel pagination data
+        const orders = response.data.data.data || [];
+        
+        // Transform the response to match our frontend model
+        const transformedOrders = orders.map((order: any) => ({
+          id: order.id,
+          order_number: order.order_number,
+          customer_name: order.user ? `${order.user.name}` : 'Guest User',
+          total: order.total,
+          status: order.status,
+          items_count: order.items ? order.items.length : 0,
+          payment_method: order.payment_method,
+          payment_status: order.payment_status,
+          created_at: order.created_at,
+          updated_at: order.updated_at,
+          user_id: order.user_id
+        }));
+        
         return {
-          orders: response.data.data.data || [], // In Laravel pagination, items are in data.data
+          orders: transformedOrders,
           total_count: response.data.data.total || 0
         };
       }
@@ -147,7 +175,7 @@ const orderService = {
         total_count: 0
       };
     } catch (error) {
-      console.error('Error fetching orders:', error);
+      console.error('Error fetching admin orders:', error);
       throw error;
     }
   },
@@ -162,19 +190,9 @@ const orderService = {
     }
   },
 
-  getSalesStats: async (): Promise<SalesStatsResponse> => {
+  getDashboardStats: async (): Promise<{ status: string; data: DashboardStats }> => {
     try {
-      const response = await api.get<SalesStatsResponse>('/orders/stats');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching sales stats:', error);
-      throw error;
-    }
-  },
-
-  getDashboardStats: async (): Promise<DashboardStats> => {
-    try {
-      const response = await api.get<DashboardStats>('/dashboard/stats');
+      const response = await api.get<{ status: string; data: DashboardStats }>('/admin/dashboard/stats');
       return response.data;
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
@@ -200,7 +218,20 @@ const orderService = {
       console.error(`Error reordering order #${orderId}:`, error);
       throw error;
     }
-  }
+  },
+
+  updateOrderStatus: async (orderId: number, status: OrderStatus): Promise<{ success: boolean; message: string }> => {
+    try {
+      const response = await api.patch(`/admin/orders/${orderId}/status`, { status });
+      return {
+        success: response.data.status === 'success',
+        message: response.data.message || 'Order status updated successfully'
+      };
+    } catch (error) {
+      console.error(`Error updating order #${orderId} status:`, error);
+      throw error;
+    }
+  },
 };
 
 export default orderService;
