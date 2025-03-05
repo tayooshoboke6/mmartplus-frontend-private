@@ -27,7 +27,7 @@ import {
   BarChart as BarChartIcon,
   Edit as EditIcon
 } from '@mui/icons-material';
-import { getVouchers, getVoucherStats } from '../../../services/voucherService';
+import { getVouchers, getVoucherStats } from '../../../services/VoucherService';
 import { formatCurrency } from '../../../utils/formatters';
 
 interface Voucher {

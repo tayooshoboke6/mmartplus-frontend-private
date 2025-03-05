@@ -5,7 +5,7 @@ import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import AccountSidebar from '../../components/account/AccountSidebar';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { getVouchers } from '../../services/voucherService';
+import { getVouchers } from '../../services/VoucherService';
 
 // Types for vouchers
 interface Voucher {

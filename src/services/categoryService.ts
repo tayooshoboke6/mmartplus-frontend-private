@@ -51,14 +51,18 @@ const categoryService = {
       // Add timestamp to force a fresh fetch when requested
       const cacheParams = forceRefresh ? `${queryString ? '&' : '?'}_t=${Date.now()}` : '';
       
+      // Use admin endpoint when in admin section
+      const isAdminSection = window.location.pathname.includes('/admin');
+      const baseEndpoint = isAdminSection ? '/admin/categories' : '/categories';
+      
       // Correct URL construction
-      const endpoint = `/categories${queryString ? `?${queryString}` : ''}${cacheParams}`;
+      const endpoint = `${baseEndpoint}${queryString ? `?${queryString}` : ''}${cacheParams}`;
       
       console.log('Fetching categories from:', endpoint);
       
       // Ensure we have an admin token
       const adminToken = getAdminToken();
-      if (!adminToken && window.location.pathname.includes('/admin')) {
+      if (!adminToken && isAdminSection) {
         console.warn('No admin token found for admin category request');
         localStorage.setItem('adminToken', 'dev-admin-token-for-testing');
       }
@@ -76,9 +80,27 @@ const categoryService = {
       console.error('Error fetching categories:', error);
       
       // If auth error, refresh session and retry
-      if (error.response.status === 401) {
+      if (error.response?.status === 401) {
         await refreshSession();
         return categoryService.getCategories(params);
+      }
+      
+      // Return user-friendly error messages based on status code
+      let errorMessage = 'Failed to fetch categories';
+      if (error.response) {
+        switch (error.response.status) {
+          case 404:
+            errorMessage = 'Categories endpoint not found. Please check API configuration.';
+            break;
+          case 403:
+            errorMessage = 'You do not have permission to view categories.';
+            break;
+          case 500:
+            errorMessage = 'Server error while fetching categories. Please try again later.';
+            break;
+          default:
+            errorMessage = error.response.data?.message || errorMessage;
+        }
       }
       
       // Return fallback data to prevent UI from breaking
@@ -86,7 +108,7 @@ const categoryService = {
         status: 'success',
         data: fallbackCategories,
         fallback: true,
-        originalError: error.message
+        originalError: errorMessage
       };
     }
   },
@@ -98,8 +120,14 @@ const categoryService = {
     try {
       // Add timestamp to ensure fresh data
       const timestamp = Date.now();
+      
+      // Use admin endpoint when in admin section
+      const isAdminSection = window.location.pathname.includes('/admin');
+      const baseEndpoint = isAdminSection ? '/admin/categories' : '/categories';
+      
       // Correct URL construction
-      const response = await api.get(`/categories/${id}?_t=${timestamp}`);
+      const response = await api.get(`${baseEndpoint}/${id}?_t=${timestamp}`);
+      
       return {
         status: 'success',
         data: response.data
@@ -108,16 +136,29 @@ const categoryService = {
       console.error(`Error fetching category ${id}:`, error);
       
       // If auth error, refresh session and retry
-      if (error.response.status === 401) {
+      if (error.response?.status === 401) {
         await refreshSession();
         return categoryService.getCategory(id);
       }
       
+      // Return user-friendly error messages based on status code
+      let errorMessage = `Failed to fetch category #${id}`;
+      if (error.response) {
+        switch (error.response.status) {
+          case 404:
+            errorMessage = `Category #${id} not found. It may have been deleted.`;
+            break;
+          case 403:
+            errorMessage = 'You do not have permission to view this category.';
+            break;
+          default:
+            errorMessage = error.response.data?.message || errorMessage;
+        }
+      }
+      
       return {
         status: 'error',
-        message: error.message,
-        // Return a fallback category with the requested ID
-        fallbackData: { ...fallbackCategories[0], id }
+        message: errorMessage
       };
     }
   },
@@ -134,8 +175,8 @@ const categoryService = {
         await refreshSession();
       }
       
-      // Correct URL construction
-      const response = await api.post(`/categories`, data, {
+      // Correct URL construction with admin prefix
+      const response = await api.post(`/admin/categories`, data, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -148,14 +189,36 @@ const categoryService = {
       console.error('Error creating category:', error);
       
       // If auth error, refresh session and retry
-      if (error.response.status === 401) {
+      if (error.response?.status === 401) {
         await refreshSession();
         return categoryService.createCategory(data);
       }
       
+      // Return user-friendly error messages based on status code
+      let errorMessage = 'Failed to create category';
+      if (error.response) {
+        switch (error.response.status) {
+          case 422:
+            const validationErrors = error.response.data?.errors || {};
+            if (validationErrors.name && validationErrors.name.includes('already been taken')) {
+              errorMessage = 'A category with this name already exists. Please choose a different name.';
+            } else if (validationErrors.slug && validationErrors.slug.includes('already been taken')) {
+              errorMessage = 'A category with this slug already exists. Please modify the name to generate a unique slug.';
+            } else {
+              errorMessage = 'Validation error: ' + (error.response.data?.message || 'Please check your inputs');
+            }
+            break;
+          case 403:
+            errorMessage = 'You do not have permission to create categories.';
+            break;
+          default:
+            errorMessage = error.response.data?.message || errorMessage;
+        }
+      }
+      
       return {
         status: 'error',
-        message: error.message
+        message: errorMessage
       };
     }
   },
@@ -175,8 +238,8 @@ const categoryService = {
         await refreshSession();
       }
       
-      // Correct URL construction
-      const response = await api.post(`/categories/${id}`, data, {
+      // Correct URL construction with admin prefix
+      const response = await api.post(`/admin/categories/${id}`, data, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -190,14 +253,39 @@ const categoryService = {
       console.error(`Error updating category ${id}:`, error);
       
       // If auth error, refresh session and retry
-      if (error.response.status === 401) {
+      if (error.response?.status === 401) {
         await refreshSession();
         return categoryService.updateCategory(id, data);
       }
       
+      // Return user-friendly error messages based on status code
+      let errorMessage = `Failed to update category #${id}`;
+      if (error.response) {
+        switch (error.response.status) {
+          case 404:
+            errorMessage = `Category #${id} not found. It may have been deleted.`;
+            break;
+          case 422:
+            const validationErrors = error.response.data?.errors || {};
+            if (validationErrors.name && validationErrors.name.includes('already been taken')) {
+              errorMessage = 'A category with this name already exists. Please choose a different name.';
+            } else if (validationErrors.slug && validationErrors.slug.includes('already been taken')) {
+              errorMessage = 'A category with this slug already exists. Please modify the name to generate a unique slug.';
+            } else {
+              errorMessage = 'Validation error: ' + (error.response.data?.message || 'Please check your inputs');
+            }
+            break;
+          case 403:
+            errorMessage = 'You do not have permission to update this category.';
+            break;
+          default:
+            errorMessage = error.response.data?.message || errorMessage;
+        }
+      }
+      
       return {
         status: 'error',
-        message: error.message
+        message: errorMessage
       };
     }
   },
@@ -214,8 +302,8 @@ const categoryService = {
         await refreshSession();
       }
       
-      // Correct URL construction
-      await api.delete(`/categories/${id}`);
+      // Correct URL construction with admin prefix
+      await api.delete(`/admin/categories/${id}`);
       return {
         status: 'success'
       };
@@ -223,14 +311,32 @@ const categoryService = {
       console.error(`Error deleting category ${id}:`, error);
       
       // If auth error, refresh session and retry
-      if (error.response.status === 401) {
+      if (error.response?.status === 401) {
         await refreshSession();
         return categoryService.deleteCategory(id);
       }
       
+      // Return user-friendly error messages based on status code
+      let errorMessage = `Failed to delete category #${id}`;
+      if (error.response) {
+        switch (error.response.status) {
+          case 404:
+            errorMessage = `Category #${id} not found. It may have been deleted already.`;
+            break;
+          case 422:
+            errorMessage = 'Cannot delete this category: ' + (error.response.data?.message || 'It may be in use by products');
+            break;
+          case 403:
+            errorMessage = 'You do not have permission to delete this category.';
+            break;
+          default:
+            errorMessage = error.response.data?.message || errorMessage;
+        }
+      }
+      
       return {
         status: 'error',
-        message: error.message
+        message: errorMessage
       };
     }
   }

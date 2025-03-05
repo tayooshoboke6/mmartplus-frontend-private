@@ -35,7 +35,7 @@ import {
   FileDownload as FileDownloadIcon,
   ExpandMore as ExpandMoreIcon,
 } from '@mui/icons-material';
-import { generateBulkVouchers } from '../../../services/voucherService';
+import { generateBulkVouchers } from '../../../services/VoucherService';
 
 interface BulkVoucherFormData {
   prefix: string;

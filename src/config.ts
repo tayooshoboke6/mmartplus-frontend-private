@@ -7,18 +7,50 @@ const config = {
     authUrl: '/auth',
   },
   
-  // Feature flags
-  features: {
-    useMockData: import.meta.env.DEV && (localStorage.getItem('useMockDataOnFailure') !== 'false'),
-    enableSocialLogin: true,
-    skipAuthForAdmin: import.meta.env.DEV && (localStorage.getItem('skipAuthForAdmin') === 'true'),
-    debugApiResponses: import.meta.env.DEV && (localStorage.getItem('debugApiResponses') === 'true' || import.meta.env.VITE_DEBUG_MODE === 'true'),
+  // Google Maps configuration
+  googleMaps: {
+    apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
   },
   
-  // Development helpers
+  // Application information
+  app: {
+    name: import.meta.env.VITE_APP_NAME || 'M-Mart+',
+    version: import.meta.env.VITE_APP_VERSION || '1.0.0',
+    environment: import.meta.env.MODE || 'development',
+  },
+  
+  // Feature flags - strictly enforced to be disabled in production
+  features: {
+    // Mock data is only enabled in dev mode, and can be toggled with localStorage in dev only
+    useMockData: import.meta.env.DEV && (localStorage.getItem('useMockDataOnFailure') !== 'false'),
+    
+    // Social login can be enabled in any environment
+    enableSocialLogin: true,
+    
+    // Admin auth skipping is ONLY allowed in dev mode
+    skipAuthForAdmin: import.meta.env.DEV && (localStorage.getItem('skipAuthForAdmin') === 'true'),
+    
+    // API response debugging is ONLY allowed in dev mode
+    debugApiResponses: import.meta.env.DEV && (
+      localStorage.getItem('debugApiResponses') === 'true' || 
+      import.meta.env.VITE_DEBUG_MODE === 'true'
+    ),
+  },
+  
+  // Development helpers - ONLY used in development mode
   development: {
-    mockAdminToken: 'dev-admin-token-for-testing',
-    mockUserToken: 'dev-user-token-for-testing',
+    mockAdminToken: import.meta.env.DEV ? 'dev-admin-token-for-testing' : null,
+    mockUserToken: import.meta.env.DEV ? 'dev-user-token-for-testing' : null,
+    
+    // Function to clear development localStorage settings - for clean slate testing
+    resetDevSettings: () => {
+      if (import.meta.env.DEV) {
+        localStorage.removeItem('useMockDataOnFailure');
+        localStorage.removeItem('skipAuthForAdmin');
+        localStorage.removeItem('debugApiResponses');
+        console.log('Development settings have been reset to defaults');
+      }
+    }
   },
 };
 
@@ -40,6 +72,19 @@ if (import.meta.env.DEV) {
     skipAuthForAdmin: config.features.skipAuthForAdmin,
     debugApiResponses: config.features.debugApiResponses,
   });
+} else {
+  // In production, force-disable all development features
+  // This provides an extra layer of safety to ensure dev features cannot be enabled
+  Object.defineProperties(config.features, {
+    'useMockData': { value: false, writable: false },
+    'skipAuthForAdmin': { value: false, writable: false },
+    'debugApiResponses': { value: false, writable: false }
+  });
+  
+  // Clear any development-related localStorage that might have persisted
+  localStorage.removeItem('useMockDataOnFailure');
+  localStorage.removeItem('skipAuthForAdmin');
+  localStorage.removeItem('debugApiResponses');
 }
 
 export default config;
