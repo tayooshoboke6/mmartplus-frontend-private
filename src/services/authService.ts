@@ -1,5 +1,7 @@
 import api, { getCsrfCookie } from './api';
 import emailVerificationService from './emailVerificationService';
+import axios from 'axios';
+import config from '../config';
 
 // Types
 export interface LoginCredentials {
@@ -54,8 +56,25 @@ const authService = {
   // Register a new user
   register: async (userData: RegisterData): Promise<AuthResponse> => {
     try {
-      console.log('Sending registration data to API:', userData);
-      const response = await api.post<AuthResponse>('/auth/register', userData);
+      // First try to get CSRF token
+      await getCsrfCookie(); 
+      
+      console.log('Submitting registration data:', userData);
+      
+      // Important: Don't use api instance which has adminUrl appended
+      // Instead create a direct axios request to the auth endpoint
+      const response = await axios.post<AuthResponse>(
+        `${config.api.baseUrl}/auth/register`, 
+        userData,
+        {
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        }
+      );
       
       if (response.data.success && response.data.token) {
         localStorage.setItem('mmartToken', response.data.token);

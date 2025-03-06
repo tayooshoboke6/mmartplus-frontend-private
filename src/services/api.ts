@@ -23,20 +23,26 @@ export const getCsrfCookie = async (): Promise<boolean> => {
   
   try {
     // Get CSRF cookie from Laravel Sanctum
-    const baseUrl = config.api.baseUrl.split('/api')[0];
+    // Extract base API URL (without /api suffix)
+    let baseUrl = config.api.baseUrl;
+    if (baseUrl.includes('/api')) {
+      baseUrl = baseUrl.substring(0, baseUrl.indexOf('/api'));
+    }
+    
     const csrfUrl = `${baseUrl}/sanctum/csrf-cookie`;
-    console.log('Fetching CSRF token from:', csrfUrl);
+    console.log('🔐 CSRF Base URL:', baseUrl);
+    console.log('🔐 Full CSRF URL:', csrfUrl);
     
     await axios.get(csrfUrl, {
       withCredentials: true
     });
-    console.log('CSRF token fetched successfully');
+    console.log('✅ CSRF token fetched successfully');
     return true;
   } catch (error: any) {
-    console.error('Failed to fetch CSRF token:', error);
+    console.error('❌ Failed to fetch CSRF token:', error);
     
     // Continue without CSRF
-    console.log('Continuing without CSRF token');
+    console.log('⚠️ Continuing without CSRF token');
     return false;
   }
 };
