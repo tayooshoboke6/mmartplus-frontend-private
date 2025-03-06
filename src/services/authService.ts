@@ -108,6 +108,12 @@ const authService = {
         // that falls out of the range of 2xx
         console.error('Response data:', error.response.data);
         console.error('Response status:', error.response.status);
+        console.error('Response headers:', error.response.headers);
+        
+        // Log the full validation error details
+        if (error.response.status === 422) {
+          console.error('Validation errors:', JSON.stringify(error.response.data, null, 2));
+        }
         
         if (error.response.data && error.response.data.errors) {
           const errorMessages = Object.values(error.response.data.errors)
