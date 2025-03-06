@@ -1,5 +1,6 @@
 import axios from 'axios';
 import config from '../config';
+import { getCsrfCookie } from '../utils/authUtils';
 
 // Create axios instance with base URL from config
 const api = axios.create({
@@ -157,5 +158,26 @@ export const checkAndRefreshTokenOnStartup = async () => {
     return false;
   }
 };
+
+api.interceptors.response.use(
+  (response) => {
+    // Update last activity timestamp on successful response
+    updateActivityTimestamp();
+    return response;
+  },
+  (error) => {
+    // Handle 401 Unauthorized - possibly expired token
+    if (error.response && error.response.status === 401) {
+      // Clear token and redirect to login
+      localStorage.removeItem('adminToken');
+      // Could also redirect to login page here
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
+// Re-export getCsrfCookie for backward compatibility
+export { getCsrfCookie };
 
 export default api;

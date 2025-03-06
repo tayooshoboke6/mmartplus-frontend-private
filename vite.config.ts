@@ -33,5 +33,16 @@ export default defineConfig({
   define: {
     // Handle process.env for libraries that still use it
     'process.env': {}
+  },
+  optimizeDeps: {
+    include: ['antd'],
+    esbuildOptions: {
+      target: 'es2020'
+    }
+  },
+  resolve: {
+    alias: {
+      '@': '/src'
+    }
   }
 })
