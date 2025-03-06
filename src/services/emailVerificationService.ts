@@ -35,18 +35,19 @@ const emailVerificationService = {
   // Send a verification code to a specific email (non-authenticated)
   sendVerificationCodeByEmail: async (email: string): Promise<VerificationResponse> => {
     try {
-      // Create a custom axios instance without the admin URL prefix
-      const customApi = axios.create({
-        baseURL: config.api.baseUrl, // Use only the base URL without admin prefix
-        withCredentials: true,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
+      // Use axios directly to bypass the api instance with adminUrl
+      const response = await axios.post<VerificationResponse>(
+        `${config.api.baseUrl}/email/non-auth/send`, 
+        { email },
+        {
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          }
         }
-      });
-      
-      const response = await customApi.post<VerificationResponse>('/email/non-auth/send', { email });
+      );
       return response.data;
     } catch (error: any) {
       console.error('Send verification code error:', error);
@@ -86,18 +87,19 @@ const emailVerificationService = {
   // Verify email with verification code (non-authenticated)
   verifyEmailWithCode: async (email: string, code: string): Promise<VerificationResponse> => {
     try {
-      // Create a custom axios instance without the admin URL prefix
-      const customApi = axios.create({
-        baseURL: config.api.baseUrl, // Use only the base URL without admin prefix
-        withCredentials: true,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
+      // Use axios directly to bypass the api instance with adminUrl
+      const response = await axios.post<VerificationResponse>(
+        `${config.api.baseUrl}/email/non-auth/verify`, 
+        { email, code },
+        {
+          withCredentials: true,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+          }
         }
-      });
-      
-      const response = await customApi.post<VerificationResponse>('/email/non-auth/verify', { email, code });
+      );
       return response.data;
     } catch (error: any) {
       console.error('Verify email error:', error);
@@ -108,7 +110,9 @@ const emailVerificationService = {
       
       throw {
         status: 'error',
-        message: 'Invalid or expired verification code. Please try again.'
+        message: error.response?.status === 404
+          ? 'Invalid verification code or email address.'
+          : 'Failed to verify email. Please try again.'
       };
     }
   },
