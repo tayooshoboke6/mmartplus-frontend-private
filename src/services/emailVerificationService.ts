@@ -2,14 +2,16 @@ import api from './api';
 import axios from 'axios';  
 import config from '../config';
 import { logApiError } from '../utils/debugUtils';
+import { getCsrfCookie } from '../utils/authUtils';
 
 // Types
 export interface VerificationResponse {
-  status: string;
+  status: 'success' | 'error';
   message: string;
   data?: {
-    verified?: boolean;
-    verified_at?: string;
+    email?: string;
+    code?: string;
+    expiry?: string;
   };
 }
 
@@ -37,11 +39,14 @@ const emailVerificationService = {
   sendVerificationCodeByEmail: async (email: string): Promise<VerificationResponse> => {
     try {
       console.log('🔍 Email verification attempt for:', email);
-      console.log('🌐 Using API URL:', `${config.api.baseUrl}/email/non-auth/send`);
+      
+      const verificationUrl = `${config.api.baseUrl}/email/non-auth/send`;
+      console.log('🌐 Using verification URL:', verificationUrl);
       console.log('⚙️ Current config:', {
         baseUrl: config.api.baseUrl,
         adminUrl: config.api.adminUrl,
-        debug: import.meta.env.VITE_DEBUG
+        debug: import.meta.env.VITE_DEBUG,
+        environment: config.app.environment
       });
       
       // TESTING MODE: For development/testing, return a success response without calling the API
@@ -53,9 +58,12 @@ const emailVerificationService = {
         };
       }
       
+      // Get CSRF token before making the request
+      await getCsrfCookie();
+      
       // Use axios directly to bypass the api instance with adminUrl
       const response = await axios.post<VerificationResponse>(
-        `${config.api.baseUrl}/email/non-auth/send`, 
+        verificationUrl, 
         { email },
         {
           withCredentials: true,

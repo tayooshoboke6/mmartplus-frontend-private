@@ -1,7 +1,8 @@
-import api, { getCsrfCookie } from './api';
-import emailVerificationService from './emailVerificationService';
+import api from './api';
 import axios from 'axios';
 import config from '../config';
+import emailVerificationService from './emailVerificationService';
+import { getCsrfCookie } from '../utils/authUtils';
 
 // Types
 export interface LoginCredentials {
@@ -61,10 +62,16 @@ const authService = {
       
       console.log('Submitting registration data:', userData);
       
-      // Important: Don't use api instance which has adminUrl appended
-      // Instead create a direct axios request to the auth endpoint
+      // Use the correct registration endpoint
+      // Avoid using the admin URL for registration
+      const apiUrl = config.api.baseUrl;
+      const registrationUrl = `${apiUrl}/auth/register`;
+      
+      console.log('📮 Registration URL:', registrationUrl);
+      
+      // Direct axios request to the auth endpoint
       const response = await axios.post<AuthResponse>(
-        `${config.api.baseUrl}/auth/register`, 
+        registrationUrl, 
         userData,
         {
           withCredentials: true,

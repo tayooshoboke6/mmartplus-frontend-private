@@ -14,39 +14,6 @@ const api = axios.create({
   timeout: 10000,
 });
 
-// Function to get CSRF token for Laravel Sanctum
-export const getCsrfCookie = async (): Promise<boolean> => {
-  // Skip if not using Sanctum or already have XSRF-TOKEN cookie
-  if (document.cookie.includes('XSRF-TOKEN')) {
-    return true;
-  }
-  
-  try {
-    // Get CSRF cookie from Laravel Sanctum
-    // Extract base API URL (without /api suffix)
-    let baseUrl = config.api.baseUrl;
-    if (baseUrl.includes('/api')) {
-      baseUrl = baseUrl.substring(0, baseUrl.indexOf('/api'));
-    }
-    
-    const csrfUrl = `${baseUrl}/sanctum/csrf-cookie`;
-    console.log('🔐 CSRF Base URL:', baseUrl);
-    console.log('🔐 Full CSRF URL:', csrfUrl);
-    
-    await axios.get(csrfUrl, {
-      withCredentials: true
-    });
-    console.log('✅ CSRF token fetched successfully');
-    return true;
-  } catch (error: any) {
-    console.error('❌ Failed to fetch CSRF token:', error);
-    
-    // Continue without CSRF
-    console.log('⚠️ Continuing without CSRF token');
-    return false;
-  }
-};
-
 // Set admin token in localStorage and memory
 export const setAdminToken = (token: string): void => {
   localStorage.setItem('adminToken', token);
@@ -116,140 +83,37 @@ export const refreshSession = async (): Promise<boolean> => {
   }
 };
 
-// Request interceptor to add auth token to all requests
-api.interceptors.request.use(async (config) => {
-  try {
-    // Get CSRF token if needed (for Laravel Sanctum)
-    await getCsrfCookie();
-
-    // Update activity timestamp on each request
-    updateActivityTimestamp();
-
-    // Add authorization header if token exists
-    const token = localStorage.getItem('token');
-    const adminToken = localStorage.getItem('adminToken');
+// Request interceptor - add token to Authorization header
+api.interceptors.request.use(
+  (config) => {
+    // Get token from localStorage
+    const token = localStorage.getItem('adminToken');
     
-    // Check if we should skip auth for admin routes in development
-    const isAdminRoute = config.url?.includes('/admin/');
-    const shouldSkipAuth = import.meta.env.DEV && 
-                          isAdminRoute && 
-                          config.features?.skipAuthForAdmin;
-    
-    if (shouldSkipAuth) {
-      console.log('Skipping authentication for admin route in development mode');
-      // Don't add any auth headers
-    }
-    // Use admin token for admin routes, general token for other routes
-    else if (isAdminRoute && adminToken) {
-      config.headers.Authorization = `Bearer ${adminToken}`;
-      console.log('Added admin token to request');
-    } else if (token) {
+    // If token exists, add to Authorization header
+    if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('Added user token to request');
-    } else if (isAdminRoute) {
-      // For admin endpoints, always ensure there's a token
-      const devAdminToken = config.development?.mockAdminToken || 'dev-admin-token-for-testing';
-      config.headers.Authorization = `Bearer ${devAdminToken}`;
-      console.log('Added default admin token to request');
-      localStorage.setItem('adminToken', devAdminToken);
-    }
-
-    // Set locale preference if available
-    const locale = localStorage.getItem('locale') || 'en';
-    config.headers['Accept-Language'] = locale;
-    
-    // Add timestamp to avoid caching
-    config.params = {
-      ...config.params,
-      _t: new Date().getTime()
-    };
-    
-    // For debugging
-    if (config.features?.debugApiResponses) {
-      console.log(`API Request to ${config.url}:`, {
-        method: config.method,
-        params: config.params,
-        headers: config.headers,
-        data: config.data
-      });
     }
     
     return config;
-  } catch (error) {
-    console.error('Error in request interceptor:', error);
-    return config; // Return config even if there's an error to prevent request failure
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-}, (error) => {
-  console.error('Request interceptor error:', error);
-  return Promise.reject(error);
-});
+);
 
-// Response interceptor to handle errors
+// Response interceptor - handle common errors
 api.interceptors.response.use(
   (response) => {
-    // Log response for debugging if enabled
-    if (config.features?.debugApiResponses) {
-      console.log(`API Response from ${response.config.url}:`, {
-        status: response.status,
-        statusText: response.statusText,
-        data: response.data,
-        headers: response.headers
-      });
-    }
-    
+    // Update last activity timestamp on successful response
+    updateActivityTimestamp();
     return response;
   },
-  async (error) => {
-    if (error.response) {
-      // Server responded with an error status code
-      const status = error.response.status;
-      
-      // Log the error for debugging
-      console.error(`API Error (${status}):`, {
-        url: error.config.url,
-        method: error.config.method,
-        status,
-        data: error.response.data,
-        headers: error.response.headers
-      });
-      
-      // Handle 401 Unauthorized errors
-      if (status === 401) {
-        console.log('Unauthorized request. Attempting to refresh token...');
-        
-        // Try to refresh the token
-        const refreshSuccess = await refreshSession();
-        
-        // If refresh succeeded, retry the original request
-        if (refreshSuccess) {
-          console.log('Token refreshed, retrying original request');
-          // Get fresh token
-          const newToken = localStorage.getItem('token');
-          const newAdminToken = localStorage.getItem('adminToken');
-          
-          // Determine which token to use based on URL
-          if (error.config.url.includes('/admin/') && newAdminToken) {
-            error.config.headers.Authorization = `Bearer ${newAdminToken}`;
-          } else if (newToken) {
-            error.config.headers.Authorization = `Bearer ${newToken}`;
-          }
-          
-          // Retry the original request with new token
-          return axios(error.config);
-        }
-      }
-      
-      // For validation errors, provide more details
-      if (status === 422) {
-        const errorData = error.response.data;
-        console.error('Validation errors:', errorData.errors || errorData.message || errorData);
-      }
-    } else if (error.request) {
-      // Request was made but no response received (network error)
-      console.error('Network error - no response received:', error.request);
-    } else {
-      // Error in setting up the request
-      console.error('Request setup error:', error.message);
+  (error) => {
+    // Handle 401 Unauthorized - possibly expired token
+    if (error.response && error.response.status === 401) {
+      // Clear token and redirect to login
+      localStorage.removeItem('adminToken');
+      // Could also redirect to login page here
     }
     
     return Promise.reject(error);
