@@ -1,0 +1,9 @@
+{
+  "name": "mmartplus-scripts",
+  "version": "1.0.0",
+  "description": "Helper scripts for M-Mart+ development",
+  "type": "module",
+  "scripts": {
+    "setup-test-env": "node setup-test-env.js"
+  }
+}
