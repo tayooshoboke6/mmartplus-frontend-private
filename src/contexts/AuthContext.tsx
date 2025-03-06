@@ -81,45 +81,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         })
         .catch(err => {
           console.error('Failed to fetch user data:', err);
-
-          // In development mode, set a mock user
-          if (isDevelopment) {
-            const mockUser = {
-              id: 1,
-              name: 'Development User',
-              email: 'dev@example.com',
-              isAdmin: true,
-              roles: ['admin']
-            };
-            setUser(mockUser);
-            setIsAdmin(true);
-            setIsAuthenticated(true);
-
-            // Set a mock token for development
-            localStorage.setItem('token', 'dev-token-for-testing');
-            console.log('Development mode: Set mock admin user and token');
-          } else {
-            setError('Failed to fetch user data. Please login again.');
-            localStorage.removeItem('token');
-            setUser(null);
-            setIsAdmin(false);
-            setIsAuthenticated(false);
-          }
+          
+          // Remove auto-login in development mode
+          setError('Failed to fetch user data. Please login again.');
+          localStorage.removeItem('token');
+          setUser(null);
+          setIsAdmin(false);
+          setIsAuthenticated(false);
         })
         .finally(() => {
           setLoading(false);
         });
-    } else if (isDevelopment) {
-      setLoading(false);
-
-      // In development mode, we can optionally auto-login an admin user
-      const autoLoginAdmin = localStorage.getItem('autoLoginAdmin') === 'true';
-      if (autoLoginAdmin) {
-        console.log('Development mode: Auto-logging in as admin');
-        loginAsDevelopmentAdmin();
-      }
     } else {
+      // Always require manual login regardless of environment
       setLoading(false);
+      setIsAuthenticated(false);
     }
   }, [isDevelopment]);
 
@@ -173,31 +149,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const errorMessage = err.response?.data?.message || 'Login failed. Please try again.';
       setError(errorMessage);
 
-      // In development mode, allow a bypass login
-      if (isDevelopment) {
-        console.log('Development mode: Using mock login');
-
-        // Set a mock token
-        localStorage.setItem('token', 'dev-token-for-testing');
-
-        // Set a mock user - make it admin if the login includes "admin"
-        const isDevAdmin = credentials.email?.includes('admin') || false;
-
-        const mockUser = {
-          id: 1,
-          name: 'Development User',
-          email: credentials.email || 'dev@example.com',
-          isAdmin: isDevAdmin,
-          roles: isDevAdmin ? ['admin'] : ['customer']
-        };
-
-        setUser(mockUser);
-        setIsAdmin(isDevAdmin);
-        setIsAuthenticated(true);
-
-        return { success: true, user: mockUser };
-      }
-
+      // Remove development mode bypass login
       return { success: false, error: errorMessage };
     }
   };
@@ -249,24 +201,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const errorMessage = err.response?.data?.message || 'Registration failed. Please try again.';
       setError(errorMessage);
 
-      // For development, allow registration bypass
-      if (isDevelopment) {
-        console.log('Development mode: Using mock registration');
-
-        // Set mock token
-        localStorage.setItem('token', 'dev-token-for-testing');
-
-        // Set mock user
-        setUser({
-          id: 1,
-          name: name || 'Development User',
-          email: email || 'dev@example.com',
-          isAdmin: false
-        });
-
-        return { success: true };
-      }
-
+      // Remove development mode bypass for registration
       return { success: false, error: errorMessage };
     }
   };
@@ -277,39 +212,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(null);
 
       // In production, this would redirect to Google OAuth
-      // But for now, especially in development, we'll mock it
-
-      if (isDevelopment) {
-        // Set mock tokens for development
-        const mockToken = `google-dev-token-${Date.now()}`;
-        localStorage.setItem('token', mockToken);
-
-        // Create a mock user
-        const mockUser = {
-          id: 999,
-          name: 'Google User',
-          email: 'google-user@example.com',
-          isAdmin: false
-        };
-
-        // Update state
-        setUser(mockUser);
-        setIsAuthenticated(true);
-        setError(null);
-
-        console.log('Development mode: Logged in with Google');
-        return mockUser;
-      }
-
-      // For production environments
-      // This would call the backend to start Google OAuth flow
-      // const response = await api.get('/auth/google');
-      // window.location.href = response.data.redirect_url;
-
+      setError("Google login is not implemented in this testing environment");
       return null;
-    } catch (err: any) {
+    } catch (err) {
       console.error('Google login error:', err);
-      setError('Failed to login with Google');
+      setError('Google login failed. Please try again.');
       return null;
     }
   };
@@ -318,39 +225,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setError(null);
 
-      // Similar to Google login, this is a mock for development
-
-      if (isDevelopment) {
-        // Set mock tokens for development
-        const mockToken = `apple-dev-token-${Date.now()}`;
-        localStorage.setItem('token', mockToken);
-
-        // Create a mock user
-        const mockUser = {
-          id: 888,
-          name: 'Apple User',
-          email: 'apple-user@example.com',
-          isAdmin: false
-        };
-
-        // Update state
-        setUser(mockUser);
-        setIsAuthenticated(true);
-        setError(null);
-
-        console.log('Development mode: Logged in with Apple');
-        return mockUser;
-      }
-
-      // For production environments
-      // This would call the backend to start Apple OAuth flow
-      // const response = await api.get('/auth/apple');
-      // window.location.href = response.data.redirect_url;
-
+      // In production, this would redirect to Apple OAuth
+      setError("Apple login is not implemented in this testing environment");
       return null;
-    } catch (err: any) {
+    } catch (err) {
       console.error('Apple login error:', err);
-      setError('Failed to login with Apple');
+      setError('Apple login failed. Please try again.');
       return null;
     }
   };

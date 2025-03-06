@@ -335,9 +335,10 @@ const Header = () => {
         setIsSearching(true);
         setShowSuggestions(true);
         const result = await productService.searchProducts(query, 1, 5);
-        if (result.products && result.products.data) {
-          setSuggestions(result.products.data);
-          setNoMatches(result.products.data.length === 0);
+        console.log('Search result structure:', JSON.stringify(result, null, 2));
+        if (result.data && result.data.data) {
+          setSuggestions(result.data.data);
+          setNoMatches(result.data.data.length === 0);
         } else {
           setSuggestions([]);
           setNoMatches(true);
