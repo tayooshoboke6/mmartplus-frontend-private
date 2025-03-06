@@ -101,7 +101,7 @@ interface SearchParams {
 const SearchResultsPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  const { addItem } = useCart();
   
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
@@ -188,7 +188,7 @@ const SearchResultsPage = () => {
   };
   
   const handleAddToCart = (product: Product) => {
-    addToCart({
+    addItem({
       id: product.id,
       name: product.name,
       price: product.sale_price || product.price,

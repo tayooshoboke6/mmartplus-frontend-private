@@ -559,7 +559,7 @@ const SizeButton = styled.button<{ selected?: boolean }>`
 
 const ProductDetailPage = () => {
   const { id } = useParams<{ id: string }>();
-  const { addToCart, buyNow, cartItems, updateQuantity, removeFromCart } = useCart();
+  const { addItem, buyNow, cartItems, updateQuantity, removeFromCart } = useCart();
   const navigate = useNavigate();
   const [_, setSelectedImage] = useState(0);
   const [currentFrequentlyBoughtIndex, setCurrentFrequentlyBoughtIndex] = useState(0);
@@ -676,7 +676,7 @@ const ProductDetailPage = () => {
         ? { size: selectedSize } 
         : {};
         
-      addToCart({
+      addItem({
         id: product.id,
         name: product.name,
         price: product.price,

@@ -3,6 +3,8 @@ import axios from 'axios';
 import config from '../config';
 import emailVerificationService from './emailVerificationService';
 import { getCsrfCookie } from '../utils/authUtils';
+import Cookies from 'js-cookie';
+import { clearApiCache } from './api';
 
 // Types
 export interface LoginCredentials {
@@ -63,13 +65,14 @@ const authService = {
       console.log('Submitting registration data:', userData);
       
       // Map the frontend fields to what the backend expects
-      const { firstName, lastName, email, password, phone } = userData;
+      const { first_name, last_name, email, password, password_confirmation, phone } = userData;
       const payload = {
-        name: `${firstName} ${lastName}`,
+        first_name,
+        last_name,
         email,
-        phone_number: phone,
+        phone_number: phone || '',  // Ensure phone_number is always sent
         password,
-        password_confirmation: password,
+        password_confirmation: password_confirmation || password, // Use provided confirmation or password
       };
       
       console.log('Mapped to backend fields:', payload);
@@ -96,8 +99,25 @@ const authService = {
       );
       
       if (response.data.success && response.data.token) {
+        // Store in both localStorage and cookies for redundancy
         localStorage.setItem('mmartToken', response.data.token);
         localStorage.setItem('mmartUser', JSON.stringify(response.data.user));
+        
+        // Set cookies with secure attributes
+        const domain = window.location.hostname;
+        Cookies.set('mmartToken', response.data.token, {
+          expires: 30, // 30 days
+          secure: window.location.protocol === 'https:',
+          sameSite: 'strict',
+          domain: domain !== 'localhost' ? domain : undefined
+        });
+        
+        Cookies.set('mmartUser', JSON.stringify(response.data.user), {
+          expires: 30,
+          secure: window.location.protocol === 'https:',
+          sameSite: 'strict',
+          domain: domain !== 'localhost' ? domain : undefined
+        });
       }
       
       return response.data;
@@ -213,8 +233,22 @@ const authService = {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      // Always clear both localStorage and cookies, even if API call fails
       localStorage.removeItem('mmartToken');
       localStorage.removeItem('mmartUser');
+      localStorage.removeItem('mmartLastActivityTimestamp');
+      localStorage.removeItem('mmartLoginTimestamp');
+      
+      // Clear cookies
+      const domain = window.location.hostname;
+      const cookieOptions = { domain: domain !== 'localhost' ? domain : undefined };
+      Cookies.remove('mmartToken', cookieOptions);
+      Cookies.remove('mmartUser', cookieOptions);
+      Cookies.remove('mmartLastActivityTimestamp', cookieOptions);
+      Cookies.remove('XSRF-TOKEN', cookieOptions);
+      
+      // Clear API cache to ensure fresh data after login
+      clearApiCache();
     }
   },
 
@@ -248,47 +282,82 @@ const authService = {
 
   // Check if user is logged in
   isLoggedIn: (): boolean => {
-    return !!localStorage.getItem('mmartToken');
+    // Check both localStorage and cookies for auth token
+    return !!(localStorage.getItem('mmartToken') || Cookies.get('mmartToken'));
   },
 
-  // Save user to local storage
+  // Save user to both local storage and cookies
   saveUser(user: User): void {
-    localStorage.setItem('mmartUser', JSON.stringify(user));
+    const userData = JSON.stringify(user);
+    localStorage.setItem('mmartUser', userData);
+    
+    // Also save to cookies for redundancy and cross-tab access
+    const domain = window.location.hostname;
+    Cookies.set('mmartUser', userData, {
+      expires: 30,
+      secure: window.location.protocol === 'https:',
+      sameSite: 'strict',
+      domain: domain !== 'localhost' ? domain : undefined
+    });
   },
 
   // Check if user is admin
   isAdmin: (): boolean => {
     try {
-      const userStr = localStorage.getItem('mmartUser');
-      if (!userStr) return false;
+      // Get user data from either cookies or localStorage
+      const userFromCookie = Cookies.get('mmartUser');
+      const userFromStorage = localStorage.getItem('mmartUser');
+      const userData = userFromCookie || userFromStorage;
+      if (!userData) return false;
       
-      const user = JSON.parse(userStr);
+      const user = JSON.parse(userData);
       
       // Check for different variations of admin role
       const role = user?.role?.toLowerCase?.();
-      return role === 'admin';
+      return role === 'admin' || role === 'super-admin';
     } catch (error) {
       console.error('Error checking admin status:', error);
       return false;
     }
   },
   
-  // Get user from local storage
+  // Get user from storage (checking both cookies and localStorage)
   getUser: (): User | null => {
     try {
-      const userStr = localStorage.getItem('mmartUser');
-      if (!userStr) return null;
+      // Try to get user from cookies first, then localStorage as fallback
+      const userFromCookie = Cookies.get('mmartUser');
+      const userFromStorage = localStorage.getItem('mmartUser');
       
-      const user = JSON.parse(userStr);
+      // Use cookie data if available, otherwise use localStorage
+      const userData = userFromCookie || userFromStorage;
+      if (!userData) return null;
+      
+      const user = JSON.parse(userData);
       
       // Ensure user has a role property (default to 'user' if missing)
       if (user && !user.role) {
         user.role = 'user';
       }
       
+      // Ensure both storage locations have the same data for consistency
+      if (userFromCookie && !userFromStorage) {
+        localStorage.setItem('mmartUser', userData);
+      } else if (!userFromCookie && userFromStorage) {
+        const domain = window.location.hostname;
+        Cookies.set('mmartUser', userFromStorage, {
+          expires: 30,
+          secure: window.location.protocol === 'https:',
+          sameSite: 'strict',
+          domain: domain !== 'localhost' ? domain : undefined
+        });
+      }
+      
       return user;
     } catch (error) {
-      console.error('Error parsing user from localStorage:', error);
+      console.error('Failed to parse user from storage:', error);
+      // Clear corrupt data
+      localStorage.removeItem('mmartUser');
+      Cookies.remove('mmartUser');
       return null;
     }
   },
@@ -309,10 +378,13 @@ const authService = {
       // Get CSRF cookie first
       await getCsrfCookie();
       
-      // Get the current token
-      const token = localStorage.getItem('mmartToken');
+      // Get the current token from either cookies or localStorage
+      const tokenFromCookie = Cookies.get('mmartToken');
+      const tokenFromStorage = localStorage.getItem('mmartToken');
+      const token = tokenFromCookie || tokenFromStorage;
+      
       if (!token) {
-        console.warn('No token found in localStorage, cannot refresh session');
+        console.warn('No token found in storage, cannot refresh session');
         return false;
       }
       
@@ -322,35 +394,60 @@ const authService = {
       if (response.data && response.data.token) {
         console.log('Session refreshed successfully, updating token');
         
-        // Update token in localStorage
+        // Store domain for cookie operations
+        const domain = window.location.hostname;
+        const cookieOptions = {
+          expires: 30, // 30 days
+          secure: window.location.protocol === 'https:',
+          sameSite: 'strict',
+          domain: domain !== 'localhost' ? domain : undefined
+        };
+        
+        // Update token in both localStorage and cookies
         localStorage.setItem('mmartToken', response.data.token);
+        Cookies.set('mmartToken', response.data.token, cookieOptions);
+        
+        // Clear API cache to ensure fresh data with new token
+        clearApiCache();
         
         // Update user data if returned
         if (response.data.user) {
-          // Check if there's existing user data
-          const existingUser = localStorage.getItem('mmartUser');
+          // Check if there's existing user data from either storage method
+          const existingUserFromCookie = Cookies.get('mmartUser');
+          const existingUserFromStorage = localStorage.getItem('mmartUser');
+          const existingUserData = existingUserFromCookie || existingUserFromStorage;
           const newUser = response.data.user;
           
           // If we have existing user data, preserve role information if not present in new data
-          if (existingUser) {
+          if (existingUserData) {
             try {
-              const parsedExistingUser = JSON.parse(existingUser);
+              const parsedExistingUser = JSON.parse(existingUserData);
               
               // Ensure role information is preserved, especially for admins
-              if (parsedExistingUser.role === 'admin' && (!newUser.role || newUser.role !== 'admin')) {
+              if ((parsedExistingUser.role === 'admin' || parsedExistingUser.role === 'super-admin') && 
+                  (!newUser.role || (newUser.role !== 'admin' && newUser.role !== 'super-admin'))) {
                 console.log('Preserving admin role from existing user data');
-                newUser.role = 'admin';
+                newUser.role = parsedExistingUser.role;
               }
             } catch (parseError) {
               console.error('Error parsing existing user data:', parseError);
             }
           }
           
-          localStorage.setItem('mmartUser', JSON.stringify(newUser));
+          // Store user data in both locations
+          const newUserData = JSON.stringify(newUser);
+          localStorage.setItem('mmartUser', newUserData);
+          Cookies.set('mmartUser', newUserData, cookieOptions);
         }
         
-        // Update login timestamp
-        localStorage.setItem('mmartLoginTimestamp', new Date().getTime().toString());
+        // Update login timestamp in both locations
+        const timestamp = new Date().getTime().toString();
+        localStorage.setItem('mmartLoginTimestamp', timestamp);
+        Cookies.set('mmartLoginTimestamp', timestamp, cookieOptions);
+        
+        // Store last activity time
+        localStorage.setItem('mmartLastActivityTimestamp', timestamp);
+        Cookies.set('mmartLastActivityTimestamp', timestamp, cookieOptions);
         
         return true;
       }

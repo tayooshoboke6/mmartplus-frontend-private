@@ -62,17 +62,12 @@ const emailVerificationService = {
       // Get CSRF token before making the request
       await getCsrfCookie();
       
-      // Use axios directly to bypass the api instance with adminUrl
-      const response = await axios.post<VerificationResponse>(
-        verificationUrl, 
+      // Use the configured api instance for consistent headers and base URL
+      const response = await api.post<VerificationResponse>(
+        '/email/non-auth/send',
         { email },
         {
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest'
-          }
+          withCredentials: true
         }
       );
       
@@ -128,17 +123,12 @@ const emailVerificationService = {
       console.log('🔍 Email verification code attempt:', { email, code });
       console.log('🌐 Using API URL:', `${config.api.baseUrl}/email/non-auth/verify`);
       
-      // Use axios directly to bypass the api instance with adminUrl
-      const response = await axios.post<VerificationResponse>(
-        `${config.api.baseUrl}/email/non-auth/verify`, 
+      // Use the configured api instance for consistent headers and base URL
+      const response = await api.post<VerificationResponse>(
+        '/email/non-auth/verify',
         { email, code },
         {
-          withCredentials: true,
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-          }
+          withCredentials: true
         }
       );
       

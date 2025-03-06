@@ -323,7 +323,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const [optionsOpen, setOptionsOpen] = useState(false);
   const navigate = useNavigate();
-  const { addItem } = useCart();
+  const { addToCart } = useCart();
   
   const handleProductClick = () => {
     navigate(`/product/${id}`);
@@ -331,7 +331,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   
   const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
-    addItem({
+    addToCart({
       id,
       name,
       price,

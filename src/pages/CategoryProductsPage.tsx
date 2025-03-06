@@ -652,7 +652,7 @@ const CategoryProductsPage: React.FC = () => {
   const [category, setCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const { addToCart } = useCart();
+  const { addItem } = useCart();
   
   const handleProductClick = (productId: number) => {
     navigate(`/product/${productId}`);
@@ -663,7 +663,7 @@ const CategoryProductsPage: React.FC = () => {
     e.stopPropagation();
     
     if (product.stock > 0) {
-      addToCart({
+      addItem({
         id: product.id,
         name: product.name,
         price: product.price,

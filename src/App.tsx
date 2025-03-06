@@ -41,6 +41,9 @@ import StoreAddressesPage from './pages/admin/StoreAddressesPage'
 import VoucherManagementPage from './pages/admin/VoucherManagementPage'
 import MessageCampaignsPage from './pages/admin/MessageCampaignsPage'
 
+// Test pages
+import TestAuthCachePage from './pages/TestAuthCachePage'
+
 // Account pages
 import AccountPage from './pages/account/AccountPage'
 import AccountOrdersPage from './pages/account/OrdersPage'
@@ -51,6 +54,8 @@ import VouchersPage from './pages/account/VouchersPage'
 import WishlistPage from './pages/account/WishlistPage'
 import RecentlyViewedPage from './pages/account/RecentlyViewedPage'
 import WalletPage from './pages/account/WalletPage'
+// Test component
+import TestAuthCache from './components/TestAuthCache'
 
 function AppContent() {
   const location = useLocation();
@@ -104,6 +109,7 @@ function AppContent() {
         <Route path="/category/:slug" element={<CategoryProductsPage />} />
         <Route path="/search" element={<SearchResultsPage />} />
         <Route path="/product-not-found" element={<ProductNotFoundPage />} />
+        <Route path="/test/auth-cache" element={<TestAuthCachePage />} />
         
         {/* Account routes - protected */}
         <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
