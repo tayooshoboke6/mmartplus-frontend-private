@@ -64,7 +64,7 @@ const authService = {
       
       // Map the frontend fields to what the backend expects
       const registrationData = {
-        name: `${userData.first_name} ${userData.last_name}`, // Combine first and last name
+        name: `${userData.firstName} ${userData.lastName}`,
         email: userData.email,
         phone_number: userData.phone || '', // Provide an empty string if missing
         password: userData.password,
