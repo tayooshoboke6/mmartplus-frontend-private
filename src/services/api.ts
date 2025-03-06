@@ -23,7 +23,8 @@ export const getCsrfCookie = async (): Promise<boolean> => {
   
   try {
     // Get CSRF cookie from Laravel Sanctum
-    const csrfUrl = `${config.api.baseUrl.split('/api')[0]}/sanctum/csrf-cookie`;
+    const baseUrl = config.api.baseUrl.split('/api')[0];
+    const csrfUrl = `${baseUrl}/sanctum/csrf-cookie`;
     console.log('Fetching CSRF token from:', csrfUrl);
     
     await axios.get(csrfUrl, {

@@ -40,7 +40,8 @@ const emailVerificationService = {
       console.log('🌐 Using API URL:', `${config.api.baseUrl}/email/non-auth/send`);
       console.log('⚙️ Current config:', {
         baseUrl: config.api.baseUrl,
-        adminUrl: config.api.adminUrl
+        adminUrl: config.api.adminUrl,
+        debug: import.meta.env.VITE_DEBUG
       });
       
       // TESTING MODE: For development/testing, return a success response without calling the API
@@ -61,7 +62,7 @@ const emailVerificationService = {
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
+            'X-Requested-With': 'XMLHttpRequest'
           }
         }
       );
