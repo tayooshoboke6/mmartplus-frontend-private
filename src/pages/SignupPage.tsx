@@ -267,6 +267,7 @@ const SignupPage: React.FC = () => {
     email: '',
     password: '',
     address: '',
+    phone: '',  // Add phone field
     gender: undefined as 'male' | 'female' | 'other' | undefined,
     profile_picture: ''
   });
@@ -350,6 +351,7 @@ const SignupPage: React.FC = () => {
         first_name: formData.firstName,
         last_name: formData.lastName,
         email: formData.email,
+        phone: formData.phone,  // Include phone number
         password: formData.password,
         password_confirmation: confirmPassword,
         profile_picture: formData.profile_picture
@@ -485,6 +487,18 @@ const SignupPage: React.FC = () => {
             required
           />
           {formErrors.email && <ValidationMessage>{formErrors.email}</ValidationMessage>}
+        </FormGroup>
+        
+        <FormGroup>
+          <Label htmlFor="phone">Phone Number</Label>
+          <Input
+            id="phone"
+            name="phone"
+            type="tel"
+            value={formData.phone}
+            onChange={handleChange}
+            placeholder="123-456-7890"
+          />
         </FormGroup>
         
         <FormGroup>

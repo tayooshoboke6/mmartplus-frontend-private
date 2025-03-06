@@ -62,6 +62,17 @@ const authService = {
       
       console.log('Submitting registration data:', userData);
       
+      // Map the frontend fields to what the backend expects
+      const registrationData = {
+        name: `${userData.first_name} ${userData.last_name}`, // Combine first and last name
+        email: userData.email,
+        phone_number: userData.phone || '', // Provide an empty string if missing
+        password: userData.password,
+        password_confirmation: userData.password_confirmation
+      };
+      
+      console.log('Mapped to backend fields:', registrationData);
+      
       // Use the correct registration endpoint
       // The correct endpoint is /api/register (not /api/admin/register)
       const apiUrl = config.api.baseUrl;
@@ -72,7 +83,7 @@ const authService = {
       // Direct axios request to the auth endpoint
       const response = await axios.post<AuthResponse>(
         registrationUrl, 
-        userData,
+        registrationData,
         {
           withCredentials: true,
           headers: {
