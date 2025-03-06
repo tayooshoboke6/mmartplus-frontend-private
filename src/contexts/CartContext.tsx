@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from './AuthContext';
 
 // Define types
 export interface CartItem {
@@ -31,6 +32,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
 
   // Load cart from localStorage on mount
   useEffect(() => {
@@ -50,8 +52,55 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.setItem('mmartCart', JSON.stringify(cartItems));
   }, [cartItems]);
 
+  // Check for pending cart items after login
+  useEffect(() => {
+    // Check if there's a pending cart item and if the user is now authenticated
+    if (isAuthenticated) {
+      const pendingItem = localStorage.getItem('pendingCartItem');
+      if (pendingItem) {
+        try {
+          const item = JSON.parse(pendingItem);
+          // Add the pending item to cart
+          setCartItems(prevItems => {
+            // Check if item already exists in cart
+            const existingItemIndex = prevItems.findIndex(i => i.id === item.id);
+            
+            if (existingItemIndex >= 0) {
+              // Update existing item
+              const updatedItems = [...prevItems];
+              updatedItems[existingItemIndex].quantity += item.quantity;
+              return updatedItems;
+            } else {
+              // Add new item
+              return [...prevItems, item];
+            }
+          });
+
+          // Remove the pending item from localStorage
+          localStorage.removeItem('pendingCartItem');
+          
+          // Navigate to cart page
+          navigate('/cart');
+        } catch (error) {
+          console.error('Failed to parse pending cart item:', error);
+          localStorage.removeItem('pendingCartItem');
+        }
+      }
+    }
+  }, [isAuthenticated, navigate]);
+
   // Add item to cart
   const addItem = (item: CartItem) => {
+    // If user is not authenticated, redirect to login page
+    if (!isAuthenticated) {
+      // Save this item temporarily in localStorage so we can add it after login
+      localStorage.setItem('pendingCartItem', JSON.stringify(item));
+      // Redirect to login page
+      navigate('/login?redirect=cart');
+      return;
+    }
+
+    // User is authenticated, proceed with adding item to cart
     setCartItems(prevItems => {
       // Check if item already exists in cart
       const existingItemIndex = prevItems.findIndex(i => i.id === item.id);
@@ -102,6 +151,16 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Buy now function - add to cart and navigate to cart page
   const buyNow = (item: CartItem) => {
+    // If user is not authenticated, redirect to login page
+    if (!isAuthenticated) {
+      // Save this item temporarily in localStorage so we can add it after login
+      localStorage.setItem('pendingCartItem', JSON.stringify(item));
+      // Redirect to login page
+      navigate('/login?redirect=cart');
+      return;
+    }
+
+    // User is authenticated, proceed with adding item to cart
     addItem(item);
     navigate('/cart');
   };
