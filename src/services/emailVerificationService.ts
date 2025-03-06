@@ -40,6 +40,7 @@ const emailVerificationService = {
     try {
       console.log('🔍 Email verification attempt for:', email);
       
+      // The correct endpoint is /email/non-auth/send (without /api prefix as it's already in baseUrl)
       const verificationUrl = `${config.api.baseUrl}/email/non-auth/send`;
       console.log('🌐 Using verification URL:', verificationUrl);
       console.log('⚙️ Current config:', {

@@ -63,9 +63,9 @@ const authService = {
       console.log('Submitting registration data:', userData);
       
       // Use the correct registration endpoint
-      // Avoid using the admin URL for registration
+      // The correct endpoint is /api/register (not /api/admin/register)
       const apiUrl = config.api.baseUrl;
-      const registrationUrl = `${apiUrl}/auth/register`;
+      const registrationUrl = `${apiUrl}/register`;
       
       console.log('📮 Registration URL:', registrationUrl);
       
