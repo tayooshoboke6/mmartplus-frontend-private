@@ -1,4 +1,6 @@
 import api from './api';
+import axios from 'axios';  
+import config from '../config';
 
 // Types
 export interface VerificationResponse {
@@ -33,7 +35,18 @@ const emailVerificationService = {
   // Send a verification code to a specific email (non-authenticated)
   sendVerificationCodeByEmail: async (email: string): Promise<VerificationResponse> => {
     try {
-      const response = await api.post<VerificationResponse>('/email/non-auth/send', { email });
+      // Create a custom axios instance without the admin URL prefix
+      const customApi = axios.create({
+        baseURL: config.api.baseUrl, // Use only the base URL without admin prefix
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        }
+      });
+      
+      const response = await customApi.post<VerificationResponse>('/email/non-auth/send', { email });
       return response.data;
     } catch (error: any) {
       console.error('Send verification code error:', error);
@@ -73,7 +86,18 @@ const emailVerificationService = {
   // Verify email with verification code (non-authenticated)
   verifyEmailWithCode: async (email: string, code: string): Promise<VerificationResponse> => {
     try {
-      const response = await api.post<VerificationResponse>('/email/non-auth/verify', { email, code });
+      // Create a custom axios instance without the admin URL prefix
+      const customApi = axios.create({
+        baseURL: config.api.baseUrl, // Use only the base URL without admin prefix
+        withCredentials: true,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        }
+      });
+      
+      const response = await customApi.post<VerificationResponse>('/email/non-auth/verify', { email, code });
       return response.data;
     } catch (error: any) {
       console.error('Verify email error:', error);
