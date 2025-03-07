@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import api from '../services/api';
 import authService from '../services/authService';
 import emailVerificationService from '../services/emailVerificationService';
+import axios from 'axios'; // Import axios
 
 interface User {
   id: number;
@@ -67,64 +68,68 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      // Use consistent token names - check all possible token variations
-      const token = localStorage.getItem('mmartToken') || 
-                    localStorage.getItem('token') || 
-                    localStorage.getItem('adminToken');
-
-      if (token) {
+    const verifyAuth = async () => {
+      try {
+        setIsAuthenticated(false);
         setLoading(true);
 
-        // Store the token consistently as mmartToken
-        if (!localStorage.getItem('mmartToken')) {
-          localStorage.setItem('mmartToken', token);
+        const token = localStorage.getItem('mmartToken') || 
+                      sessionStorage.getItem('mmartToken') || 
+                      localStorage.getItem('token') || 
+                      localStorage.getItem('adminToken');
+
+        if (!token) {
+          console.log('No authentication token found');
+          setIsAuthenticated(false);
+          setLoading(false);
+          return;
         }
+
+        setToken(token);
+
+        console.log('Authentication token found, fetching user data');
 
         try {
-          // Ensure headers are set correctly for the user request
           api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+          const response = await api.get('/user');
+
+          if (response?.data?.data || response?.data) {
+            const userData = response.data.data || response.data;
+
+            const userIsAdmin = userData.roles?.some(role => 
+              role.name === 'admin' || role.name === 'super-admin'
+            );
+
+            setUser(userData);
+            setIsAdmin(userIsAdmin);
+            setIsAuthenticated(true);
+            console.log('User authenticated successfully, admin status:', userIsAdmin);
+          } else {
+            throw new Error('Invalid user data format from API');
+          }
+        } catch (error: any) {
+          console.error('Error fetching user data:', error);
           
-          // Use the correct API path with /api prefix
-          const response = await api.get('/api/user');
-          const userData = response.data.data || response.data;
-
-          // Check if user has admin role using the proper role object structure
-          const userIsAdmin = userData.roles?.some(role => 
-            role.name === 'admin' || role.name === 'super-admin'
-          ) || false;
-
-          setUser({
-            ...userData,
-            isAdmin: userIsAdmin
-          });
-
-          setIsAdmin(userIsAdmin);
-          setIsAuthenticated(true);
-        } catch (err) {
-          console.error('Failed to fetch user data:', err);
-          
-          // Only log out if this isn't a network error
-          if (err.response) {
-            setError('Failed to fetch user data. Please login again.');
-            localStorage.removeItem('mmartToken');
-            localStorage.removeItem('token');
-            localStorage.removeItem('adminToken');
-            setUser(null);
-            setIsAdmin(false);
+          // Don't clear token on network errors - this allows offline access
+          // and prevents logout on temporary API unavailability
+          if (axios.isAxiosError(error) && (!error.response || error.response.status >= 500)) {
+            console.log('Network or server error, keeping authentication state');
+          } else if (axios.isAxiosError(error) && error.response?.status === 401) {
+            // Only clear on actual auth errors (401)
+            console.log('Authentication token invalid, logging out');
+            clearToken();
             setIsAuthenticated(false);
           }
-        } finally {
-          setLoading(false);
         }
-      } else {
-        // Always require manual login regardless of environment
+      } catch (err) {
+        console.error('Error in auth verification:', err);
+      } finally {
         setLoading(false);
-        setIsAuthenticated(false);
       }
     };
 
-    checkAuth();
+    verifyAuth();
   }, []);
 
   const loginAsDevelopmentAdmin = async () => {
@@ -148,26 +153,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return { success: true, user: mockUser };
   };
 
+  const setToken = (token: string) => {
+    localStorage.setItem('mmartToken', token);
+    sessionStorage.setItem('mmartToken', token); 
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  };
+
+  const clearToken = () => {
+    localStorage.removeItem('mmartToken');
+    localStorage.removeItem('token');
+    localStorage.removeItem('adminToken');
+    sessionStorage.removeItem('mmartToken'); 
+    delete api.defaults.headers.common['Authorization'];
+  };
+
   const login = async (credentials: LoginCredentials) => {
     try {
       setError(null);
 
       const { email, password } = credentials;
-      const response = await api.post('/api/auth/login', { email, password });
+      const response = await api.post('/auth/login', { email, password });
       const { token, user: userData } = response.data.data || response.data;
 
-      // Store token in localStorage with consistent naming
-      localStorage.setItem('mmartToken', token);
+      setToken(token);
       
-      // Set authorization header for subsequent requests
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
-      // Check if user has admin role using the proper role object structure
       const userIsAdmin = userData.roles?.some(role => 
         role.name === 'admin' || role.name === 'super-admin'
-      ) || false;
+      );
 
-      // Set user state with admin flag
       const updatedUser = {
         ...userData,
         isAdmin: userIsAdmin
@@ -187,18 +200,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
-      // Call logout API with correct /api prefix
-      await api.post('/api/logout');
+      await api.post('/logout');
     } catch (err) {
       console.error('Logout API failed, but proceeding with local cleanup:', err);
     } finally {
-      // Clear auth data regardless of API success
-      localStorage.removeItem('mmartToken');
-      localStorage.removeItem('token');
-      localStorage.removeItem('adminToken');
-      
-      // Clear authorization header
-      delete api.defaults.headers.common['Authorization'];
+      clearToken();
       
       setUser(null);
       setIsAdmin(false);
@@ -217,9 +223,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         password_confirmation
       });
 
-      // Only store token if registration includes auto-login
       if (response.data.token) {
-        localStorage.setItem('mmartToken', response.data.token);
+        setToken(response.data.token);
         
         if (response.data.user) {
           setUser(response.data.user);
@@ -238,7 +243,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const loginWithGoogle = async () => {
     try {
-      // Redirect to Google OAuth endpoint
       window.location.href = `${import.meta.env.VITE_API_URL}/auth/google`;
       return null;
     } catch (err) {
@@ -249,7 +253,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const loginWithApple = async () => {
     try {
-      // Redirect to Apple OAuth endpoint
       window.location.href = `${import.meta.env.VITE_API_URL}/auth/apple`;
       return null;
     } catch (err) {
@@ -262,12 +265,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setError(null);
   };
 
-  // Function to update user data (e.g., after profile updates)
   const updateUser = (updatedUser: User) => {
     setUser(prev => prev ? { ...prev, ...updatedUser } : updatedUser);
   };
 
-  // Email verification functions
   const sendVerificationCode = async () => {
     if (!user) {
       return { success: false, error: 'No user is logged in' };
@@ -295,7 +296,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await emailVerificationService.verifyEmail(code);
       
       if (response.status === 'success') {
-        // Update user with verified status
         setUser(prev => prev ? {
           ...prev,
           email_verified_at: new Date().toISOString()
@@ -310,7 +310,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Helper to check if email is verified
   const isEmailVerified = (): boolean => {
     return !!user?.email_verified_at;
   };

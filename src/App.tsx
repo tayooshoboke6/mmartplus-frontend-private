@@ -23,6 +23,7 @@ import { useAuth } from './contexts/AuthContext'
 import './App.css'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
+import api from './services/api'
 
 // Admin pages
 import DashboardPage from './pages/admin/DashboardPage'
@@ -60,6 +61,7 @@ import TestAuthCache from './components/TestAuthCache'
 function AppContent() {
   const location = useLocation();
   const { isLoading, user, isAuthenticated, logout, isAdmin } = useAuth();
+  const [hasPersistentAdminSession, setHasPersistentAdminSession] = useState(false);
   
   // Theme handling
   const [darkMode, setDarkMode] = useState<boolean>(
@@ -74,6 +76,35 @@ function AppContent() {
     }
     localStorage.setItem('darkMode', darkMode.toString());
   }, [darkMode]);
+  
+  // Check for persistent admin session
+  useEffect(() => {
+    const checkAdminSession = () => {
+      const token = localStorage.getItem('mmartToken') || 
+                    sessionStorage.getItem('mmartToken') || 
+                    localStorage.getItem('token') || 
+                    localStorage.getItem('adminToken');
+      
+      // If we have a token, we'll consider this a persistent admin session
+      if (token) {
+        console.log('Persistent admin session detected via token');
+        setHasPersistentAdminSession(true);
+        
+        // Set auth header for all requests
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      } else {
+        setHasPersistentAdminSession(false);
+      }
+    };
+    
+    checkAdminSession();
+    
+    // Also check when path changes
+    const pathArray = location.pathname.split('/');
+    if (pathArray[1] === 'admin' && pathArray[2] !== 'login') {
+      checkAdminSession();
+    }
+  }, [location.pathname]);
   
   // Handle user token refresh on app load
   useEffect(() => {

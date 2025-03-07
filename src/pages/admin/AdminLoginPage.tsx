@@ -144,6 +144,11 @@ const AdminLoginPage: React.FC = () => {
     try {
       console.log("Attempting admin login with:", email);
       
+      // First clear any existing tokens to avoid token conflicts
+      localStorage.removeItem('mmartToken');
+      localStorage.removeItem('token');
+      localStorage.removeItem('adminToken');
+      
       // Use the appropriate login method
       const isDevelopment = import.meta.env.DEV;
       let result;
@@ -161,7 +166,18 @@ const AdminLoginPage: React.FC = () => {
         // Check if user is admin
         if (result.user?.isAdmin) {
           console.log("Admin login successful, redirecting to dashboard");
-          navigate('/admin');
+          
+          // Force token presence in session storage too for better persistence
+          const token = localStorage.getItem('mmartToken');
+          if (token) {
+            sessionStorage.setItem('mmartToken', token);
+            console.log("Token saved to session storage for persistence");
+          }
+          
+          // Small delay to ensure token is properly set before navigation
+          setTimeout(() => {
+            navigate('/admin', { replace: true });
+          }, 100);
         } else {
           console.log("User is not admin:", result.user);
           setError('You do not have admin privileges');

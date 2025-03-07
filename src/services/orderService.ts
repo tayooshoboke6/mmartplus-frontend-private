@@ -235,8 +235,8 @@ const orderService = {
       // Ensure we have authentication before proceeding
       await ensureAuthenticated();
       
-      // Use the correct API path with /api prefix
-      const response = await api.get('/api/admin/dashboard/stats');
+      // Use the correct path without duplicate /api prefix
+      const response = await api.get('/admin/dashboard/stats');
       return {
         status: 'success',
         data: response.data.data

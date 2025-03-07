@@ -10,6 +10,7 @@ import { FiDollarSign, FiShoppingBag, FiUsers, FiClock } from 'react-icons/fi';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { DashboardStats } from '../../types/order';
 import orderService from '../../services/orderService';
+import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
 // Mock data for development mode
@@ -178,31 +179,39 @@ const DashboardPage: React.FC = () => {
     setError(null);
     
     try {
-      // Check if we're in development mode
-      const isDevelopmentMode = import.meta.env.DEV || process.env.NODE_ENV === 'development';
-      
-      // Always try to use real data first, with mock data as fallback only in development mode
-      try {
-        // Attempt to fetch real data from the API
-        console.log('Fetching real dashboard stats from API...');
-        const response = await orderService.getDashboardStats();
-        setStats(response.data);
-        setLoading(false);
-      } catch (apiError: any) {
-        console.error('Error fetching dashboard stats from API:', apiError);
-        
-        if (isDevelopmentMode) {
-          // In development mode, fall back to mock data if API fails
-          console.log('Falling back to mock dashboard stats for development environment');
-          setStats(MOCK_DASHBOARD_STATS);
-          setLoading(false);
-        } else {
-          // In production, show proper error
-          throw apiError;
-        }
+      // Get token from all possible storage locations
+      const token = localStorage.getItem('mmartToken') || 
+                   sessionStorage.getItem('mmartToken') || 
+                   localStorage.getItem('token');
+                   
+      if (!token) {
+        throw new Error('Authentication token not found. Please log in again.');
       }
+      
+      // Ensure consistent token storage 
+      if (!localStorage.getItem('mmartToken')) {
+        localStorage.setItem('mmartToken', token);
+      }
+      if (!sessionStorage.getItem('mmartToken')) {
+        sessionStorage.setItem('mmartToken', token);
+      }
+      
+      // Set authorization header explicitly for this request
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      // Log the request for debugging
+      console.log('Dashboard: Fetching real stats with authorization header');
+      
+      // Attempt to fetch real data from the API
+      const response = await orderService.getDashboardStats();
+      
+      // Log successful response
+      console.log('Dashboard: Successfully fetched stats from API:', response.data);
+      
+      setStats(response.data);
+      setLoading(false);
     } catch (err: any) {
-      console.error('Error in dashboard data flow:', err);
+      console.error('Error fetching dashboard stats:', err);
       
       // Show a more helpful error message
       const statusCode = err?.response?.status;
@@ -210,16 +219,17 @@ const DashboardPage: React.FC = () => {
       
       if (statusCode === 404) {
         errorMessage = 'Dashboard API endpoint not found. The backend API for dashboard statistics may not be implemented yet.';
-        console.log('Using mock data instead due to missing API endpoint');
-        setStats(MOCK_DASHBOARD_STATS);  // Fall back to mock data
       } else if (statusCode === 401 || statusCode === 403) {
-        errorMessage = 'Authentication required. Please log in to view this dashboard.';
+        errorMessage = 'Authentication required. Please log in again to view this dashboard.';
+        // Clear any existing tokens if we got an auth error
+        localStorage.removeItem('mmartToken');
+        sessionStorage.removeItem('mmartToken');
+        localStorage.removeItem('token');
       } else {
         errorMessage = err.message || 'Failed to load dashboard data.';
       }
       
       setError(errorMessage);
-    } finally {
       setLoading(false);
     }
   };
