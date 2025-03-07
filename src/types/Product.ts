@@ -15,6 +15,10 @@ export interface Product {
   is_active: boolean;
   category_id: number;
   expiry_date?: string | null;
+  delivery_time?: string;
+  average_rating?: number;
+  bayesian_rating?: number;
+  rating_count?: number;
   images: string[];
   created_at: string;
   updated_at: string;
@@ -45,6 +49,7 @@ export interface ProductFormData {
   is_featured: boolean;
   is_active: boolean;
   expiry_date?: string;
+  delivery_time?: string;
   images?: File[];
   existing_images?: string[];
 }
