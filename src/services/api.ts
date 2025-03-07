@@ -25,31 +25,6 @@ const extractDomain = (url: string) => {
 // Get domain for cookies
 const COOKIE_DOMAIN = extractDomain(config.api.baseUrl) || undefined;
 
-// Add CORS headers to requests when in production and not on the API domain
-export const addCorsHeaders = (config: any) => {
-  // Only apply this in production
-  if (import.meta.env.PROD) {
-    // Check if we're calling an external domain compared to where the app is hosted
-    const currentDomain = window.location.hostname;
-    const targetDomain = extractDomain(config.url) || '';
-    
-    if (currentDomain !== targetDomain) {
-      console.log('Adding CORS headers to cross-domain request');
-      
-      // Add mode: 'cors' and credentials settings
-      config.mode = 'cors';
-      config.withCredentials = true;
-      
-      // Add headers that might help with CORS
-      if (!config.headers) config.headers = {};
-      config.headers['Access-Control-Request-Method'] = config.method?.toUpperCase() || 'GET';
-      config.headers['Access-Control-Request-Headers'] = 'Content-Type,Authorization,X-Requested-With';
-    }
-  }
-  
-  return config;
-};
-
 // Create axios instance with base URL from config
 const api = axios.create({
   baseURL: config.api.baseUrl, // Only use baseUrl, not adminUrl
@@ -193,9 +168,6 @@ api.interceptors.request.use(
         });
       }
     }
-    
-    // Add CORS headers if necessary
-    config = addCorsHeaders(config);
     
     return config;
   },
