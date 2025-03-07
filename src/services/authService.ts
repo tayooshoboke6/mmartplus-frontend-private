@@ -79,7 +79,7 @@ const authService = {
       // Use the correct registration endpoint
       // The correct endpoint is /api/register (not /api/admin/register)
       const apiUrl = config.api.baseUrl;
-      const registrationUrl = `${apiUrl}/register`;
+      const registrationUrl = `${apiUrl}/auth/register`;
       
       console.log('📮 Registration URL:', registrationUrl);
       
@@ -161,7 +161,7 @@ const authService = {
       await getCsrfCookie();
       
       // Call the login endpoint
-      const response = await api.post<AuthResponse>('/login', {
+      const response = await api.post<AuthResponse>('/auth/login', {
         email: credentials.email,
         password: credentials.password
       });

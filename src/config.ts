@@ -2,7 +2,7 @@
 const config = {
   // API URLs
   api: {
-    baseUrl: import.meta.env.VITE_API_URL?.replace('http://', 'https://') || 'https://api.m-martplus.com/api',
+    baseUrl: import.meta.env.VITE_API_URL?.replace('http://', 'https://') || 'https://api.m-martplus.com',
     adminUrl: '/admin', // This will be appended to baseUrl in API calls
     authUrl: '/auth',
   },

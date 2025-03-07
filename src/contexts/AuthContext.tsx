@@ -146,7 +146,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(null);
 
       const { email, password } = credentials;
-      const response = await api.post('/login', { email, password });
+      const response = await api.post('/auth/login', { email, password });
       const { token, user: userData } = response.data.data || response.data;
 
       // Store token in localStorage with consistent naming
