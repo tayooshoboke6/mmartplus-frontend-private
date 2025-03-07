@@ -18,24 +18,14 @@ interface WishlistResponse {
   data: WishlistItem[];
 }
 
-// For development testing - will be removed when backend is ready
+// Local storage key for development
 const LOCAL_STORAGE_KEY = 'mmartplus_wishlist';
 
 const wishlistService = {
   // Get all wishlist items for the current user
   getWishlistItems: async (): Promise<WishlistItem[]> => {
     try {
-      // Try to get from API first
-      try {
-        const response = await api.get<WishlistResponse>('/wishlist');
-        if (response.data.status === 'success') {
-          return response.data.data;
-        }
-      } catch (error) {
-        console.log('Using local storage for wishlist as fallback');
-      }
-
-      // Fallback to localStorage for development
+      // Use localStorage for now
       const storedItems = localStorage.getItem(LOCAL_STORAGE_KEY);
       return storedItems ? JSON.parse(storedItems) : [];
     } catch (error) {
@@ -47,19 +37,7 @@ const wishlistService = {
   // Add a product to wishlist
   addToWishlist: async (product: any): Promise<WishlistItem | null> => {
     try {
-      // Try API first
-      try {
-        const response = await api.post<{ status: string; data: WishlistItem }>('/wishlist', { 
-          product_id: product.id 
-        });
-        if (response.data.status === 'success') {
-          return response.data.data;
-        }
-      } catch (error) {
-        console.log('Using local storage for wishlist as fallback');
-      }
-
-      // Fallback to localStorage for development
+      // Use localStorage for now
       const storedItems = localStorage.getItem(LOCAL_STORAGE_KEY);
       const wishlistItems: WishlistItem[] = storedItems ? JSON.parse(storedItems) : [];
       
@@ -69,7 +47,7 @@ const wishlistService = {
       }
       
       const newItem: WishlistItem = {
-        id: Date.now(), // Generate a temporary ID
+        id: Date.now(),
         productId: product.id,
         name: product.name,
         image: product.image,
@@ -89,24 +67,14 @@ const wishlistService = {
   },
 
   // Remove a product from wishlist
-  removeFromWishlist: async (id: number): Promise<boolean> => {
+  removeFromWishlist: async (productId: number): Promise<boolean> => {
     try {
-      // Try API first
-      try {
-        const response = await api.delete(`/wishlist/${id}`);
-        if (response.data.status === 'success') {
-          return true;
-        }
-      } catch (error) {
-        console.log('Using local storage for wishlist as fallback');
-      }
-
-      // Fallback to localStorage for development
+      // Use localStorage for now
       const storedItems = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (!storedItems) return false;
       
       const wishlistItems: WishlistItem[] = JSON.parse(storedItems);
-      const updatedItems = wishlistItems.filter(item => item.id !== id);
+      const updatedItems = wishlistItems.filter(item => item.productId !== productId);
       
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedItems));
       return true;
@@ -119,17 +87,6 @@ const wishlistService = {
   // Clear the entire wishlist
   clearWishlist: async (): Promise<boolean> => {
     try {
-      // Try API first
-      try {
-        const response = await api.delete('/wishlist');
-        if (response.data.status === 'success') {
-          return true;
-        }
-      } catch (error) {
-        console.log('Using local storage for wishlist as fallback');
-      }
-
-      // Fallback to localStorage for development
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify([]));
       return true;
     } catch (error) {

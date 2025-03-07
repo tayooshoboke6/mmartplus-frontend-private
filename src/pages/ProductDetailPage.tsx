@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { TouchEvent as ReactTouchEvent } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import Header from '../components/layout/Header';
 import Footer from '../components/layout/Footer';
@@ -8,6 +8,9 @@ import { Text, Button, FlexBox } from '../styles/GlobalComponents';
 import { useCart } from '../contexts/CartContext';
 import { formatCurrency } from '../utils/formatCurrency';
 import recentlyViewedService from '../services/recentlyViewedService';
+import productService, { Product } from '../services/productService';
+import LoadingSpinner from '../components/common/LoadingSpinner';
+import config from '../config';
 
 // Styled Components
 const PageContainer = styled.div`
@@ -117,9 +120,14 @@ const QuantityButton = styled.button`
   &:hover {
     background: var(--background-hover);
   }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 `;
 
-const QuantityValue = styled.span`
+const QuantityDisplay = styled.span`
   width: 50px;
   text-align: center;
   font-size: 16px;
@@ -174,20 +182,29 @@ const CardContent = styled.div`
   padding: 12px;
 `;
 
-const CardTitle = styled.h3`
+const ProductTitle = styled(Link)`
   font-size: 14px;
   margin: 0 0 8px;
   font-weight: 500;
+  text-decoration: none;
+  color: var(--text-primary);
 `;
 
-const CardPrice = styled.div`
+const PriceDisplay = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+`;
+
+const CurrentPrice = styled.div`
   font-weight: bold;
   color: var(--primary-color);
 `;
 
-const CardImage = styled.div`
-  overflow: hidden;
-  border-radius: 8px 8px 0 0;
+const OldPrice = styled.div`
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-decoration: line-through;
 `;
 
 const ProductCard = styled.div`
@@ -225,367 +242,156 @@ const NavButton = styled.button<{ direction?: 'left' | 'right' }>`
   ${props => props.direction === 'right' ? 'right: 0;' : ''}
 `;
 
-// Import ProductImageGallery component or define it here if it doesn't exist
-const ProductImageGallery = ({ images, altText, onImageChange }: { 
-  images: string[], 
-  altText: string,
-  onImageChange: (index: number) => void 
-}) => {
-  const [activeIndex, setActiveIndex] = useState(0);
-  
-  useEffect(() => {
-    if (onImageChange) {
-      onImageChange(activeIndex);
-    }
-  }, [activeIndex, onImageChange]);
-  
-  return (
-    <div>
-      <div style={{ marginBottom: '10px' }}>
-        <img 
-          src={images[activeIndex] || 'https://via.placeholder.com/500x500?text=No+Image'} 
-          alt={altText} 
-          style={{ width: '100%', borderRadius: '8px', objectFit: 'cover' }}
-        />
-      </div>
-      <div style={{ display: 'flex', gap: '10px', overflowX: 'auto' }}>
-        {images.map((img, idx) => (
-          <img 
-            key={idx}
-            src={img} 
-            alt={`${altText} thumbnail ${idx + 1}`}
-            style={{ 
-              width: '80px', 
-              height: '80px', 
-              objectFit: 'cover',
-              cursor: 'pointer',
-              borderRadius: '4px',
-              border: idx === activeIndex ? '2px solid var(--primary-color)' : '2px solid transparent'
-            }}
-            onClick={() => setActiveIndex(idx)}
-          />
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// Mock data for products with grocery store categories
-const mockProducts = [
-  {
-    id: 1,
-    name: 'Fresh Whole Milk',
-    images: [
-      'https://via.placeholder.com/500x400?text=Fresh+Whole+Milk',
-      'https://via.placeholder.com/500x400?text=Milk+Nutritional+Info',
-      'https://via.placeholder.com/500x400?text=Milk+Package',
-    ],
-    category: 'Dairy & Breakfast',
-    price: 1200,
-    compareAtPrice: 1500,
-    description: 'Fresh and nutritious whole milk from local farms. Rich in calcium and protein, this milk is perfect for your daily nutrition needs. Pasteurized for safety while maintaining its fresh taste.',
-    shortDescription: 'Fresh whole milk from local farms.',
-    specifications: [
-      { name: 'Volume', value: '1 Liter' },
-      { name: 'Fat Content', value: '3.5%' },
-      { name: 'Storage', value: 'Refrigerated' },
-      { name: 'Shelf Life', value: '7 days' }
-    ],
-    productType: 'pieces',
-    stock: 24,
-    expiry: '2025-03-15',
-    features: [
-      'Fresh from local farms',
-      'Rich in calcium and vitamin D',
-      'No preservatives added',
-      'Recyclable packaging'
-    ],
-    specs: {
-      volume: '1 Liter',
-      storage: 'Keep refrigerated',
-      shelfLife: '7 days after opening'
-    },
-    rating: 4.8,
-    reviewCount: 128
-  },
-  {
-    id: 2,
-    name: 'Premium Basmati Rice (5kg)',
-    images: [
-      'https://via.placeholder.com/500x400?text=Premium+Basmati+Rice',
-      'https://via.placeholder.com/500x400?text=Rice+Package+Back',
-      'https://via.placeholder.com/500x400?text=Rice+Cooking+Instructions',
-    ],
-    category: 'Staples & Grains',
-    price: 7500,
-    compareAtPrice: 8200,
-    description: 'High-quality aged basmati rice with aromatic flavor. Grown in the finest rice fields and aged to perfection. Perfect for biryani, jollof rice, and other special dishes.',
-    shortDescription: 'Aged basmati rice with aromatic flavor.',
-    specifications: [
-      { name: 'Weight', value: '5 Kilograms' },
-      { name: 'Origin', value: 'Imported' },
-      { name: 'Cooking Time', value: '15-20 minutes' },
-      { name: 'Storage', value: 'Dry place' }
-    ],
-    productType: 'packs',
-    stock: 12,
-    expiry: '2025-12-18',
-    features: [
-      'Premium long grain',
-      'Naturally aromatic',
-      'Aged for better flavor',
-      'Stays separate when cooked'
-    ],
-    specs: {
-      weight: '5 Kilograms',
-      origin: 'Imported',
-      cookingTime: '15-20 minutes'
-    },
-    rating: 4.9,
-    reviewCount: 205
-  },
-  {
-    id: 3,
-    name: 'Fresh Tomatoes (1kg)',
-    images: [
-      'https://via.placeholder.com/500x400?text=Fresh+Tomatoes',
-      'https://via.placeholder.com/500x400?text=Tomatoes+Close+Up',
-      'https://via.placeholder.com/500x400?text=Tomatoes+In+Basket',
-    ],
-    category: 'Fruits & Vegetables',
-    price: 1800,
-    compareAtPrice: 2000,
-    description: 'Fresh locally grown tomatoes, perfect for salads and sauces. These tomatoes are harvested at the peak of ripeness to ensure the best flavor and nutritional value.',
-    shortDescription: 'Locally grown fresh tomatoes.',
-    specifications: [
-      { name: 'Weight', value: '1 Kilogram' },
-      { name: 'Type', value: 'Roma/Plum' },
-      { name: 'Storage', value: 'Room temperature or refrigerate' },
-      { name: 'Shelf Life', value: '3-5 days' }
-    ],
-    productType: 'pieces',
-    stock: 38,
-    expiry: '2025-03-07',
-    features: [
-      'Locally grown',
-      'Rich in lycopene',
-      'Versatile for cooking',
-      'No pesticides used'
-    ],
-    specs: {
-      weight: '1 Kilogram',
-      type: 'Roma/Plum',
-      storage: 'Room temperature or refrigerate'
-    },
-    rating: 4.6,
-    reviewCount: 87
-  },
-  {
-    id: 4,
-    name: 'Frozen Chicken Breast (1kg)',
-    images: [
-      'https://via.placeholder.com/500x400?text=Frozen+Chicken+Breast',
-      'https://via.placeholder.com/500x400?text=Chicken+Package',
-      'https://via.placeholder.com/500x400?text=Chicken+Nutritional+Info',
-    ],
-    category: 'Packaged & Frozen Foods',
-    price: 5500,
-    compareAtPrice: 6000,
-    description: 'Premium quality chicken breast, perfect for grilling or baking. Sourced from farms with high animal welfare standards. Individually quick frozen to preserve freshness.',
-    shortDescription: 'Premium quality frozen chicken breast.',
-    specifications: [
-      { name: 'Weight', value: '1 Kilogram' },
-      { name: 'Pieces', value: '4-5 pieces approximately' },
-      { name: 'Storage', value: 'Keep frozen until use' },
-      { name: 'Shelf Life', value: '12 months' }
-    ],
-    productType: 'pieces',
-    stock: 45,
-    expiry: '2025-06-22',
-    features: [
-      'Hormone-free',
-      'High protein content',
-      'Individually packaged pieces',
-      'Easy to portion'
-    ],
-    specs: {
-      weight: '1 Kilogram',
-      pieces: '4-5 pieces approximately',
-      storage: 'Keep frozen until use'
-    },
-    rating: 4.7,
-    reviewCount: 156
-  },
-  {
-    id: 5,
-    name: 'Premium Dish Soap',
-    images: [
-      'https://via.placeholder.com/500x400?text=Premium+Dish+Soap',
-      'https://via.placeholder.com/500x400?text=Dish+Soap+Label',
-      'https://via.placeholder.com/500x400?text=Dish+Soap+Usage',
-    ],
-    category: 'Cleaning & Laundry',
-    price: 950,
-    compareAtPrice: 1200,
-    description: 'Effective dish soap with gentle formula for clean dishes and hands. Cuts through grease while being gentle on your skin. Pleasant citrus scent.',
-    shortDescription: 'Gentle and effective dish soap.',
-    specifications: [
-      { name: 'Volume', value: '750ml' },
-      { name: 'Concentration', value: 'Ultra-concentrated' },
-      { name: 'Ingredients', value: 'Plant-based surfactants' },
-      { name: 'Storage', value: 'Dry place' }
-    ],
-    productType: 'pieces',
-    stock: 10,
-    expiry: null,
-    features: [
-      'Biodegradable formula',
-      'Gentle on hands',
-      'Effective grease cutter',
-      'Citrus scent'
-    ],
-    specs: {
-      volume: '750ml',
-      concentration: 'Ultra-concentrated',
-      ingredients: 'Plant-based surfactants'
-    },
-    rating: 4.5,
-    reviewCount: 92
-  },
-  {
-    id: 6,
-    name: 'Fresh Eggs (Crate of 30)',
-    images: [
-      'https://via.placeholder.com/500x400?text=Fresh+Eggs',
-      'https://via.placeholder.com/500x400?text=Egg+Carton',
-      'https://via.placeholder.com/500x400?text=Eggs+Close+Up',
-    ],
-    category: 'Dairy & Breakfast',
-    price: 3200,
-    compareAtPrice: 3500,
-    description: 'Farm-fresh eggs from free-range chickens. Perfect for breakfast, baking, or any recipe that calls for fresh eggs. Each egg is inspected for quality.',
-    shortDescription: 'Farm-fresh eggs from free-range chickens.',
-    specifications: [
-      { name: 'Quantity', value: '30 eggs' },
-      { name: 'Size', value: 'Large' },
-      { name: 'Type', value: 'Free Range' },
-      { name: 'Storage', value: 'Refrigerated' }
-    ],
-    productType: 'packs',
-    stock: 8,
-    expiry: '2025-03-20',
-    features: [
-      'From free-range chickens',
-      'No antibiotics used',
-      'Rich in protein',
-      'Large size eggs'
-    ],
-    specs: {
-      quantity: '30 eggs',
-      size: 'Large',
-      storage: 'Refrigerated'
-    },
-    rating: 4.9,
-    reviewCount: 73
-  },
-  {
-    id: 7,
-    name: 'Premium Cotton T-Shirt',
-    images: [
-      'https://via.placeholder.com/500x400?text=Cotton+Tshirt',
-      'https://via.placeholder.com/500x400?text=Tshirt+Back'
-    ],
-    category: 'Clothing',
-    price: 5500,
-    compareAtPrice: 6000,
-    description: 'Premium quality cotton t-shirt, comfortable for everyday wear.',
-    shortDescription: '100% cotton t-shirt in various sizes.',
-    specifications: [
-      { name: 'Material', value: '100% Cotton' },
-      { name: 'Care', value: 'Machine Washable' },
-      { name: 'Style', value: 'Round Neck' }
-    ],
-    productType: 'sizes',
-    sizeStock: {
-      S: 10,
-      M: 15,
-      L: 20,
-      XL: 8,
-      XXL: 5
-    },
-    rating: 4.5,
-    reviewCount: 210
-  }
-];
-
-const StockDisplay = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 16px;
-  padding: 12px;
-  background-color: #f9f9f9;
-  border-radius: 4px;
+const SimilarProductsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
 `;
 
-const SizeButtons = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-`;
-
-const SizeButton = styled.button<{ selected?: boolean }>`
-  padding: 8px 16px;
-  border: 1px solid ${props => props.selected ? 'var(--primary-color)' : '#ddd'};
-  background-color: ${props => props.selected ? 'var(--primary-color)' : '#fff'};
-  color: ${props => props.selected ? '#fff' : '#333'};
-  border-radius: 4px;
-  font-weight: 500;
+const SimilarProductCard = styled.div`
   cursor: pointer;
-  transition: all 0.2s ease;
+`;
 
-  &:hover {
-    background-color: ${props => props.selected ? 'var(--primary-color)' : '#f5f5f5'};
-  }
+const SimilarProductImage = styled.div`
+  overflow: hidden;
+  border-radius: 8px;
+`;
 
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    border-color: #ddd;
-    background-color: #f5f5f5;
-  }
+const SimilarProductInfo = styled.div`
+  padding: 12px;
 `;
 
 const ProductDetailPage = () => {
   const { id } = useParams<{ id: string }>();
-  const { addItem, buyNow, cartItems, updateQuantity, removeFromCart } = useCart();
   const navigate = useNavigate();
-  const [_, setSelectedImage] = useState(0);
-  const [currentFrequentlyBoughtIndex, setCurrentFrequentlyBoughtIndex] = useState(0);
+  const location = useLocation();
+  const { addItem, cartItems, updateQuantity, removeFromCart, buyNow } = useCart();
+  
+  // State management
+  const [product, setProduct] = useState<Product | null>(null);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [quantity, setQuantity] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [similarProducts, setSimilarProducts] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState('description');
+  
+  // Touch events for mobile
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
-  const [selectedSize, setSelectedSize] = useState<string | null>(null);
-  const [quantity, setQuantity] = useState(1);
+  const [currentFrequentlyBoughtIndex, setCurrentFrequentlyBoughtIndex] = useState(0);
 
   // Find if product is already in cart
-  const cartItem = cartItems.find(item => item.id.toString() === id);
+  const cartItem = cartItems?.find(item => id && item.id?.toString() === id.toString());
   const isInCart = !!cartItem;
 
-  // Get the product data
-  // In a real app, this would be fetched from an API
-  const product = mockProducts.find((p) => p.id.toString() === id);
+  // Fetch product data when the component mounts or ID changes
+  useEffect(() => {
+    const fetchProduct = async () => {
+      if (!id) return;
+      
+      setLoading(true);
+      setError(null);
+      
+      try {
+        // Using hardcoded data for development
+        // This is temporary until the API is properly connected
+        const mockProduct = {
+          id: 125,
+          name: 'Fresh Whole Milk',
+          description: 'Farm-fresh whole milk with rich taste and creamy texture. Perfect for your morning coffee, cereal, or drinking straight from the glass.',
+          short_description: 'Farm-fresh whole milk with rich taste and creamy texture',
+          price: 4.99,
+          stock: 100,
+          category_id: 3,
+          category: {
+            id: 3,
+            name: 'Dairy Products',
+          },
+          images: [
+            {
+              id: 1,
+              url: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
+              is_primary: true
+            }
+          ],
+          slug: 'fresh-whole-milk',
+          rating: 4.8,
+          review_count: 152,
+          is_active: true
+        };
+        
+        console.log('Using mock product data for development');
+        setProduct(mockProduct);
+        
+        // Mock similar products
+        setSimilarProducts([
+          {
+            id: 127,
+            name: 'Low-Fat Milk',
+            price: 3.99,
+            images: [{ url: 'https://images.unsplash.com/photo-1628088062854-d1870b4553da?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', is_primary: true }],
+            rating: 4.5,
+            review_count: 120,
+            slug: 'low-fat-milk'
+          },
+          {
+            id: 128,
+            name: 'Greek Yogurt',
+            price: 5.99,
+            images: [{ url: 'https://images.unsplash.com/photo-1571212515416-8d699f7c8b5a?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', is_primary: true }],
+            rating: 4.7,
+            review_count: 85,
+            slug: 'greek-yogurt'
+          },
+          {
+            id: 129,
+            name: 'Cheddar Cheese',
+            price: 6.99,
+            images: [{ url: 'https://images.unsplash.com/photo-1618164435735-413d3b066c9a?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80', is_primary: true }],
+            rating: 4.6,
+            review_count: 95,
+            slug: 'cheddar-cheese'
+          }
+        ]);
+      } catch (err) {
+        console.error('Error:', err);
+        setError('Failed to load product');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchProduct();
+  }, [id]);
 
-  // Handle case where product isn't found
-  if (!product) {
+  // Handle case where product is loading
+  if (loading) {
     return (
       <PageContainer>
         <Header />
         <MainContent>
-          <Text size="xl">Product not found</Text>
-          <Button variant="primary" onClick={() => navigate('/')}>
-            Back to Home
-          </Button>
+          <LoadingSpinner />
+        </MainContent>
+        <Footer />
+      </PageContainer>
+    );
+  }
+
+  // Handle case where product isn't found or there's an error
+  if (error || !product) {
+    return (
+      <PageContainer>
+        <Header />
+        <MainContent>
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <Text size="lg" color="var(--error-color)">{error || 'Product not found'}</Text>
+            <Spacer size={20} />
+            <Button variant="outlined" onClick={() => navigate('/')}>
+              Return to Home
+            </Button>
+          </div>
         </MainContent>
         <Footer />
       </PageContainer>
@@ -594,7 +400,7 @@ const ProductDetailPage = () => {
 
   // Select default size if product has sizes and none is selected
   useEffect(() => {
-    if (product.productType === 'sizes' && !selectedSize) {
+    if (product?.productType === 'sizes' && !selectedSize) {
       // Find first size that has stock
       const availableSize = Object.entries(product.sizeStock || {})
         .find(([_, stock]) => stock > 0);
@@ -604,13 +410,8 @@ const ProductDetailPage = () => {
       }
     }
   }, [product, selectedSize]);
-
-  // Get similar products (same category, excluding current product)
-  const frequentlyBoughtProducts = mockProducts
-    .filter((p) => p.id !== product.id)
-    .slice(0, 8); // Limit to 8 similar products
   
-  const maxFrequentlyBoughtIndex = Math.max(0, frequentlyBoughtProducts.length - 4);
+  const maxFrequentlyBoughtIndex = Math.max(0, similarProducts.length - 4);
 
   const handlePrevFrequentlyBought = () => {
     setCurrentFrequentlyBoughtIndex(prev => Math.max(0, prev - 1));
@@ -754,7 +555,7 @@ const ProductDetailPage = () => {
     for (let i = 0; i < fullStars; i++) {
       stars.push(
         <svg key={`star-${i}`} xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#FFD700" viewBox="0 0 16 16">
-          <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L8 2.223l1.847 3.658a.525.525 0 0 0 .393.288l4.052.575-2.906 2.77a.565.565 0 0 1-.163.506l.694 3.957-3.686-1.894a.503.503 0 0 1-.461 0z"/>
+          <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L8 2.223l1.847 3.658a.525.525 0 0 0 .393.288l4.052.575-2.906 2.77a.565.565 0 0 1-.163.506l-.694 3.957-3.686-1.894a.503.503 0 0 1-.461 0z"/>
         </svg>
       );
     }
@@ -762,7 +563,7 @@ const ProductDetailPage = () => {
     if (halfStar) {
       stars.push(
         <svg key="star-half" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#FFD700" viewBox="0 0 16 16">
-          <path d="M5.354 5.119 7.538.792A.516.516 0 0 1 8 .5c.183 0 .366.097.465.292l2.184 4.327 4.898.696A.537.537 0 0 1 16 6.32a.548.548 0 0 1-.17.445l-3.523 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256a.52.52 0 0 1-.146.05c-.342.06-.668-.254-.6-.642l.83-4.73L.173 6.765a.55.55 0 0 1-.172-.403.58.58 0 0 1 .085-.302.513.513 0 0 1 .37-.245l4.898-.696zM8 12.027a.5.5 0 0 1 .232.056l3.686 1.894-.694-3.957a.565.565 0 0 1 .162-.506l2.907-2.77-4.052-.575a.525.525 0 0 1-.393-.288L8.001 2.226 8 2.226v9.8z"/>
+          <path d="M5.354 5.119 7.538.792A.516.516 0 0 1 8 .5c.183 0 .366.097.465.292l2.184 4.327 4.898.696A.537.537 0 0 1 16 6.32a.548.548 0 0 1-.17.445l-3.523 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256a.52.52 0 0 1-.146.05c-.342.06-.668-.254-.6-.642l.83-4.73L.173 6.765a.55.55 0 0 1-.172-.403.58.58 0 0 1 .085-.302.513.513 0 0 1 .37-.245l4.898-.696zM8 12.027a.5.5 0 0 1 .232.056l3.686 1.894-.694-3.957a.565.565 0 0 1 .162-.506l2.907 2.77-4.052-.575a.525.525 0 0 1-.393-.288L8.001 2.226 8 2.226v9.8z"/>
         </svg>
       );
     }
@@ -771,7 +572,7 @@ const ProductDetailPage = () => {
     for (let i = 0; i < emptyStars; i++) {
       stars.push(
         <svg key={`star-empty-${i}`} xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#D3D3D3" viewBox="0 0 16 16">
-          <path d="M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.256c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8 2.223l1.847 3.658a.525.525 0 0 0 .393.288l4.052.575-2.906 2.77a.565.565 0 0 1-.163.506l.694 3.957-3.686-1.894a.503.503 0 0 1-.461 0z"/>
+          <path d="M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.256c.386.198.824-.149.746-.592l-.83-4.73 3.523-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8 2.223l-1.847 3.658a.525.525 0 0 0-.393.288l-4.052.575 2.906 2.77a.565.565 0 0 1 .163.506l.694 3.957 3.686-1.894a.503.503 0 0 1 .461 0z"/>
         </svg>
       );
     }
@@ -783,7 +584,7 @@ const ProductDetailPage = () => {
   useEffect(() => {
     const trackProductView = async () => {
       try {
-        await recentlyViewedService.addToRecentlyViewed(product);
+        await recentlyViewedService.addProduct(product);
       } catch (error) {
         console.error('Error tracking product view:', error);
       }
@@ -796,206 +597,136 @@ const ProductDetailPage = () => {
       <Header />
 
       <MainContent>
-        <SectionContainer>
-          {/* Breadcrumb Navigation */}
-          <BreadcrumbNavigation>
-            <Breadcrumb to="/">Home</Breadcrumb>
-            <BreadcrumbSeparator>›</BreadcrumbSeparator>
-            <Breadcrumb to="/category/electronics">Category</Breadcrumb>
-            <BreadcrumbSeparator>›</BreadcrumbSeparator>
-            <BreadcrumbCurrent>{product.name}</BreadcrumbCurrent>
-          </BreadcrumbNavigation>
+        {loading ? (
+          <LoadingSpinner />
+        ) : error ? (
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <Text size="lg" color="var(--error-color)">{error}</Text>
+            <Spacer size={20} />
+            <Button variant="outlined" onClick={() => navigate('/')}>
+              Return to Home
+            </Button>
+          </div>
+        ) : product ? (
+          <SectionContainer>
+            {/* Breadcrumb Navigation */}
+            <BreadcrumbNavigation>
+              <Breadcrumb to="/">Home</Breadcrumb>
+              <BreadcrumbSeparator>›</BreadcrumbSeparator>
+              {product.category && (
+                <>
+                  <Breadcrumb to={`/category/${product.category.id}`}>
+                    {product.category.name}
+                  </Breadcrumb>
+                  <BreadcrumbSeparator>›</BreadcrumbSeparator>
+                </>
+              )}
+              <BreadcrumbCurrent>{product.name}</BreadcrumbCurrent>
+            </BreadcrumbNavigation>
 
-          <ProductGrid>
-            {/* Left Column - Product Images */}
-            <ProductImages>
-              <ProductImageGallery 
-                images={product.images || []} 
-                altText={product.name}
-                onImageChange={(index) => setSelectedImage(index)}
-              />
-            </ProductImages>
+            <ProductGrid>
+              {/* Left Column - Product Images */}
+              <ProductImages>
+                {product.images && product.images.length > 0 && (
+                  <img 
+                    src={product.images[0].url} 
+                    alt={product.name}
+                    style={{ width: '100%', height: 'auto', maxHeight: '400px', objectFit: 'contain' }}
+                  />
+                )}
+              </ProductImages>
 
-            {/* Right Column - Product Info */}
-            <ProductInfo>
-              <Text size="xl" weight="bold">{product.name}</Text>
+              {/* Right Column - Product Info */}
+              <ProductInfo>
+                <Text size="xl" weight="bold">{product.name}</Text>
 
-              <Rating>
-                {renderStars(product.rating)}
-                <ReviewCount>{product.rating} ({product.reviewCount} reviews)</ReviewCount>
-              </Rating>
+                <Rating>
+                  {renderStars(product.rating || 0)}
+                  <ReviewCount>{product.rating || 0} ({product.review_count || 0} reviews)</ReviewCount>
+                </Rating>
 
-              <PriceContainer>
-                <Text size="xl" weight="bold" color="var(--primary-color)">
-                  {formatCurrency(product.price)}
-                </Text>
-              </PriceContainer>
-
-              <Text>{product.description}</Text>
-
-              <Spacer size={20} />
-
-              {/* Stock information */}
-              <StockDisplay>
-                {product.productType === 'sizes' ? (
-                  <>
-                    <Text size="md" weight="medium">Select Size:</Text>
-                    <SizeButtons>
-                      {Object.entries(product.sizeStock || {}).map(([size, qty]) => (
-                        <SizeButton 
-                          key={size}
-                          selected={selectedSize === size}
-                          disabled={qty <= 0}
-                          onClick={() => setSelectedSize(size)}
-                        >
-                          {size} {qty <= 0 && '(Out of Stock)'}
-                        </SizeButton>
-                      ))}
-                    </SizeButtons>
-                    {selectedSize && (
-                      <Text size="sm">
-                        {product.sizeStock?.[selectedSize] > 0 
-                          ? `${product.sizeStock?.[selectedSize]} items available in size ${selectedSize}` 
-                          : `Out of stock in size ${selectedSize}`}
-                      </Text>
-                    )}
-                  </>
-                ) : (
-                  <Text size="sm">
-                    {product.stock > 0 
-                      ? `${product.stock} ${product.productType === 'packs' ? 'packs' : 'items'} available` 
-                      : 'Out of stock'}
+                <PriceContainer>
+                  <Text size="xl" weight="bold" color="var(--primary-color)">
+                    {formatCurrency(product.price)}
                   </Text>
-                )}
-              </StockDisplay>
+                </PriceContainer>
 
-              {/* Quantity controls - shown for all products */}
-              <div style={{ marginTop: '20px' }}>
-                <Text weight="500">Quantity</Text>
-                <QuantitySelector>
-                  <QuantityButton 
-                    onClick={handleDecrement}
-                    aria-label="Decrease quantity"
-                    disabled={!isInCart && quantity <= 1}
+                <Text>{product.description}</Text>
+
+                <Spacer size={20} />
+
+                {/* Quantity controls */}
+                <Text size="md" weight="medium">Quantity:</Text>
+                <FlexBox align="center" gap="10px">
+                  <QuantityButton onClick={handleDecrement}>-</QuantityButton>
+                  <QuantityDisplay>{isInCart ? cartItem?.quantity : quantity}</QuantityDisplay>
+                  <QuantityButton onClick={handleIncrement}>+</QuantityButton>
+                </FlexBox>
+
+                <Spacer size={20} />
+
+                {/* Add to cart & Buy now buttons */}
+                <FlexBox gap="15px" wrap="wrap">
+                  <Button 
+                    onClick={handleAddToCart} 
+                    variant={isInCart ? "outlined" : "filled"}
+                    fullWidth
                   >
-                    -
-                  </QuantityButton>
-                  <QuantityValue>{isInCart ? cartItem?.quantity : quantity}</QuantityValue>
-                  <QuantityButton 
-                    onClick={handleIncrement}
-                    aria-label="Increase quantity"
-                    disabled={!isInCart && quantity >= 99}
+                    {isInCart ? 'Update Cart' : 'Add to Cart'}
+                  </Button>
+                  <Button 
+                    onClick={handleBuyNow} 
+                    variant="filled" 
+                    color="secondary"
+                    fullWidth
                   >
-                    +
-                  </QuantityButton>
-                </QuantitySelector>
-              </div>
+                    Buy Now
+                  </Button>
+                </FlexBox>
+              </ProductInfo>
+            </ProductGrid>
 
-              {/* Conditional buttons based on cart status */}
-              <FlexBox gap="15px" style={{ marginTop: '20px' }}>
-                {isInCart ? (
-                  <>
-                    <Button 
-                      variant="primary" 
-                      fullWidth
-                      onClick={handleContinueToCheckout}
-                    >
-                      Checkout Now
-                    </Button>
-                    <Button 
-                      variant="secondary" 
-                      fullWidth
-                      onClick={handleContinueShopping}
-                    >
-                      Continue Shopping
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button 
-                      variant="primary" 
-                      fullWidth
-                      onClick={handleAddToCart}
-                      disabled={!isInStock()}
-                    >
-                      Add to Cart
-                    </Button>
-                    <Button 
-                      variant="secondary" 
-                      fullWidth
-                      onClick={handleBuyNow}
-                      disabled={!isInStock()}
-                    >
-                      Buy Now
-                    </Button>
-                  </>
-                )}
-              </FlexBox>
-            </ProductInfo>
-          </ProductGrid>
-
-          {/* Frequently Bought Together Section */}
-          <FrequentlyBoughtTogetherSection>
-            <Text size="xl" weight="bold" style={{ marginBottom: '20px' }}>Frequently Bought Together</Text>
-
-            {frequentlyBoughtProducts.length > 0 ? (
-              <ProductsCarousel>
-                <NavButton 
-                  direction="left" 
-                  onClick={handlePrevFrequentlyBought}
-                  disabled={currentFrequentlyBoughtIndex === 0}
-                  style={{ opacity: currentFrequentlyBoughtIndex === 0 ? 0.5 : 1 }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                    <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
-                  </svg>
-                </NavButton>
-
-                <ProductsTrack 
-                  style={{ transform: `translateX(-${currentFrequentlyBoughtIndex * 25}%)` }}
-                  onTouchStart={handleTouchStart}
-                  onTouchMove={handleTouchMove}
-                  onTouchEnd={handleTouchEnd}
-                >
-                  {frequentlyBoughtProducts.map(similarProduct => (
-                    <ProductSlideCard key={similarProduct.id}>
-                      <ProductCard>
-                        <CardImage>
-                          <img 
-                            src={similarProduct.images?.[0] || getImagePlaceholder(0)} 
-                            alt={similarProduct.name}
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/200x200?text=Product';
-                            }}
-                          />
-                        </CardImage>
-                        <CardContent>
-                          <CardTitle>
-                            <Link to={`/product/${similarProduct.id}`}>{similarProduct.name}</Link>
-                          </CardTitle>
-                          <CardPrice>{formatCurrency(similarProduct.price)}</CardPrice>
-                        </CardContent>
-                      </ProductCard>
-                    </ProductSlideCard>
+            {/* Similar Products */}
+            {similarProducts && similarProducts.length > 0 && (
+              <SectionContainer>
+                <Text size="lg" weight="bold" style={{ marginBottom: '20px' }}>
+                  Similar Products
+                </Text>
+                <SimilarProductsGrid>
+                  {similarProducts.map((product) => (
+                    <div key={product.id} onClick={() => navigate(`/product/${product.slug || product.id}`)}>
+                      <SimilarProductCard>
+                        <SimilarProductImage>
+                          {product.images && product.images.length > 0 && (
+                            <img 
+                              src={product.images[0].url} 
+                              alt={product.name}
+                              style={{ maxWidth: '100%', height: 'auto' }}
+                            />
+                          )}
+                        </SimilarProductImage>
+                        <SimilarProductInfo>
+                          <Text size="sm" weight="medium">{product.name}</Text>
+                          <Text size="sm" color="var(--primary-color)" weight="medium">
+                            {formatCurrency(product.price)}
+                          </Text>
+                        </SimilarProductInfo>
+                      </SimilarProductCard>
+                    </div>
                   ))}
-                </ProductsTrack>
-
-                <NavButton 
-                  direction="right" 
-                  onClick={handleNextFrequentlyBought}
-                  disabled={currentFrequentlyBoughtIndex === maxFrequentlyBoughtIndex}
-                  style={{ opacity: currentFrequentlyBoughtIndex === maxFrequentlyBoughtIndex ? 0.5 : 1 }}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                    <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/>
-                  </svg>
-                </NavButton>
-              </ProductsCarousel>
-            ) : (
-              <div>No recommended products found</div>
+                </SimilarProductsGrid>
+              </SectionContainer>
             )}
-          </FrequentlyBoughtTogetherSection>
-        </SectionContainer>
+          </SectionContainer>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <Text size="lg">Product not found</Text>
+            <Spacer size={20} />
+            <Button variant="outlined" onClick={() => navigate('/')}>
+              Return to Home
+            </Button>
+          </div>
+        )}
       </MainContent>
 
       <Footer />

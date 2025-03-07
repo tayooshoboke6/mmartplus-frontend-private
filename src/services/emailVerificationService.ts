@@ -1,173 +1,216 @@
 import api from './api';
-import axios from 'axios';  
+import brevoService from './brevoService';
 import config from '../config';
-import { logApiError } from '../utils/debugUtils';
-import { getCsrfCookie } from '../utils/authUtils';
 
-// Types
-export interface VerificationResponse {
+interface VerificationResponse {
   status: 'success' | 'error';
   message: string;
   data?: {
-    email?: string;
-    code?: string;
-    expiry?: string;
+    verified?: boolean;
   };
 }
 
-const emailVerificationService = {
-  // Send a verification code to the user's email (authenticated user)
-  sendVerificationCode: async (): Promise<VerificationResponse> => {
+class EmailVerificationService {
+  /**
+   * Check if a user's email is verified
+   */
+  async checkVerificationStatus(): Promise<VerificationResponse> {
     try {
-      const response = await api.post<VerificationResponse>('/email/verify/send');
-      return response.data;
-    } catch (error: any) {
-      console.error('Send verification code error:', error);
-      
-      if (error.response?.data) {
-        throw error.response.data;
-      }
-      
-      throw {
-        status: 'error',
-        message: 'Failed to send verification code. Please try again.'
+      const response = await api.get('/email/verification/status');
+      return {
+        status: 'success',
+        message: 'Status retrieved successfully',
+        data: response.data
       };
-    }
-  },
-  
-  // Send a verification code to a specific email (non-authenticated)
-  sendVerificationCodeByEmail: async (email: string): Promise<VerificationResponse> => {
-    try {
-      console.log('🔍 Email verification attempt for:', email);
-      
-      // The correct endpoint is /email/non-auth/send (without /api prefix as it's already in baseUrl)
-      const verificationUrl = `${config.api.baseUrl}/email/non-auth/send`;
-      console.log('🌐 Using verification URL:', verificationUrl);
-      console.log('⚙️ Current config:', {
-        baseUrl: config.api.baseUrl,
-        adminUrl: config.api.adminUrl,
-        debug: import.meta.env.VITE_DEBUG,
-        environment: config.app.environment
-      });
-      
-      // TESTING MODE: For development/testing, return a success response without calling the API
-      if (import.meta.env.VITE_DEBUG === 'true') {
-        console.log('🧪 DEBUG MODE: Bypassing actual API call for testing');
-        return {
-          status: 'success',
-          message: 'Verification code sent successfully. Please check your email.'
-        };
-      }
-      
-      // Get CSRF token before making the request
-      await getCsrfCookie();
-      
-      // Use the configured api instance for consistent headers and base URL
-      const response = await api.post<VerificationResponse>(
-        '/email/non-auth/send',
-        { email },
-        {
-          withCredentials: true
-        }
-      );
-      
-      console.log('✅ Verification response:', response.data);
-      return response.data;
     } catch (error: any) {
-      logApiError(error);
-      
-      // TESTING MODE: If we're in debug mode and get an error, create a fake success response
-      if (import.meta.env.VITE_DEBUG === 'true') {
-        console.log('🧪 DEBUG MODE: Returning success despite API error');
-        return {
-          status: 'success',
-          message: 'DEBUG MODE: Verification code sent successfully. Use code 123456.'
-        };
-      }
-      
-      if (error.response?.data) {
-        throw error.response.data;
-      }
-      
-      throw {
+      console.error('Failed to check verification status:', error);
+      return {
         status: 'error',
-        message: error.response?.status === 404
-          ? 'Email address not found.'
-          : 'Failed to send verification code. Please try again.'
-      };
-    }
-  },
-  
-  // Verify the code that the user received via email (authenticated user)
-  verifyEmail: async (code: string): Promise<VerificationResponse> => {
-    try {
-      const response = await api.post<VerificationResponse>('/email/verify', { code });
-      return response.data;
-    } catch (error: any) {
-      console.error('Verify code error:', error);
-      
-      if (error.response?.data) {
-        throw error.response.data;
-      }
-      
-      throw {
-        status: 'error',
-        message: 'Invalid or expired verification code. Please try again.'
-      };
-    }
-  },
-  
-  // Verify email with verification code (non-authenticated)
-  verifyEmailWithCode: async (email: string, code: string): Promise<VerificationResponse> => {
-    try {
-      console.log('🔍 Email verification code attempt:', { email, code });
-      console.log('🌐 Using API URL:', `${config.api.baseUrl}/email/non-auth/verify`);
-      
-      // Use the configured api instance for consistent headers and base URL
-      const response = await api.post<VerificationResponse>(
-        '/email/non-auth/verify',
-        { email, code },
-        {
-          withCredentials: true
-        }
-      );
-      
-      console.log('✅ Code verification response:', response.data);
-      return response.data;
-    } catch (error: any) {
-      logApiError(error);
-      
-      if (error.response?.data) {
-        throw error.response.data;
-      }
-      
-      throw {
-        status: 'error',
-        message: error.response?.status === 404
-          ? 'Invalid verification code or email address.'
-          : 'Failed to verify email. Please try again.'
-      };
-    }
-  },
-  
-  // Check the current email verification status
-  checkVerificationStatus: async (): Promise<VerificationResponse> => {
-    try {
-      const response = await api.get<VerificationResponse>('/email/status');
-      return response.data;
-    } catch (error: any) {
-      console.error('Check verification status error:', error);
-      
-      if (error.response?.data) {
-        throw error.response.data;
-      }
-      
-      throw {
-        status: 'error',
-        message: 'Failed to check verification status.'
+        message: error.response?.data?.message || 'Failed to check verification status'
       };
     }
   }
-};
 
+  /**
+   * Send a verification code to the user's email
+   */
+  async sendVerificationCode(): Promise<VerificationResponse> {
+    try {
+      // First check if email is already verified to prevent unnecessary API calls
+      const statusCheck = await this.checkVerificationStatus();
+      
+      // If email is already verified, return early
+      if (statusCheck.data?.verified) {
+        return {
+          status: 'success',
+          message: 'Email is already verified',
+          data: { verified: true }
+        };
+      }
+      
+      const response = await api.post('/email/verification/send');
+      return {
+        status: 'success',
+        message: 'Verification code sent successfully',
+        data: response.data
+      };
+    } catch (error: any) {
+      // If error message indicates email is already verified, treat as success
+      if (error.response?.data?.message === 'Email is already verified.') {
+        return {
+          status: 'success',
+          message: 'Email is already verified',
+          data: { verified: true }
+        };
+      }
+      
+      console.error('Failed to send verification code:', error);
+      return {
+        status: 'error',
+        message: error.response?.data?.message || 'Failed to send verification code'
+      };
+    }
+  }
+
+  /**
+   * Send a verification code to a specific email (used during registration)
+   */
+  async sendVerificationCodeByEmail(email: string): Promise<VerificationResponse> {
+    try {
+      // For debug mode, just return success without calling API
+      if (config.features.debugApiResponses) {
+        console.log('Debug mode enabled, skipping real verification code sending');
+        return {
+          status: 'success',
+          message: 'Verification code sent successfully (debug mode)'
+        };
+      }
+
+      // Generate a verification code
+      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // Use Brevo service to send the email
+      await brevoService.sendVerificationEmail(email, verificationCode);
+      
+      // Store the code in localStorage temporarily (not secure for production)
+      // In production, this should be stored on the server
+      localStorage.setItem(`verificationCode_${email}`, verificationCode);
+      
+      return {
+        status: 'success',
+        message: 'Verification code sent successfully'
+      };
+    } catch (error: any) {
+      // If error message indicates email is already verified, treat as success
+      if (error.response?.data?.message === 'Email is already verified.') {
+        return {
+          status: 'success',
+          message: 'Email is already verified',
+          data: { verified: true }
+        };
+      }
+      
+      console.error('Failed to send verification code:', error);
+      return {
+        status: 'error',
+        message: error.message || 'Failed to send verification code'
+      };
+    }
+  }
+
+  /**
+   * Verify email with a code
+   */
+  async verifyEmail(code: string): Promise<VerificationResponse> {
+    try {
+      // First check if email is already verified to prevent unnecessary API calls
+      const statusCheck = await this.checkVerificationStatus();
+      
+      // If email is already verified, return early
+      if (statusCheck.data?.verified) {
+        return {
+          status: 'success',
+          message: 'Email is already verified',
+          data: { verified: true }
+        };
+      }
+      
+      const response = await api.post('/email/verification/verify', { code });
+      return {
+        status: 'success',
+        message: 'Email verified successfully',
+        data: response.data
+      };
+    } catch (error: any) {
+      // If error message indicates email is already verified, treat as success
+      if (error.response?.data?.message === 'Email is already verified.') {
+        return {
+          status: 'success',
+          message: 'Email is already verified',
+          data: { verified: true }
+        };
+      }
+      
+      console.error('Failed to verify email:', error);
+      return {
+        status: 'error',
+        message: error.response?.data?.message || 'Failed to verify email'
+      };
+    }
+  }
+
+  /**
+   * Verify email with a code for a specific email (used during registration)
+   */
+  async verifyEmailWithCode(email: string, code: string): Promise<VerificationResponse> {
+    try {
+      // For debug mode, check the code against localStorage
+      if (config.features.debugApiResponses) {
+        const storedCode = localStorage.getItem(`verificationCode_${email}`);
+        
+        if (storedCode === code) {
+          return {
+            status: 'success',
+            message: 'Email verified successfully (debug mode)',
+            data: { verified: true }
+          };
+        } else {
+          return {
+            status: 'error',
+            message: 'Invalid verification code'
+          };
+        }
+      }
+
+      // For real API verification
+      const response = await api.post('/email/verification/verify', { 
+        email, 
+        code 
+      });
+      
+      return {
+        status: 'success',
+        message: 'Email verified successfully',
+        data: { verified: true }
+      };
+    } catch (error: any) {
+      // If error message indicates email is already verified, treat as success
+      if (error.response?.data?.message === 'Email is already verified.') {
+        return {
+          status: 'success',
+          message: 'Email is already verified',
+          data: { verified: true }
+        };
+      }
+      
+      console.error('Failed to verify email:', error);
+      return {
+        status: 'error',
+        message: error.response?.data?.message || 'Failed to verify email'
+      };
+    }
+  }
+}
+
+const emailVerificationService = new EmailVerificationService();
 export default emailVerificationService;

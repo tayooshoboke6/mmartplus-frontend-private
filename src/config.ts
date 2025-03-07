@@ -19,6 +19,13 @@ const config = {
     environment: import.meta.env.MODE || 'development',
   },
   
+  // Email configuration
+  email: {
+    brevoApiKey: import.meta.env.VITE_BREVO_API_KEY || '',
+    senderEmail: import.meta.env.VITE_SENDER_EMAIL || 'verification@mmartplus.com',
+    senderName: import.meta.env.VITE_SENDER_NAME || 'M-Mart+ Team',
+  },
+  
   // Feature flags - strictly enforced to be disabled in production
   features: {
     // Mock data is only enabled in dev mode if explicitly set to true in environment

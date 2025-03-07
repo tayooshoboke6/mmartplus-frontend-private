@@ -1,4 +1,5 @@
 import api from './api';
+import { getCsrfCookie } from '../utils/authUtils';
 
 // Order status enum definition
 export enum OrderStatusEnum {
@@ -49,18 +50,16 @@ export interface Order {
   order_number: string;
   status: OrderStatus;
   total: number;
-  payment_method: PaymentMethod;
   shipping_address: {
-    address: string;
+    address_line1: string;
+    address_line2?: string;
     city: string;
     state: string;
     postal_code: string;
     country: string;
   };
-  shipping_fee: number;
-  notes?: string;
-  tracking_number?: string;
-  expected_delivery_date?: string;
+  payment_method: PaymentMethod;
+  payment_status: string;
   items: OrderItem[];
   created_at: string;
   updated_at: string;
@@ -126,112 +125,187 @@ export interface DashboardStats {
   };
 }
 
+// Helper function to ensure authentication token is available before making requests
+const ensureAuthenticated = async () => {
+  // Get CSRF cookie if needed
+  await getCsrfCookie();
+  
+  // Get authentication token
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  
+  if (!token) {
+    throw new Error('Authentication required. Please log in to view orders.');
+  }
+  
+  return token;
+};
+
 const orderService = {
-  getOrders: async (options: OrderFilterOptions = {}): Promise<GetOrdersResponse> => {
+  // Get orders with pagination and filtering
+  async getOrders(options: OrderFilterOptions = {}): Promise<GetOrdersResponse> {
     try {
-      // Use the admin orders endpoint for admin users
-      const response = await api.get<any>('/admin/orders', { 
-        params: {
-          status: options.status,
-          payment_status: options.paymentStatus,
-          from_date: options.startDate,
-          to_date: options.endDate,
-          page: options.page || 1,
-          per_page: options.limit || 10
-        } 
-      });
+      // Ensure we have authentication before proceeding
+      await ensureAuthenticated();
       
-      console.log('Admin Orders API response:', response.data);
+      // Construct query parameters
+      const params = new URLSearchParams();
       
-      // Map the Laravel response to our expected format
-      if (response.data && response.data.status === 'success' && response.data.data) {
-        // The response contains Laravel pagination data
-        const orders = response.data.data.data || [];
-        
-        // Transform the response to match our frontend model
-        const transformedOrders = orders.map((order: any) => ({
-          id: order.id,
-          order_number: order.order_number,
-          customer_name: order.user ? `${order.user.name}` : 'Guest User',
-          total: order.total,
-          status: order.status,
-          items_count: order.items ? order.items.length : 0,
-          payment_method: order.payment_method,
-          payment_status: order.payment_status,
-          created_at: order.created_at,
-          updated_at: order.updated_at,
-          user_id: order.user_id
-        }));
-        
-        return {
-          orders: transformedOrders,
-          total_count: response.data.data.total || 0
-        };
+      if (options.status) {
+        params.append('status', options.status);
       }
       
-      // Fallback for unexpected response format
+      if (options.startDate) {
+        params.append('start_date', options.startDate);
+      }
+      
+      if (options.endDate) {
+        params.append('end_date', options.endDate);
+      }
+      
+      if (options.sortBy) {
+        params.append('sort_by', options.sortBy);
+      }
+      
+      if (options.sortOrder) {
+        params.append('sort_order', options.sortOrder);
+      }
+      
+      if (options.paymentStatus) {
+        params.append('payment_status', options.paymentStatus);
+      }
+      
+      // Default pagination to page 1 with 10 items per page if not specified
+      const page = options.page || 1;
+      const limit = options.limit || 10;
+      
+      params.append('page', page.toString());
+      params.append('limit', limit.toString());
+      
+      // Clear any cached responses for orders
+      if (typeof api.clearApiCache === 'function') {
+        api.clearApiCache(/\/orders/);
+      }
+      
+      const response = await api.get('/orders', { 
+        params,
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      });
+      
+      return {
+        orders: response.data.data || [],
+        total_count: response.data.meta?.total || 0
+      };
+    } catch (error: any) {
+      console.error('Failed to fetch orders:', error);
+      
+      // If authentication error, redirect to login
+      if (error.response?.status === 401) {
+        window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+      }
+      
       return {
         orders: [],
         total_count: 0
       };
-    } catch (error) {
-      console.error('Error fetching admin orders:', error);
-      throw error;
     }
   },
-
-  getOrderDetail: async (orderId: number): Promise<GetOrderDetailResponse> => {
+  
+  // Get single order details
+  async getOrderDetail(orderId: number): Promise<GetOrderDetailResponse> {
     try {
-      const response = await api.get<GetOrderDetailResponse>(`/orders/${orderId}`);
-      return response.data;
-    } catch (error) {
-      console.error(`Error fetching order #${orderId}:`, error);
-      throw error;
-    }
-  },
-
-  getDashboardStats: async (): Promise<{ status: string; data: DashboardStats }> => {
-    try {
-      const response = await api.get<{ status: string; data: DashboardStats }>('/admin/dashboard/stats');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
-      throw error;
-    }
-  },
-
-  cancelOrder: async (orderId: number): Promise<{ success: boolean; message: string }> => {
-    try {
-      const response = await api.put(`/orders/${orderId}/cancel`);
-      return response.data;
-    } catch (error) {
-      console.error(`Error cancelling order #${orderId}:`, error);
-      throw error;
-    }
-  },
-
-  reorder: async (orderId: number): Promise<{ success: boolean; message: string; cart_id?: number }> => {
-    try {
-      const response = await api.post(`/orders/${orderId}/reorder`);
-      return response.data;
-    } catch (error) {
-      console.error(`Error reordering order #${orderId}:`, error);
-      throw error;
-    }
-  },
-
-  updateOrderStatus: async (orderId: number, status: OrderStatus): Promise<{ success: boolean; message: string }> => {
-    try {
-      const response = await api.patch(`/admin/orders/${orderId}/status`, { status });
+      // Ensure we have authentication before proceeding
+      await ensureAuthenticated();
+      
+      const response = await api.get(`/orders/${orderId}`);
       return {
-        success: response.data.status === 'success',
-        message: response.data.message || 'Order status updated successfully'
+        success: true,
+        order: response.data.data
       };
     } catch (error) {
-      console.error(`Error updating order #${orderId} status:`, error);
+      console.error(`Failed to fetch order #${orderId}:`, error);
       throw error;
     }
   },
+  
+  // Get dashboard statistics
+  async getDashboardStats(): Promise<{ status: string; data: DashboardStats }> {
+    try {
+      // Ensure we have authentication before proceeding
+      await ensureAuthenticated();
+      
+      const response = await api.get('/dashboard/stats');
+      return {
+        status: 'success',
+        data: response.data.data
+      };
+    } catch (error) {
+      console.error('Failed to fetch dashboard stats:', error);
+      throw error;
+    }
+  },
+  
+  // Cancel an order
+  async cancelOrder(orderId: number): Promise<{ success: boolean; message: string }> {
+    try {
+      // Ensure we have authentication before proceeding
+      await ensureAuthenticated();
+      
+      const response = await api.post(`/orders/${orderId}/cancel`);
+      return {
+        success: true,
+        message: response.data.message || 'Order cancelled successfully'
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to cancel order'
+      };
+    }
+  },
+  
+  // Reorder - add all items from an order to cart
+  async reorder(orderId: number): Promise<{ success: boolean; message: string; cart_id?: number }> {
+    try {
+      // Ensure we have authentication before proceeding
+      await ensureAuthenticated();
+      
+      const response = await api.post(`/orders/${orderId}/reorder`);
+      return {
+        success: true,
+        message: response.data.message || 'Items added to cart',
+        cart_id: response.data.cart_id
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to reorder'
+      };
+    }
+  },
+  
+  // Update order status (admin only)
+  async updateOrderStatus(orderId: number, status: OrderStatus): Promise<{ success: boolean; message: string }> {
+    try {
+      // Ensure we have authentication before proceeding
+      await ensureAuthenticated();
+      
+      const response = await api.patch(`/orders/${orderId}/status`, {
+        status
+      });
+      
+      return {
+        success: true,
+        message: response.data.message || `Order status updated to ${status}`
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to update order status'
+      };
+    }
+  }
 };
 
 export default orderService;

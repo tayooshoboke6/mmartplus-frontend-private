@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import api from '../services/api';
+import authService from '../services/authService';
+import emailVerificationService from '../services/emailVerificationService';
 
 interface User {
   id: number;
@@ -7,6 +9,7 @@ interface User {
   email: string;
   roles?: string[];
   isAdmin?: boolean;
+  email_verified_at?: string | null;
 }
 
 interface LoginCredentials {
@@ -26,6 +29,10 @@ interface AuthContextType {
   clearError: () => void;
   loginWithGoogle: () => Promise<User | null>;
   loginWithApple: () => Promise<User | null>;
+  updateUser: (user: User) => void;
+  sendVerificationCode: () => Promise<{ success: boolean; error?: string }>;
+  verifyEmail: (code: string) => Promise<{ success: boolean; error?: string }>;
+  isEmailVerified: () => boolean;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -40,6 +47,10 @@ export const AuthContext = createContext<AuthContextType>({
   clearError: () => {},
   loginWithGoogle: async () => null,
   loginWithApple: async () => null,
+  updateUser: () => {},
+  sendVerificationCode: async () => ({ success: false }),
+  verifyEmail: async () => ({ success: false }),
+  isEmailVerified: () => false
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -59,10 +70,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const isDevelopment = import.meta.env.DEV;
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    // Use consistent token names - check all possible token variations
+    const token = localStorage.getItem('mmartToken') || 
+                  localStorage.getItem('token') || 
+                  localStorage.getItem('adminToken');
 
     if (token) {
       setLoading(true);
+
+      // Store the token consistently as mmartToken
+      if (!localStorage.getItem('mmartToken')) {
+        localStorage.setItem('mmartToken', token);
+      }
 
       api.get('/user')
         .then(response => {
@@ -84,7 +103,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           
           // Remove auto-login in development mode
           setError('Failed to fetch user data. Please login again.');
+          localStorage.removeItem('mmartToken');
           localStorage.removeItem('token');
+          localStorage.removeItem('adminToken');
           setUser(null);
           setIsAdmin(false);
           setIsAuthenticated(false);
@@ -103,7 +124,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (!import.meta.env.DEV) return { success: false };
 
     const mockToken = `dev-token-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
-    localStorage.setItem('token', mockToken);
+    localStorage.setItem('mmartToken', mockToken);
 
     const mockUser = {
       id: 999,
@@ -128,8 +149,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await api.post('/login', { email, password });
       const { token, user: userData } = response.data.data || response.data;
 
-      // Store token in localStorage
-      localStorage.setItem('token', token);
+      // Store token in localStorage with consistent naming
+      localStorage.setItem('mmartToken', token);
 
       // Check if user has admin role
       const userIsAdmin = userData.roles?.includes('admin') || false;
@@ -148,36 +169,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Login failed. Please try again.';
       setError(errorMessage);
-
-      // Remove development mode bypass login
       return { success: false, error: errorMessage };
     }
   };
 
-  // Clear user data and tokens on logout
   const logout = async () => {
-    // Clear auth data from storage
-    localStorage.removeItem('token');
-    setUser(null);
-    setIsAdmin(false);
-    setIsAuthenticated(false);
-
-    // Optional: Call logout endpoint
     try {
+      // Call logout API
       await api.post('/logout');
-    } catch (error) {
-      console.error('Error during logout:', error);
+    } catch (err) {
+      console.error('Logout API failed, but proceeding with local cleanup:', err);
+    } finally {
+      // Clear auth data regardless of API success
+      localStorage.removeItem('mmartToken');
+      localStorage.removeItem('token');
+      localStorage.removeItem('adminToken');
+      setUser(null);
+      setIsAdmin(false);
+      setIsAuthenticated(false);
     }
   };
 
-  const register = async (
-    name: string,
-    email: string,
-    password: string,
-    password_confirmation: string
-  ) => {
+  const register = async (name: string, email: string, password: string, password_confirmation: string) => {
     try {
       setError(null);
+      
       const response = await api.post('/register', {
         name,
         email,
@@ -185,62 +201,105 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         password_confirmation
       });
 
-      const { token, user: userData } = response.data.data || response.data;
-
-      // Store token
-      localStorage.setItem('token', token);
-
-      // Set user with admin flag (likely false for new registrations)
-      setUser({
-        ...userData,
-        isAdmin: userData.roles?.includes('admin') || false
-      });
+      // Only store token if registration includes auto-login
+      if (response.data.token) {
+        localStorage.setItem('mmartToken', response.data.token);
+        
+        if (response.data.user) {
+          setUser(response.data.user);
+          setIsAuthenticated(true);
+          setIsAdmin(false); // New users are not admins by default
+        }
+      }
 
       return { success: true };
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Registration failed. Please try again.';
       setError(errorMessage);
-
-      // Remove development mode bypass for registration
       return { success: false, error: errorMessage };
     }
   };
 
-  // For development - implement mock social login functions
   const loginWithGoogle = async () => {
     try {
-      setError(null);
-
-      // In production, this would redirect to Google OAuth
-      setError("Google login is not implemented in this testing environment");
+      // Redirect to Google OAuth endpoint
+      window.location.href = `${import.meta.env.VITE_API_URL}/auth/google`;
       return null;
     } catch (err) {
-      console.error('Google login error:', err);
-      setError('Google login failed. Please try again.');
+      console.error('Google login failed:', err);
       return null;
     }
   };
 
   const loginWithApple = async () => {
     try {
-      setError(null);
-
-      // In production, this would redirect to Apple OAuth
-      setError("Apple login is not implemented in this testing environment");
+      // Redirect to Apple OAuth endpoint
+      window.location.href = `${import.meta.env.VITE_API_URL}/auth/apple`;
       return null;
     } catch (err) {
-      console.error('Apple login error:', err);
-      setError('Apple login failed. Please try again.');
+      console.error('Apple login failed:', err);
       return null;
     }
   };
 
-  // Clear the error state
   const clearError = () => {
     setError(null);
   };
 
-  const value = {
+  // Function to update user data (e.g., after profile updates)
+  const updateUser = (updatedUser: User) => {
+    setUser(prev => prev ? { ...prev, ...updatedUser } : updatedUser);
+  };
+
+  // Email verification functions
+  const sendVerificationCode = async () => {
+    if (!user) {
+      return { success: false, error: 'No user is logged in' };
+    }
+
+    try {
+      const response = await emailVerificationService.sendVerificationCode();
+      
+      if (response.status === 'success') {
+        return { success: true };
+      } else {
+        return { success: false, error: response.message };
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to send verification code' };
+    }
+  };
+
+  const verifyEmail = async (code: string) => {
+    if (!user) {
+      return { success: false, error: 'No user is logged in' };
+    }
+
+    try {
+      const response = await emailVerificationService.verifyEmail(code);
+      
+      if (response.status === 'success') {
+        // Update user with verified status
+        setUser(prev => prev ? {
+          ...prev,
+          email_verified_at: new Date().toISOString()
+        } : null);
+        
+        return { success: true };
+      } else {
+        return { success: false, error: response.message };
+      }
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to verify email' };
+    }
+  };
+
+  // Helper to check if email is verified
+  const isEmailVerified = (): boolean => {
+    return !!user?.email_verified_at;
+  };
+
+  const contextValue = {
     isAuthenticated,
     isAdmin,
     user,
@@ -251,11 +310,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     clearError,
     loginWithGoogle,
-    loginWithApple
+    loginWithApple,
+    updateUser,
+    sendVerificationCode,
+    verifyEmail,
+    isEmailVerified
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

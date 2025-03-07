@@ -67,8 +67,7 @@ const authService = {
       // Map the frontend fields to what the backend expects
       const { first_name, last_name, email, password, password_confirmation, phone } = userData;
       const payload = {
-        first_name,
-        last_name,
+        name: `${first_name} ${last_name}`, // Combine first and last name for backend
         email,
         phone_number: phone || '',  // Ensure phone_number is always sent
         password,
@@ -158,70 +157,77 @@ const authService = {
   // Login user
   login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
     try {
-      console.log('Sending login data to API:', credentials);
-      
-      // Get CSRF cookie first
+      // First try to get CSRF token
       await getCsrfCookie();
       
-      // Standard API flow for all users
-      const response = await api.post<any>('/login', {
+      // Call the login endpoint
+      const response = await api.post<AuthResponse>('/login', {
         email: credentials.email,
         password: credentials.password
       });
       
-      console.log('Login response received:', response.data);
+      // Log login response for debugging
+      console.log('Login response:', JSON.stringify(response.data));
       
-      // Extract user data from response
-      const userData = response.data.data?.user;
-      
-      // Determine if user has admin role from Laravel's roles relationship
-      let isAdmin = false;
-      if (userData && userData.roles && Array.isArray(userData.roles)) {
-        isAdmin = userData.roles.some(role => role.name === 'admin');
-      }
-      
-      // Create user object with correct role
-      const user: User = {
-        ...userData,
-        role: isAdmin ? 'admin' : 'user' // Set role based on the roles array
-      };
-      
-      console.log('Processed user with role:', user);
-      
-      // Map the Laravel response structure to our AuthResponse
-      const authResponse: AuthResponse = {
-        success: response.data.status === 'success',
-        message: response.data.message,
-        token: response.data.data?.token,
-        user: user
-      };
-      
-      if (authResponse.success && authResponse.token) {
-        localStorage.setItem('mmartToken', authResponse.token);
-        localStorage.setItem('mmartUser', JSON.stringify(authResponse.user));
-      }
-      
-      return authResponse;
-    } catch (error: any) {
-      console.error('Login API error:', error);
-      
-      if (error.response) {
-        console.error('Response data:', error.response.data);
-        console.error('Response status:', error.response.status);
+      if (response.data) {
+        const { token, user } = response.data;
         
-        if (error.response.data && error.response.data.errors) {
-          const errorMessages = Object.values(error.response.data.errors)
-            .flat()
-            .join(', ');
-          throw new Error(errorMessages || 'Login failed');
-        } else if (error.response.data && error.response.data.message) {
-          throw new Error(error.response.data.message);
+        // Clear any existing tokens to prevent conflicts
+        localStorage.removeItem('token');
+        localStorage.removeItem('adminToken');
+        Cookies.remove('token');
+        Cookies.remove('adminToken');
+        
+        // Store in both localStorage and cookies with consistent naming
+        localStorage.setItem('mmartToken', token);
+        localStorage.setItem('mmartUser', JSON.stringify(user));
+        
+        // Set cookies with secure attributes
+        const domain = window.location.hostname;
+        Cookies.set('mmartToken', token, {
+          expires: 30, // 30 days
+          secure: window.location.protocol === 'https:',
+          sameSite: 'strict',
+          domain: domain !== 'localhost' ? domain : undefined
+        });
+        
+        Cookies.set('mmartUser', JSON.stringify(user), {
+          expires: 30,
+          secure: window.location.protocol === 'https:',
+          sameSite: 'strict',
+          domain: domain !== 'localhost' ? domain : undefined
+        });
+        
+        // If user is admin, also set admin-specific tokens
+        if (user.role === 'admin') {
+          localStorage.setItem('adminToken', token);
+          Cookies.set('adminToken', token, {
+            expires: 30,
+            secure: window.location.protocol === 'https:',
+            sameSite: 'strict',
+            domain: domain !== 'localhost' ? domain : undefined
+          });
         }
+        
+        // Clear API cache to prevent stale data
+        clearApiCache();
+        
+        return response.data;
+      } else {
+        throw new Error('Invalid response from server');
       }
+    } catch (error: any) {
+      console.error('Login error:', error);
       
-      throw error.response?.data || { 
-        success: false, 
-        message: 'Login failed. Please check your credentials and try again.' 
+      // Try to extract detailed error message
+      const errorMessage = error.response?.data?.message || error.message || 'Login failed';
+      
+      // Return a consistent error format
+      return {
+        success: false,
+        token: '',
+        user: {} as User,
+        message: errorMessage
       };
     }
   },
@@ -229,26 +235,41 @@ const authService = {
   // Logout user
   logout: async (): Promise<void> => {
     try {
+      // Get CSRF cookie first
+      await getCsrfCookie();
+      
+      // Call logout endpoint
       await api.post('/logout');
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      // Always clear both localStorage and cookies, even if API call fails
+      
+      // Clear all tokens and user data
       localStorage.removeItem('mmartToken');
       localStorage.removeItem('mmartUser');
-      localStorage.removeItem('mmartLastActivityTimestamp');
-      localStorage.removeItem('mmartLoginTimestamp');
+      localStorage.removeItem('token');
+      localStorage.removeItem('adminToken');
       
       // Clear cookies
-      const domain = window.location.hostname;
-      const cookieOptions = { domain: domain !== 'localhost' ? domain : undefined };
-      Cookies.remove('mmartToken', cookieOptions);
-      Cookies.remove('mmartUser', cookieOptions);
-      Cookies.remove('mmartLastActivityTimestamp', cookieOptions);
-      Cookies.remove('XSRF-TOKEN', cookieOptions);
+      Cookies.remove('mmartToken');
+      Cookies.remove('mmartUser');
+      Cookies.remove('token');
+      Cookies.remove('adminToken');
       
-      // Clear API cache to ensure fresh data after login
+      // Clear API cache to prevent using cached authenticated responses
       clearApiCache();
+      
+      console.log('User logged out successfully');
+    } catch (error) {
+      console.error('Logout error:', error);
+      
+      // Even if the API call fails, clear local tokens
+      localStorage.removeItem('mmartToken');
+      localStorage.removeItem('mmartUser');
+      localStorage.removeItem('token');
+      localStorage.removeItem('adminToken');
+      
+      Cookies.remove('mmartToken');
+      Cookies.remove('mmartUser');
+      Cookies.remove('token');
+      Cookies.remove('adminToken');
     }
   },
 

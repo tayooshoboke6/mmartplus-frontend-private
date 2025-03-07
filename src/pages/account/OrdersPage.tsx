@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import styled from 'styled-components';
-import { FaShoppingBag } from 'react-icons/fa';
+import { FaShoppingBag, FaExclamationTriangle, FaSignInAlt } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import orderService, { OrderSummary, OrderFilterOptions } from '../../services/orderService';
 import AccountSidebar from '../../components/account/AccountSidebar';
 import OrderCard from '../../components/account/OrderCard';
@@ -8,6 +9,8 @@ import OrderFilters from '../../components/account/OrderFilters';
 import Header from '../../components/layout/Header';
 import Footer from '../../components/layout/Footer';
 import { toast } from 'react-toastify';
+import { AuthContext } from '../../contexts/AuthContext';
+import { getCsrfCookie } from '../../utils/authUtils';
 
 const PageContainer = styled.div`
   display: flex;
@@ -49,38 +52,37 @@ const ContentHeader = styled.div`
   display: flex;
   align-items: center;
   margin-bottom: 20px;
-  
-  svg {
-    margin-right: 10px;
-  }
 `;
 
 const HeaderTitle = styled.h2`
-  margin: 0;
+  margin: 0 0 0 10px;
   font-size: 18px;
 `;
 
-const FilterContainer = styled.div`
-  display: none;
-  
-  @media (max-width: 768px) {
-    display: block;
-    margin-bottom: 20px;
-  }
-`;
-
-const OrdersList = styled.div``;
-
-const EmptyState = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+const OrdersContent = styled.div`
+  flex: 1;
   background-color: #fff;
   border-radius: 5px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-  padding: 40px 20px;
+  padding: 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+`;
+
+const FilterContainer = styled.div`
+  margin-bottom: 20px;
+`;
+
+const OrdersList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+`;
+
+const EmptyState = styled.div`
   text-align: center;
+  padding: 40px 20px;
+  background-color: #f9f9f9;
+  border-radius: 5px;
+  margin-top: 20px;
 `;
 
 const EmptyIcon = styled.div`
@@ -90,48 +92,85 @@ const EmptyIcon = styled.div`
 `;
 
 const EmptyTitle = styled.h3`
-  margin: 0 0 10px 0;
   color: #333;
+  font-size: 20px;
+  margin-bottom: 10px;
 `;
 
 const EmptyText = styled.p`
-  color: #666;
-  margin: 0 0 20px 0;
+  color: #777;
+  margin-bottom: 20px;
 `;
 
 const EmptyButton = styled.button`
   background-color: #0066cc;
   color: white;
   border: none;
-  border-radius: 4px;
   padding: 10px 20px;
-  font-size: 14px;
+  border-radius: 3px;
+  font-weight: 600;
   cursor: pointer;
   transition: background-color 0.2s;
   
   &:hover {
-    background-color: #0055b3;
+    background-color: #0055aa;
   }
 `;
 
 const Loader = styled.div`
-  display: flex;
-  justify-content: center;
-  padding: 40px 0;
+  text-align: center;
+  padding: 40px 20px;
   color: #666;
-  font-size: 16px;
+  font-style: italic;
 `;
 
-const OrdersContent = styled.div`
-  background-color: #fff;
+const ErrorContainer = styled.div`
+  text-align: center;
+  padding: 40px 20px;
+  background-color: #fff8f8;
+  border: 1px solid #ffdddd;
   border-radius: 5px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-  padding: 20px;
+  margin-top: 20px;
+`;
+
+const ErrorIcon = styled.div`
+  font-size: 48px;
+  color: #e74c3c;
+  margin-bottom: 20px;
+`;
+
+const ErrorTitle = styled.h3`
+  color: #e74c3c;
+  font-size: 20px;
+  margin-bottom: 10px;
+`;
+
+const ErrorText = styled.p`
+  color: #777;
+  margin-bottom: 20px;
+`;
+
+const ErrorButton = styled.button`
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 3px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin: 0 10px;
+  
+  &:hover {
+    background-color: #c0392b;
+  }
 `;
 
 const OrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<boolean>(false);
   const [filters, setFilters] = useState<OrderFilterOptions>({
     page: 1,
     limit: 10,
@@ -139,13 +178,52 @@ const OrdersPage: React.FC = () => {
     sortOrder: 'desc'
   });
   const [totalCount, setTotalCount] = useState<number>(0);
+  const navigate = useNavigate();
+  const { isAuthenticated, user } = useContext(AuthContext);
+  
+  // Initialization function to ensure authentication is properly set up
+  const initializeAuth = async () => {
+    try {
+      // Ensure CSRF cookie is set
+      await getCsrfCookie();
+      
+      // Check for token in localStorage
+      const token = localStorage.getItem('mmartToken');
+      
+      if (!token && !isAuthenticated) {
+        setLoading(false);
+        setAuthError(true);
+        setError("You must be logged in to view your orders");
+        return false;
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Authentication initialization error:', error);
+      setLoading(false);
+      setAuthError(true);
+      setError("Authentication error. Please try logging in again.");
+      return false;
+    }
+  };
   
   useEffect(() => {
-    fetchOrders();
+    // Initialize authentication and then fetch orders if authenticated
+    const setup = async () => {
+      const isAuth = await initializeAuth();
+      if (isAuth) {
+        fetchOrders();
+      }
+    };
+    
+    setup();
   }, [filters]);
   
   const fetchOrders = async () => {
     setLoading(true);
+    setError(null);
+    setAuthError(false);
+    
     try {
       console.log('Fetching orders with filters:', filters);
       const response = await orderService.getOrders(filters);
@@ -164,13 +242,19 @@ const OrdersPage: React.FC = () => {
         console.error('Invalid response format from orders API:', response);
         setOrders([]);
         setTotalCount(0);
-        toast.error('Received invalid data from the server. Please try again.');
+        setError('Received invalid data from the server');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching orders:', error);
       setOrders([]);
       setTotalCount(0);
-      toast.error('Failed to load orders. Please try again.');
+      
+      if (error.response?.status === 401) {
+        setAuthError(true);
+        setError('Your session has expired. Please log in again.');
+      } else {
+        setError(error.message || 'Failed to load orders');
+      }
     } finally {
       setLoading(false);
     }
@@ -180,9 +264,17 @@ const OrdersPage: React.FC = () => {
     setFilters({ ...filters, ...newFilters, page: 1 }); // Reset to first page when filters change
   };
   
-  // Function to redirect to shop page
   const goToShop = () => {
-    window.location.href = '/';
+    navigate('/');
+  };
+  
+  const goToLogin = () => {
+    // Store the current location to redirect back after login
+    navigate('/login', { state: { from: '/account/orders' } });
+  };
+  
+  const handleRetry = () => {
+    fetchOrders();
   };
   
   return (
@@ -202,13 +294,44 @@ const OrdersPage: React.FC = () => {
               <HeaderTitle>Orders</HeaderTitle>
             </ContentHeader>
             
-            <FilterContainer>
-              <OrderFilters onFilterChange={handleFilterChange} />
-            </FilterContainer>
+            {!authError && (
+              <FilterContainer>
+                <OrderFilters onFilterChange={handleFilterChange} />
+              </FilterContainer>
+            )}
             
             <OrdersList>
               {loading ? (
                 <Loader>Loading orders...</Loader>
+              ) : authError ? (
+                <ErrorContainer>
+                  <ErrorIcon>
+                    <FaSignInAlt />
+                  </ErrorIcon>
+                  <ErrorTitle>Authentication Required</ErrorTitle>
+                  <ErrorText>
+                    {error || 'You need to be logged in to view your orders.'}
+                  </ErrorText>
+                  <ErrorButton onClick={goToLogin}>
+                    Sign In
+                  </ErrorButton>
+                </ErrorContainer>
+              ) : error ? (
+                <ErrorContainer>
+                  <ErrorIcon>
+                    <FaExclamationTriangle />
+                  </ErrorIcon>
+                  <ErrorTitle>Something went wrong</ErrorTitle>
+                  <ErrorText>
+                    {error}
+                  </ErrorText>
+                  <ErrorButton onClick={handleRetry}>
+                    Try Again
+                  </ErrorButton>
+                  <EmptyButton onClick={goToShop}>
+                    Continue Shopping
+                  </EmptyButton>
+                </ErrorContainer>
               ) : orders.length > 0 ? (
                 orders.map((order) => (
                   <OrderCard key={order.id} order={order} />

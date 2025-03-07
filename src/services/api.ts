@@ -117,8 +117,9 @@ export const refreshSession = async (): Promise<boolean> => {
 // Request interceptor - add token to Authorization header and handle caching
 api.interceptors.request.use(
   async (config) => {
-    // Get token from cookies or localStorage
-    const token = Cookies.get('adminToken') || localStorage.getItem('adminToken');
+    // Get token from cookies or localStorage - check both mmartToken and adminToken
+    const token = Cookies.get('mmartToken') || localStorage.getItem('mmartToken') || 
+                  Cookies.get('adminToken') || localStorage.getItem('adminToken');
     
     // If token exists, add to Authorization header
     if (token) {
@@ -178,50 +179,92 @@ adminApi.interceptors.request.use(
   }
 );
 
-// Response interceptor - handle common errors and caching
+// Response interceptor - handle caching and token refresh
 api.interceptors.response.use(
   (response) => {
-    // Skip caching for interceptor-resolved responses or non-GET requests
-    if (response.cached || response.config.method !== 'get' || response.config.cache === false) {
-      updateActivityTimestamp();
+    // Skip caching for cached responses
+    if (response.config.cached) {
       return response;
     }
     
-    // Cache the successful GET response
-    const cacheKey = generateCacheKey(response.config);
-    apiCache.set(cacheKey, {
-      data: response.data,
-      headers: response.headers,
-      timestamp: Date.now()
-    });
-    
-    // Handle CSRF token if it's in the headers
-    const csrfToken = response.headers['x-csrf-token'] || response.headers['X-CSRF-TOKEN'];
-    if (csrfToken) {
-      setCookie('XSRF-TOKEN', csrfToken);
+    // Only cache GET requests
+    if (response.config.method === 'get' && response.config.cache !== false) {
+      const cacheKey = generateCacheKey(response.config);
+      
+      apiCache.set(cacheKey, {
+        data: response.data,
+        headers: response.headers,
+        timestamp: Date.now()
+      });
+      
+      console.log('Cached response for:', response.config.url);
     }
     
     // Update last activity timestamp on successful response
-    updateActivityTimestamp();
-    return response;
-  },
-  (error) => {
-    // Handle 401 Unauthorized - possibly expired token
-    if (error.response && error.response.status === 401) {
-      // Clear token from both localStorage and cookies
-      localStorage.removeItem('adminToken');
-      Cookies.remove('adminToken', { domain: COOKIE_DOMAIN });
-      
-      // Could also redirect to login page here
-      // window.location.href = '/admin/login';
+    if (response.status >= 200 && response.status < 300) {
+      updateActivityTimestamp();
     }
     
-    // Clear cache on certain error statuses
-    if (error.response && [400, 422, 500].includes(error.response.status)) {
-      // Clear specific cache entry if it exists
-      if (error.config) {
-        const cacheKey = generateCacheKey(error.config);
-        apiCache.delete(cacheKey);
+    return response;
+  },
+  async (error) => {
+    const originalRequest = error.config;
+    
+    // If 401 error (unauthorized) and not already retrying, try to refresh token
+    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      console.log('Token expired, attempting to refresh...');
+      
+      try {
+        // Try to refresh the session
+        const refreshSuccessful = await refreshSession();
+        
+        if (refreshSuccessful) {
+          console.log('Token refresh successful, retrying request');
+          
+          // Get the new token
+          const newToken = Cookies.get('mmartToken') || localStorage.getItem('mmartToken') || 
+                           Cookies.get('adminToken') || localStorage.getItem('adminToken');
+          
+          if (newToken) {
+            // Update the Authorization header with the new token
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            
+            // Retry the original request with the new token
+            return api(originalRequest);
+          }
+        } else {
+          console.log('Token refresh failed, redirecting to login');
+          
+          // Don't immediately redirect, allow the user to see error messages
+          // Only redirect for specific API endpoints related to profile/orders
+          if (originalRequest.url && (
+              originalRequest.url.includes('/orders') || 
+              originalRequest.url.includes('/profile') ||
+              originalRequest.url.includes('/account')
+            )) {
+            // Clear auth data
+            localStorage.removeItem('mmartToken');
+            localStorage.removeItem('mmartUser');
+            localStorage.removeItem('adminToken');
+            
+            Cookies.remove('mmartToken');
+            Cookies.remove('mmartUser');
+            Cookies.remove('adminToken');
+            
+            // Redirect to login with return URL
+            if (typeof window !== 'undefined') {
+              // Wait a moment before redirecting to give other components time to handle error
+              setTimeout(() => {
+                const currentPath = window.location.pathname;
+                window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+              }, 500);
+            }
+          }
+        }
+      } catch (refreshError) {
+        console.error('Error during token refresh:', refreshError);
       }
     }
     

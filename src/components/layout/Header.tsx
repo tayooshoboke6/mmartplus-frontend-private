@@ -158,6 +158,7 @@ const ProductInfo = styled.div`
 
 const ProductName = styled.div`
   font-weight: 500;
+  color: #333333;
 `;
 
 const ProductPrice = styled.div`

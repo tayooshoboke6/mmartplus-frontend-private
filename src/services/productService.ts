@@ -182,14 +182,41 @@ const productService = {
     }
   },
 
-  // Get a specific product by slug
-  getProduct: async (id: number): Promise<SingleProductResponse> => {
+  /**
+   * Get a product by ID or slug
+   * @param id Product ID or slug
+   * @returns Product data or error
+   */
+  getProduct: async (id: string | number): Promise<any> => {
     try {
-      const response = await api.get<SingleProductResponse>(`/products/${id}`);
-      return response.data;
+      console.log(`[ProductService] Fetching product with ID/slug: ${id}`);
+      
+      // Handle both numeric IDs and string slugs
+      const endpoint = Number.isInteger(Number(id)) && !isNaN(Number(id)) 
+        ? `/products/${id}`
+        : `/products/slug/${id}`;
+      
+      const response = await api.get(endpoint);
+      
+      if (response.data && response.data.data) {
+        return {
+          success: true,
+          product: response.data.data
+        };
+      }
+      
+      return {
+        success: false,
+        message: 'Product not found'
+      };
     } catch (error: any) {
-      console.error(`Error in getProduct(${id}):`, error);
-      throw error;
+      console.error(`[ProductService] Error fetching product ${id}:`, error);
+      
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to fetch product',
+        error
+      };
     }
   },
 

@@ -1,5 +1,8 @@
+import { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import ProductCard from '../product/ProductCard';
+import productService, { Product } from '../../services/productService';
+import LoadingSpinner from '../common/LoadingSpinner';
 
 const Container = styled.div`
   margin: 30px 0;
@@ -14,28 +17,44 @@ const Container = styled.div`
   }
 `;
 
-const ProductsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
+const ProductsWrapper = styled.div`
+  position: relative;
+  overflow: hidden;
+  padding: 0 5px;
+`;
+
+const ProductsScroll = styled.div`
+  display: flex;
   gap: 15px;
-  
-  @media (max-width: 1200px) {
-    grid-template-columns: repeat(4, 1fr);
-  }
+  transition: transform 0.5s ease;
   
   @media (max-width: 768px) {
-    grid-template-columns: repeat(3, 1fr);
     gap: 10px;
   }
   
   @media (max-width: 576px) {
-    grid-template-columns: repeat(2, 1fr);
     gap: 8px;
+  }
+`;
+
+const ProductItem = styled.div`
+  flex: 0 0 auto;
+  width: calc(16.666% - 13px);
+  
+  @media (max-width: 1200px) {
+    width: calc(25% - 12px);
+  }
+  
+  @media (max-width: 768px) {
+    width: calc(33.333% - 7px);
+  }
+  
+  @media (max-width: 576px) {
+    width: calc(50% - 4px);
   }
   
   @media (max-width: 375px) {
-    grid-template-columns: repeat(1, 1fr);
-    gap: 10px;
+    width: 100%;
   }
 `;
 
@@ -85,104 +104,130 @@ const NavigationButton = styled.button`
   }
 `;
 
-// Sample product data aligned with the new grocery store category system
-const products = [
-  {
-    id: 1,
-    name: "Golden Penny Semovita - 5kg",
-    image: "/products/semovita.png",
-    price: 5500.00,
-    rating: 5,
-    reviewCount: 42,
-    deliveryDays: 2,
-    category: "Staples & Grains"
-  },
-  {
-    id: 2,
-    name: "Sunlight Detergent Powder - 900g",
-    image: "/products/detergent.png",
-    price: 1200.00,
-    oldPrice: 1500.00,
-    discount: true,
-    rating: 4,
-    reviewCount: 63,
-    deliveryDays: 2,
-    category: "Cleaning & Laundry"
-  },
-  {
-    id: 3,
-    name: "Mamador Cooking Oil - 3.8L",
-    image: "/products/cooking-oil.png",
-    price: 8500.00,
-    rating: 4,
-    reviewCount: 32,
-    deliveryDays: 2,
-    category: "Cooking Essentials"
-  },
-  {
-    id: 4,
-    name: "Indomie Instant Noodles (Chicken Flavor) - Pack of 40",
-    image: "/products/noodles.png",
-    price: 7200.00,
-    rating: 5,
-    reviewCount: 87,
-    deliveryDays: 2,
-    category: "Packaged & Frozen Foods"
-  },
-  {
-    id: 5,
-    name: "Peak Milk Powder - 900g",
-    image: "/products/milk.png",
-    price: 4400.00,
-    rating: 4,
-    reviewCount: 55,
-    deliveryDays: 2,
-    category: "Dairy & Breakfast"
-  },
-  {
-    id: 6,
-    name: "Mortein Insecticide Spray - 600ml",
-    image: "/products/insecticide.png",
-    price: 2400.00,
-    rating: 4,
-    reviewCount: 29,
-    deliveryDays: 2,
-    category: "Pest Control & Safety"
-  }
-];
-
 const ProductSection = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [scrollPosition, setScrollPosition] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const fetchFeaturedProducts = async () => {
+      try {
+        setLoading(true);
+        const response = await productService.getFeaturedProducts(12); // Fetch more products for scrolling
+        setProducts(response.data.data || []);
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching featured products:', err);
+        setError('Failed to load featured products. Please try again later.');
+        setLoading(false);
+      }
+    };
+
+    fetchFeaturedProducts();
+  }, []);
+
+  const handlePrevClick = () => {
+    if (!scrollRef.current) return;
+    
+    // Get item width (including gap)
+    const itemWidth = scrollRef.current.querySelector('div')?.offsetWidth || 0;
+    const containerWidth = scrollRef.current.offsetWidth;
+    const itemsPerScreen = Math.floor(containerWidth / itemWidth);
+    
+    // Calculate new scroll position
+    const newPosition = Math.max(0, scrollPosition - (itemWidth * itemsPerScreen));
+    setScrollPosition(newPosition);
+  };
+
+  const handleNextClick = () => {
+    if (!scrollRef.current) return;
+    
+    // Get item width (including gap)
+    const itemWidth = scrollRef.current.querySelector('div')?.offsetWidth || 0;
+    const containerWidth = scrollRef.current.offsetWidth;
+    const itemsPerScreen = Math.floor(containerWidth / itemWidth);
+    
+    // Calculate max scroll position
+    const scrollableWidth = scrollRef.current.scrollWidth - containerWidth;
+    
+    // Calculate new scroll position
+    const newPosition = Math.min(scrollableWidth, scrollPosition + (itemWidth * itemsPerScreen));
+    setScrollPosition(newPosition);
+  };
+
+  if (loading) {
+    return (
+      <Container>
+        <LoadingSpinner />
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container>
+        <div style={{ textAlign: 'center', padding: '20px 0', color: '#e53935' }}>{error}</div>
+      </Container>
+    );
+  }
+
+  if (products.length === 0) {
+    return (
+      <Container>
+        <div style={{ textAlign: 'center', padding: '20px 0' }}>No featured products available at the moment.</div>
+      </Container>
+    );
+  }
+
+  // Determine if nav buttons should be visible
+  const canScrollPrev = scrollPosition > 0;
+  const canScrollNext = scrollRef.current ? 
+    scrollPosition < (scrollRef.current.scrollWidth - scrollRef.current.offsetWidth - 5) : // 5px buffer
+    products.length > 6;
+
   return (
     <Container>
-      <ProductsGrid>
-        {products.map(product => (
-          <ProductCard 
-            key={product.id}
-            id={product.id}
-            name={product.name}
-            image={product.image}
-            price={product.price}
-            oldPrice={product.oldPrice}
-            discount={product.discount}
-            rating={product.rating}
-            reviewCount={product.reviewCount}
-            deliveryDays={product.deliveryDays}
-            category={product.category}
-          />
-        ))}
-      </ProductsGrid>
+      <ProductsWrapper>
+        <ProductsScroll 
+          ref={scrollRef}
+          style={{ transform: `translateX(-${scrollPosition}px)` }}
+        >
+          {products.map((product) => (
+            <ProductItem key={product.id}>
+              <ProductCard
+                id={product.id}
+                slug={product.slug}
+                name={product.name}
+                image={product.image_urls && product.image_urls.length > 0 ? product.image_urls[0] : 'https://via.placeholder.com/300x300?text=No+Image'}
+                price={parseFloat(product.price.toString())}
+                salePrice={product.sale_price ? parseFloat(product.sale_price.toString()) : undefined}
+                rating={product.average_rating || 0}
+                reviewCount={product.review_count || 0}
+                category={product.category?.name || ''}
+                inStock={product.stock > 0}
+              />
+            </ProductItem>
+          ))}
+        </ProductsScroll>
+      </ProductsWrapper>
       
-      <NavigationButton className="prev">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-          <path fillRule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
-        </svg>
-      </NavigationButton>
+      {canScrollPrev && (
+        <NavigationButton className="prev" onClick={handlePrevClick}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+            <path fillRule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
+          </svg>
+        </NavigationButton>
+      )}
       
-      <NavigationButton className="next">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-          <path fillRule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
-        </svg>
-      </NavigationButton>
+      {canScrollNext && (
+        <NavigationButton className="next" onClick={handleNextClick}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+            <path fillRule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
+          </svg>
+        </NavigationButton>
+      )}
     </Container>
   );
 };

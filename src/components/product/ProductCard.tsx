@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { useCart } from '../../contexts/CartContext';
+import wishlistService from '../../services/wishlistService';
+import { toast } from 'react-toastify';
+import { AuthContext } from '../../contexts/AuthContext';
 
 interface ProductCardProps {
   id: number;
@@ -10,11 +13,14 @@ interface ProductCardProps {
   image: string;
   price: number;
   oldPrice?: number;
+  salePrice?: number;
   discount?: boolean;
   rating: number;
   reviewCount: number;
-  deliveryDays: number;
+  deliveryDays?: number;
   category?: string;
+  slug?: string;
+  inStock?: boolean;
 }
 
 const Card = styled.div`
@@ -26,6 +32,7 @@ const Card = styled.div`
   position: relative;
   background: white;
   transition: box-shadow 0.3s, transform 0.3s;
+  height: 380px;
   
   &:hover {
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
@@ -34,10 +41,12 @@ const Card = styled.div`
   
   @media (max-width: 768px) {
     padding: 10px;
+    height: 350px;
   }
   
   @media (max-width: 480px) {
     padding: 8px;
+    height: 320px;
   }
 `;
 
@@ -63,13 +72,16 @@ const DiscountBadge = styled.div`
 const ImageContainer = styled.div`
   width: 100%;
   height: 180px;
-  margin-bottom: 10px;
+  margin-bottom: 15px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   
   img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
     border-radius: 4px;
   }
   
@@ -90,20 +102,23 @@ const ProductInfo = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
+  height: 100%;
 `;
 
 const CategoryLabel = styled.div`
   font-size: 12px;
   color: #666;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
+  height: 14px;
   
   @media (max-width: 480px) {
     font-size: 10px;
+    height: 12px;
   }
 `;
 
 const ProductName = styled.h3`
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
   margin: 0 0 10px 0;
   color: #333;
@@ -112,6 +127,8 @@ const ProductName = styled.h3`
   -webkit-box-orient: vertical;
   overflow: hidden;
   cursor: pointer;
+  height: 40px;
+  line-height: 1.3;
   
   &:hover {
     color: var(--primary-color);
@@ -137,8 +154,8 @@ const PriceContainer = styled.div`
 `;
 
 const Price = styled.span`
-  font-size: 18px;
-  font-weight: bold;
+  font-size: 16px;
+  font-weight: 600;
   color: #0066b2;
   
   @media (max-width: 768px) {
@@ -169,11 +186,11 @@ const OldPrice = styled.span`
 const RatingContainer = styled.div`
   display: flex;
   align-items: center;
-  margin-bottom: 5px;
+  margin-bottom: 8px;
 `;
 
 const Stars = styled.div`
-  color: #ffa500;
+  color: #FFC107;
   display: flex;
 `;
 
@@ -200,9 +217,10 @@ const DeliveryInfo = styled.div`
 
 const ActionContainer = styled.div`
   display: flex;
+  align-items: center;
   justify-content: space-between;
   margin-top: auto;
-  gap: 8px;
+  padding-top: 10px;
 `;
 
 const AddToCartButton = styled.button`
@@ -210,70 +228,67 @@ const AddToCartButton = styled.button`
   color: white;
   border: none;
   border-radius: 4px;
-  padding: 8px 15px;
-  font-weight: bold;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.3s;
-  flex: 1;
   display: flex;
-  justify-content: center;
   align-items: center;
+  gap: 6px;
+  flex: 1;
+  justify-content: center;
   
   &:hover {
-    background-color: #005091;
-  }
-  
-  svg {
-    margin-right: 5px;
+    background-color: #004f8a;
   }
   
   @media (max-width: 768px) {
-    padding: 6px 10px;
-    font-size: 12px;
+    padding: 7px 10px;
+    font-size: 13px;
   }
   
   @media (max-width: 480px) {
-    padding: 5px 8px;
-    font-size: 11px;
-    
-    svg {
-      margin-right: 3px;
-      width: 12px;
-      height: 12px;
-    }
+    padding: 6px 8px;
+    font-size: 12px;
   }
 `;
 
-const OptionsButton = styled.button`
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  padding: 8px;
+const MoreOptionsButton = styled.button`
+  background: none;
+  border: none;
+  color: #666;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.3s;
-  position: relative;
-  min-width: 36px;
+  padding: 6px;
+  border-radius: 50%;
+  transition: background-color 0.2s;
   
   &:hover {
     background-color: #f5f5f5;
   }
   
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+  
   @media (max-width: 768px) {
-    padding: 6px;
-    min-width: 30px;
+    padding: 5px;
+    
+    svg {
+      width: 18px;
+      height: 18px;
+    }
   }
   
   @media (max-width: 480px) {
-    padding: 5px;
-    margin-left: 0;
-    min-width: 28px;
+    padding: 4px;
     
     svg {
-      width: 12px;
-      height: 12px;
+      width: 16px;
+      height: 16px;
     }
   }
 `;
@@ -292,20 +307,21 @@ const OptionsMenu = styled.div<{ isOpen: boolean }>`
   margin-top: 5px;
 `;
 
-const OptionItem = styled.div`
+const OptionItem = styled.div<{ disabled?: boolean }>`
   padding: 8px 12px;
   display: flex;
   align-items: center;
-  cursor: pointer;
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  opacity: ${props => props.disabled ? 0.7 : 1};
+  transition: background-color 0.2s;
   
   &:hover {
-    background-color: #f5f5f5;
+    background-color: ${props => props.disabled ? 'transparent' : '#f5f5f5'};
   }
   
   svg {
     margin-right: 8px;
-    width: 16px;
-    height: 16px;
+    color: #e53935;
   }
 `;
 
@@ -315,18 +331,48 @@ const ProductCard: React.FC<ProductCardProps> = ({
   image,
   price,
   oldPrice,
+  salePrice,
   discount,
   rating,
   reviewCount,
-  deliveryDays,
-  category
+  deliveryDays = 2,
+  category,
+  slug,
+  inStock = true
 }) => {
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [isInWishlist, setIsInWishlist] = useState(false);
   const navigate = useNavigate();
   const { addItem } = useCart();
+  const { isAuthenticated } = useContext(AuthContext);
+  
+  const displayOldPrice = oldPrice || (salePrice ? price : undefined);
+  const displayPrice = salePrice || price;
+  
+  // Check if product is in wishlist on component mount
+  useEffect(() => {
+    const checkWishlistStatus = async () => {
+      if (isAuthenticated) {
+        try {
+          const inWishlist = await wishlistService.isInWishlist(id);
+          setIsInWishlist(inWishlist);
+        } catch (error) {
+          console.error("Error checking wishlist status:", error);
+        }
+      } else {
+        setIsInWishlist(false);
+      }
+    };
+    
+    checkWishlistStatus();
+  }, [id, isAuthenticated]);
   
   const handleProductClick = () => {
-    navigate(`/product/${id}`);
+    if (slug) {
+      navigate(`/product/${slug}`);
+    } else {
+      navigate(`/product/${id}`);
+    }
   };
   
   const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -334,13 +380,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
     addItem({
       id,
       name,
-      price,
+      price: salePrice || price,
       image,
       quantity: 1
     });
     
-    // Navigate to product page after adding to cart
-    navigate(`/product/${id}`);
+    toast.success(`${name} added to cart!`);
   };
   
   const renderStars = () => {
@@ -363,8 +408,23 @@ const ProductCard: React.FC<ProductCardProps> = ({
     return stars;
   };
 
-  const handleAddToWishlist = () => {
-    console.log(`Added product ${id} to wishlist`);
+  const handleAddToWishlist = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!isAuthenticated) {
+      toast.info("Please log in to add items to your wishlist");
+      navigate('/login');
+      return;
+    }
+
+    setIsInWishlist(prevState => !prevState);
+    
+    if (isInWishlist) {
+      toast.success(`${name} removed from wishlist`);
+    } else {
+      toast.success(`${name} added to wishlist`);
+    }
+    
     setOptionsOpen(false);
   };
 
@@ -384,7 +444,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
   return (
     <Card>
-      {discount && <DiscountBadge>SAVE {Math.round(((oldPrice! - price) / oldPrice!) * 100)}%</DiscountBadge>}
+      {(discount || salePrice) && <DiscountBadge>SAVE {Math.round(((displayOldPrice! - displayPrice) / displayOldPrice!) * 100)}%</DiscountBadge>}
       
       <ImageContainer onClick={handleProductClick}>
         <img src={image} alt={name} />
@@ -395,8 +455,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
         <ProductName onClick={handleProductClick}>{name}</ProductName>
         
         <PriceContainer>
-          <Price>{formatCurrency(price)}</Price>
-          {oldPrice && <OldPrice>{formatCurrency(oldPrice)}</OldPrice>}
+          <Price>{formatCurrency(displayPrice)}</Price>
+          {displayOldPrice && <OldPrice>{formatCurrency(displayOldPrice)}</OldPrice>}
         </PriceContainer>
         
         <RatingContainer>
@@ -407,14 +467,18 @@ const ProductCard: React.FC<ProductCardProps> = ({
         <DeliveryInfo>Delivery in {deliveryDays} day{deliveryDays !== 1 ? 's' : ''}</DeliveryInfo>
         
         <ActionContainer>
-          <AddToCartButton onClick={handleAddToCart}>
+          <AddToCartButton 
+            onClick={handleAddToCart}
+            disabled={!inStock}
+            style={{ opacity: inStock ? 1 : 0.6 }}
+          >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-              <path d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .491.592l-1.5 8A.5.5 0 0 1 13 12H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5zM3.102 4l1.313 7h8.17l1.313-7H3.102zM5 12a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-7 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
+              <path d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .49.598l-1 5a.5.5 0 0 1-.465.401l-9.397.472L4.415 11H13a.5.5 0 0 1 0 1H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5zM3.102 4l.84 4.479 9.144-.459L13.89 4H3.102zM5 12a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-7 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
             </svg>
-            Add to Cart
+            {inStock ? 'Add to Cart' : 'Out of Stock'}
           </AddToCartButton>
           
-          <OptionsButton onClick={(e) => {
+          <MoreOptionsButton onClick={(e) => {
             e.stopPropagation();
             setOptionsOpen(!optionsOpen);
           }}>
@@ -424,12 +488,18 @@ const ProductCard: React.FC<ProductCardProps> = ({
             <OptionsMenu isOpen={optionsOpen} onClick={(e) => e.stopPropagation()}>
               <OptionItem onClick={handleAddToWishlist}>
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                  <path d="m8 2.748-.717-.737C5.6.281 2.514.878 1.4 3.053c-.523 1.023-.641 2.5.314 4.385.92 1.815 2.834 3.989 6.286 6.357 3.452-2.368 5.365-4.542 6.286-6.357.955-1.886.838-3.362.314-4.385C13.486.878 10.4.28 8.717 2.01L8 2.748zM8 15C-7.333 4.868 3.279-3.04 7.824 1.143c.06.055.119.112.176.171a3.12 3.12 0 0 1 .176-.17C12.72-3.042 23.333 4.867 8 15z"/>
+                  {isInWishlist ? (
+                    // Filled heart icon
+                    <path fillRule="evenodd" d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314z"/>
+                  ) : (
+                    // Empty heart icon
+                    <path d="m8 2.748-.717-.737C5.6.281 2.514.878 1.4 3.053c-.523 1.023-.641 2.5.314 4.385.92 1.815 2.834 3.989 6.286 6.357 3.452-2.368 5.365-4.542 6.286-6.357.955-1.886.838-3.362.314-4.385C13.486.878 10.4.28 8.717 2.01L8 2.748zM8 15C-7.333 4.868 3.279-3.04 7.824 1.143c.06.055.119.112.176.171a3.12 3.12 0 0 1 .176-.17C12.72-3.042 23.333 4.867 8 15z"/>
+                  )}
                 </svg>
-                Add to Wishlist
+                {isInWishlist ? 'Remove from Wishlist' : 'Add to Wishlist'}
               </OptionItem>
             </OptionsMenu>
-          </OptionsButton>
+          </MoreOptionsButton>
         </ActionContainer>
       </ProductInfo>
     </Card>
