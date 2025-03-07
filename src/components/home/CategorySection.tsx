@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef, TouchEvent } from 'react';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
+import categoryService from '../../services/categoryService';
+import config from '../../config';
+import LoadingSpinner from '../common/LoadingSpinner';
 
 const Container = styled.div`
   margin: 30px 0;
@@ -153,23 +156,6 @@ interface Category {
   isActive?: boolean;
 }
 
-// Mock category data for the homepage carousel
-// These categories are the main categories from our hierarchy
-const mockCategories: Category[] = [
-  { id: 1, name: 'Food & Groceries', icon: '/category-food.png', slug: 'food-groceries', isActive: true },
-  { id: 2, name: 'Household Essentials', icon: '/category-household.png', slug: 'household-essentials', isActive: true },
-  { id: 3, name: 'Kitchen & Home', icon: '/category-kitchen.png', slug: 'kitchen-home', isActive: true },
-  { id: 4, name: 'Baby & Family Care', icon: '/category-baby.png', slug: 'baby-family', isActive: true },
-  { id: 5, name: 'Drinks & Alcohol', icon: '/category-drinks.png', slug: 'drinks-alcohol', isActive: true },
-  { id: 6, name: 'Office & General', icon: '/category-office.png', slug: 'office-general', isActive: true },
-  { id: 7, name: 'Staples & Grains', icon: '/category-staples.png', slug: 'staples-grains', isActive: true },
-  { id: 8, name: 'Cooking Essentials', icon: '/category-cooking.png', slug: 'cooking-essentials', isActive: true },
-  { id: 9, name: 'Packaged Foods', icon: '/category-packaged.png', slug: 'packaged-frozen', isActive: true },
-  { id: 10, name: 'Fruits & Vegetables', icon: '/category-fruit-veg.png', slug: 'fruits-vegetables', isActive: true },
-  { id: 11, name: 'Dairy & Breakfast', icon: '/category-dairy.png', slug: 'dairy-breakfast', isActive: true },
-  { id: 12, name: 'Cleaning & Laundry', icon: '/category-cleaning.png', slug: 'cleaning-laundry', isActive: true }
-];
-
 const CategorySection: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -184,32 +170,88 @@ const CategorySection: React.FC = () => {
   const [dragTranslateX, setDragTranslateX] = useState(0);
   const trackRef = useRef<HTMLDivElement>(null);
   
-  // In the future, this will fetch categories from the API
+  // Retry mechanism for API calls
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 2;
+  
+  // Fetch categories from the API
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        // Simulate API call
         setLoading(true);
+        setError(null);
         
-        // In production, this will be replaced with a real API call:
-        // const response = await fetch('/categories');
-        // const data = await response.json();
+        // Log the API URL being used
+        console.log('API Base URL:', config.api.baseUrl);
+        console.log('Fetching categories from API...');
         
-        // For now, use mock data and add a slight delay to simulate network request
-        setTimeout(() => {
-          setCategories(mockCategories.filter(cat => cat.isActive));
-          setLoading(false);
-        }, 300);
-      } catch (err) {
-        setError('Failed to load categories');
-        setLoading(false);
+        const response = await categoryService.getCategories({
+          forceRefresh: true,  // Bypass cache to ensure fresh data
+          parent_id: null      // Only get parent categories
+        });
+        
+        if (response.status === 'success' && response.data) {
+          // Map API categories to UI format
+          const mappedCategories = response.data.map((cat) => ({
+            id: cat.id,
+            name: cat.name,
+            // Use image_url from API if available, otherwise use placeholder
+            icon: cat.image_url || `/category-placeholder.png`,
+            // Generate slug from name if not provided
+            slug: cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-'),
+            isActive: true // All displayed categories should be active
+          }));
+          
+          console.log('Categories loaded successfully:', mappedCategories.length);
+          setCategories(mappedCategories);
+        } else {
+          throw new Error(response.message || 'Failed to load categories');
+        }
+      } catch (err: any) {
         console.error('Error fetching categories:', err);
+        
+        // Create a more specific error message based on error type
+        let errorMessage = 'Failed to load categories';
+        
+        if (err.message?.includes('Network Error')) {
+          errorMessage = 'Network error connecting to the server. Please check your internet connection.';
+        } else if (err.response?.status === 404) {
+          errorMessage = 'Categories endpoint not found. Please check API configuration.';
+        } else if (err.response?.status === 401) {
+          errorMessage = 'Authentication required to access categories.';
+        } else if (err.response?.status === 403) {
+          errorMessage = 'You do not have permission to view categories.';
+        }
+        
+        setError(errorMessage);
+        
+        // Implement retry mechanism for network errors
+        if (retryCount < maxRetries && err.message?.includes('Network Error')) {
+          console.log(`Retrying category fetch (${retryCount + 1}/${maxRetries})...`);
+          setRetryCount(prev => prev + 1);
+          setTimeout(() => fetchCategories(), 2000); // Retry after 2 seconds
+          return;
+        }
+        
+        // In development mode or if mockData is enabled, create fallback categories
+        if (config.isDevelopment || config.features.useMockData) {
+          console.warn('Using fallback categories in development mode');
+          const fallbackCategories = [
+            { id: 1, name: 'Food & Groceries', icon: '/category-food.png', slug: 'food-groceries', isActive: true },
+            { id: 2, name: 'Household Essentials', icon: '/category-household.png', slug: 'household-essentials', isActive: true },
+            { id: 3, name: 'Kitchen & Home', icon: '/category-kitchen.png', slug: 'kitchen-home', isActive: true },
+            { id: 4, name: 'Baby & Family Care', icon: '/category-baby.png', slug: 'baby-family', isActive: true }
+          ];
+          setCategories(fallbackCategories);
+        }
+      } finally {
+        setLoading(false);
       }
     };
     
     fetchCategories();
-  }, []);
-  
+  }, [retryCount]);
+
   const maxIndex = Math.max(0, categories.length - 6);
   
   const handlePrev = () => {
@@ -326,15 +368,17 @@ const CategorySection: React.FC = () => {
   if (loading) {
     return (
       <Container>
-        <div style={{ textAlign: 'center', padding: '20px' }}>Loading categories...</div>
+        <LoadingSpinner />
       </Container>
     );
   }
   
-  if (error) {
+  if (error && categories.length === 0) {
     return (
       <Container>
-        <div style={{ textAlign: 'center', padding: '20px', color: 'red' }}>{error}</div>
+        <div style={{ textAlign: 'center', padding: '20px', color: '#d32f2f' }}>
+          {error}
+        </div>
       </Container>
     );
   }

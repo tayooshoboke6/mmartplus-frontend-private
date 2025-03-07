@@ -39,6 +39,20 @@ const api = axios.create({
   timeout: 10000,
 });
 
+// Public API client - does not send auth tokens or cookies
+// Use this for endpoints that should be accessible without authentication
+export const publicApi = axios.create({
+  baseURL: config.api.baseUrl,
+  withCredentials: false, // Don't send cookies
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',
+    'Cache-Control': 'no-cache'
+  },
+  timeout: 10000,
+});
+
 // Create a separate admin API instance
 export const adminApi = axios.create({
   baseURL: `${config.api.baseUrl}${config.api.adminUrl}`,

@@ -1,4 +1,4 @@
-import api from './api';
+import api, { publicApi } from './api';
 import { Category } from './categoryService';
 
 // Types
@@ -72,6 +72,38 @@ export interface ProductsResponse {
   };
 }
 
+const fetchProductDirectly = async (id: string | number): Promise<any> => {
+  try {
+    const endpoint = Number.isInteger(Number(id)) && !isNaN(Number(id)) 
+      ? `/products/${id}`
+      : `/products/slug/${id}`;
+    
+    // Use direct fetch to avoid any interceptors that might be causing issues
+    const response = await fetch(`${config.apiUrl}${endpoint}`);
+    const data = await response.json();
+    
+    console.log('[ProductService] Direct fetch response:', data);
+    
+    if (data && (data.id || (data.data && data.data.id))) {
+      return {
+        success: true,
+        product: data.data || data
+      };
+    }
+    
+    return {
+      success: false,
+      message: data.message || 'Product not found'
+    };
+  } catch (err) {
+    console.error('[ProductService] Direct fetch error:', err);
+    return {
+      success: false,
+      message: 'Error fetching product directly'
+    };
+  }
+};
+
 const productService = {
   // Get all products with optional filtering
   getProducts: async (params: {
@@ -87,7 +119,8 @@ const productService = {
     page?: number;
   } = {}): Promise<ProductsResponse> => {
     try {
-      const response = await api.get<ProductsResponse>('/products', { params });
+      // Use publicApi for fetching products - no auth required
+      const response = await publicApi.get<ProductsResponse>('/products', { params });
       return response.data;
     } catch (error: any) {
       console.error('Error in getProducts:', error);
@@ -183,6 +216,59 @@ const productService = {
   },
 
   /**
+   * Get product by slug (public endpoint)
+   * @param slug - product slug
+   */
+  getProductBySlug: async (slug: string): Promise<SingleProductResponse> => {
+    try {
+      console.log(`[ProductService] Fetching product by slug: ${slug}`);
+      console.log(`[ProductService] Request URL: ${publicApi.defaults.baseURL}/products/slug/${slug}`);
+      
+      const response = await publicApi.get(`/products/slug/${slug}`);
+      console.log('[ProductService] Raw API response:', response);
+      
+      // Handle the specific API response format from our slug endpoint
+      if (response.data && response.data.status === 'success' && response.data.data) {
+        // Backend returns { status: 'success', data: {...productData} }
+        const productData = response.data.data;
+        console.log('[ProductService] Successfully parsed product data:', productData);
+        
+        return {
+          success: true,
+          product: productData
+        };
+      } else {
+        console.error('[ProductService] Unexpected response format:', response.data);
+        return {
+          success: false,
+          message: 'Product data format is unexpected'
+        };
+      }
+    } catch (error) {
+      console.error('[ProductService] Error fetching product by slug:', error);
+      console.error('[ProductService] Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      
+      // If we get a 404, the product doesn't exist
+      if (error.response?.status === 404) {
+        return {
+          success: false,
+          message: `Product with slug '${slug}' not found`
+        };
+      }
+      
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Failed to fetch product',
+        error
+      };
+    }
+  },
+
+  /**
    * Get a product by ID or slug
    * @param id Product ID or slug
    * @returns Product data or error
@@ -191,17 +277,54 @@ const productService = {
     try {
       console.log(`[ProductService] Fetching product with ID/slug: ${id}`);
       
+      // Try direct fetch first to avoid potential issues with Axios interceptors
+      const directResult = await fetchProductDirectly(id);
+      
+      if (directResult.success && directResult.product) {
+        console.log('[ProductService] Successfully fetched product via direct method', directResult.product);
+        return directResult;
+      }
+      
       // Handle both numeric IDs and string slugs
       const endpoint = Number.isInteger(Number(id)) && !isNaN(Number(id)) 
         ? `/products/${id}`
         : `/products/slug/${id}`;
       
-      const response = await api.get(endpoint);
+      // Use publicApi for fetching product details - no auth required
+      const response = await publicApi.get(endpoint);
       
-      if (response.data && response.data.data) {
+      // Check response structure and log for debugging
+      console.log("[ProductService] Full API response:", response);
+      
+      // First, check if we have a data.data structure (Laravel paginated response)
+      if (response.data?.data) {
         return {
           success: true,
           product: response.data.data
+        };
+      } 
+      // Next, check if we have a direct data object (Laravel resource response)
+      else if (response.data) {
+        // Check if it's an error response with a message
+        if (response.data.message && !response.data.id) {
+          // OVERRIDE: If response looks like our product (has id and name), 
+          // return it as a success regardless of error message
+          if (response.data.id && response.data.name) {
+            return {
+              success: true,
+              product: response.data
+            };
+          }
+          return {
+            success: false,
+            message: response.data.message
+          };
+        }
+        
+        // Otherwise assume it's the product data
+        return {
+          success: true,
+          product: response.data
         };
       }
       
@@ -212,9 +335,64 @@ const productService = {
     } catch (error: any) {
       console.error(`[ProductService] Error fetching product ${id}:`, error);
       
+      // For development and testing, provide more detailed error information
+      if (config.isDevelopment) {
+        console.log("[ProductService] API Error details:", error.response?.data);
+      }
+      
+      // Check for specific error status codes
+      if (error.response?.status === 404) {
+        return {
+          success: false,
+          message: 'Product not found'
+        };
+      }
+      
       return {
         success: false,
         message: error.response?.data?.message || 'Failed to fetch product',
+        error
+      };
+    }
+  },
+
+  /**
+   * Get all products (public endpoint)
+   * Returns all products with proper error handling for public access
+   */
+  getAllProductsPublic: async (): Promise<any> => {
+    try {
+      console.log('[ProductService] Fetching all products from public API');
+      const response = await publicApi.get('/products?per_page=1000');
+      
+      console.log('[ProductService] All products response:', response);
+      
+      if (response.data?.data) {
+        return {
+          success: true,
+          data: response.data.data
+        };
+      } else if (Array.isArray(response.data)) {
+        return {
+          success: true,
+          data: response.data
+        };
+      } else if (response.data) {
+        return {
+          success: true,
+          data: [response.data] // Single product case
+        };
+      }
+      
+      return {
+        success: false,
+        message: 'No products found'
+      };
+    } catch (error) {
+      console.error('[ProductService] Error fetching all products:', error);
+      return {
+        success: false,
+        message: 'Failed to fetch products',
         error
       };
     }
@@ -322,24 +500,42 @@ const productService = {
 
   // Get featured products for homepage
   getFeaturedProducts: async (limit: number = 8): Promise<ProductsResponse> => {
-    return productService.getProducts({
-      featured: true,
-      per_page: limit
-    });
+    try {
+      // Use publicApi for fetching featured products - no auth required
+      const response = await publicApi.get<ProductsResponse>('/products', { 
+        params: { featured: true, per_page: limit }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error in getFeaturedProducts:', error);
+      throw error;
+    }
   },
-
+  
   // Get new arrivals
   getNewArrivals: async (limit: number = 8): Promise<ProductsResponse> => {
-    return productService.getProducts({
-      sort_by: 'created_at',
-      sort_order: 'desc',
-      per_page: limit
-    });
+    try {
+      // Use publicApi for fetching new arrivals - no auth required
+      const response = await publicApi.get<ProductsResponse>('/products', { 
+        params: { sort_by: 'created_at', sort_order: 'desc', per_page: limit }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error in getNewArrivals:', error);
+      throw error;
+    }
   },
-
+  
   // Get best selling products
   getBestSellers: async (limit: number = 8): Promise<ProductsResponse> => {
-    return productService.getFeaturedProducts(limit);
+    try {
+      // Use publicApi for fetching best sellers - no auth required
+      const response = await publicApi.get<ProductsResponse>('/products/best-sellers', { params: { limit } });
+      return response.data;
+    } catch (error) {
+      console.error('Error in getBestSellers:', error);
+      throw error;
+    }
   }
 };
 

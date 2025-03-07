@@ -2,7 +2,7 @@
 const config = {
   // API URLs
   api: {
-    baseUrl: import.meta.env.VITE_API_URL || 'https://api.m-martplus.com/api',
+    baseUrl: import.meta.env.VITE_API_URL?.replace('http://', 'https://') || 'https://api.m-martplus.com/api',
     adminUrl: '/admin', // This will be appended to baseUrl in API calls
     authUrl: '/auth',
   },
@@ -58,6 +58,15 @@ const config = {
         console.log('Development settings have been reset to defaults');
       }
     }
+  },
+  
+  // Environment checks
+  get isDevelopment() {
+    return import.meta.env.DEV;
+  },
+  
+  get isProduction() {
+    return import.meta.env.PROD;
   },
 };
 
