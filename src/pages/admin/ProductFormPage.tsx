@@ -213,6 +213,7 @@ const ProductFormPage: React.FC = () => {
   const [isFeatured, setIsFeatured] = useState(false);
   const [isActive, setIsActive] = useState(true);
   const [expiryDate, setExpiryDate] = useState('');
+  const [deliveryTime, setDeliveryTime] = useState('Delivery in 2-4 business days');
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [currentProductImages, setCurrentProductImages] = useState<string[]>([]);
@@ -257,6 +258,7 @@ const ProductFormPage: React.FC = () => {
       setIsFeatured(product.is_featured);
       setIsActive(product.is_active);
       setExpiryDate(product.expiry_date || '');
+      setDeliveryTime(product.delivery_time || 'Delivery in 2-4 business days');
       
       // Handle images
       if (product.images && Array.isArray(product.images)) {
@@ -340,6 +342,7 @@ const ProductFormPage: React.FC = () => {
       formData.append('category_id', categoryId.toString());
       formData.append('is_active', isActive ? '1' : '0');
       formData.append('is_featured', isFeatured ? '1' : '0');
+      formData.append('delivery_time', deliveryTime);
       
       // Append expiry date if present
       if (expiryDate) {
@@ -536,6 +539,25 @@ const ProductFormPage: React.FC = () => {
                 />
               </FormGroup>
               
+              <FormGroup>
+                <Tooltip content="Expected delivery timeframe for this product" position="right">
+                  <Label htmlFor="deliveryTime">Delivery Time</Label>
+                </Tooltip>
+                <Select
+                  id="deliveryTime"
+                  name="deliveryTime"
+                  value={deliveryTime}
+                  onChange={(e) => setDeliveryTime(e.target.value)}
+                >
+                  <option value="Delivery in minutes">Delivery in minutes</option>
+                  <option value="Delivery in 24 hrs">Delivery in 24 hrs</option>
+                  <option value="Delivery in 48 hrs">Delivery in 48 hrs</option>
+                  <option value="Delivery in 2-4 business days">Delivery in 2-4 business days</option>
+                </Select>
+              </FormGroup>
+            </FormRow>
+            
+            <FormRow>
               <FormGroup>
                 <div style={{ marginTop: '30px' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

@@ -152,6 +152,7 @@ interface Product {
   discount?: number;
   images?: string[];
   category?: string;
+  delivery_time?: string;
 }
 
 interface SimilarProductsSliderProps {
@@ -327,7 +328,21 @@ const SimilarProductsSlider: React.FC<SimilarProductsSliderProps> = ({
           >
             {similarProducts.map((product) => (
               <ProductSlideCard key={product.id}>
-                <ProductCard>
+                <ProductCard
+                  key={product.id}
+                  id={product.id}
+                  name={product.name}
+                  image={product.images?.[0] || ''}
+                  price={product.price}
+                  oldPrice={product.discount}
+                  discount={product.discount !== undefined}
+                  rating={0}
+                  reviewCount={0}
+                  deliveryTime={product.delivery_time}
+                  category={product.category}
+                  slug={`/product/${product.id}`}
+                  inStock={true}
+                >
                   <CardImage>
                     <img 
                       src={product.images?.[0] || getImagePlaceholder(0)} 

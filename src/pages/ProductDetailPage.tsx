@@ -9,47 +9,12 @@ import { formatCurrency } from '../utils/formatCurrency';
 import productService, { Product } from '../services/productService';
 import recentlyViewedService from '../services/recentlyViewedService';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import StarRating from '../components/product/StarRating';
+import ProductRatings from '../components/product/ProductRatings';
 
 // Check if a string is numeric
 const isNumeric = (str: string): boolean => {
   return !isNaN(parseFloat(str)) && isFinite(Number(str));
-};
-
-// Helper function to render star ratings
-const renderStars = (rating: number) => {
-  const stars = [];
-  const fullStars = Math.floor(rating);
-  const hasHalfStar = rating % 1 >= 0.5;
-  
-  // Add full stars
-  for (let i = 0; i < fullStars; i++) {
-    stars.push(
-      <svg key={`star-${i}`} xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#FFD700" viewBox="0 0 16 16">
-        <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L8 2.223l1.847 3.658a.525.525 0 0 0 .393.288l4.052.575-2.906 2.77a.565.565 0 0 1-.163.506l-.694 3.957-3.686-1.894a.503.503 0 0 1-.461 0z"/>
-      </svg>
-    );
-  }
-  
-  // Add half star if needed
-  if (hasHalfStar) {
-    stars.push(
-      <svg key="half-star" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#FFD700" viewBox="0 0 16 16">
-        <path d="M5.354 5.119 7.538.792A.516.516 0 0 1 8 .5c.183 0 .366.097.465.292l2.184 4.327 4.898.696A.537.537 0 0 1 16 6.32a.548.548 0 0 1-.17.445l-3.523 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256a.52.52 0 0 1-.146.05c-.342.06-.668-.254-.6-.642l.83-4.73L.173 6.765a.55.55 0 0 1-.172-.403.58.58 0 0 1 .085-.302.513.513 0 0 1 .37-.245l4.898-.696zM8 12.027a.5.5 0 0 1 .232.056l3.686 1.894-.694-3.957a.565.565 0 0 1 .162-.506l2.907 2.77-4.052-.575a.525.525 0 0 1-.393-.288L8.001 2.226 8 2.226v9.8z"/>
-      </svg>
-    );
-  }
-  
-  // Add empty stars
-  const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
-  for (let i = 0; i < emptyStars; i++) {
-    stars.push(
-      <svg key={`empty-${i}`} xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#D3D3D3" viewBox="0 0 16 16">
-        <path d="M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.256c.386.198.824-.149.746-.592l-.83-4.73 3.523-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8 2.223l-1.847 3.658a.525.525 0 0 0-.393.288l-4.052.575 2.906 2.77a.565.565 0 0 1-.163.506l-.694 3.957-3.686-1.894a.503.503 0 0 1-.461 0z"/>
-      </svg>
-    );
-  }
-  
-  return stars;
 };
 
 // Styled Components
@@ -290,7 +255,7 @@ const ProductDetailPage = () => {
             ? product.images?.[0] 
             : product.images?.[0]?.url || '',
           category: product.category?.name || 'General',
-          rating: product.average_rating || product.rating || 0
+          rating: product.bayesian_rating || product.average_rating || 0
         };
         
         // Try to add to recently viewed, but don't let it block rendering if it fails
@@ -382,11 +347,15 @@ const ProductDetailPage = () => {
             <Text size="xl" weight="bold">{product.name}</Text>
             
             <Rating>
-              {renderStars(product.average_rating || product.rating || 0)}
-              <ReviewCount>
-                {product.average_rating || product.rating || 0} 
-                ({product.review_count || 0} reviews)
-              </ReviewCount>
+              <StarRating 
+                rating={product.average_rating || 0} 
+                bayesianRating={product.bayesian_rating || 0}
+                useBayesian={true}
+                size="md"
+                showCount={true}
+                count={product.rating_count || 0}
+                tooltipText="Calculated using Bayesian average to provide a fair rating"
+              />
             </Rating>
             
             <Text>{product.description || product.short_description || 'No description available'}</Text>
@@ -437,6 +406,14 @@ const ProductDetailPage = () => {
             </FlexBox>
           </ProductInfo>
         </ProductGrid>
+        
+        {/* Product Ratings Section */}
+        <ProductRatings 
+          productId={product.id}
+          initialAverageRating={product.average_rating}
+          initialBayesianRating={product.bayesian_rating}
+          initialRatingCount={product.rating_count}
+        />
       </MainContent>
       <Footer />
     </PageContainer>

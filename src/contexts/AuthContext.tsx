@@ -66,25 +66,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Check development mode
-  const isDevelopment = import.meta.env.DEV;
-
   useEffect(() => {
-    // Use consistent token names - check all possible token variations
-    const token = localStorage.getItem('mmartToken') || 
-                  localStorage.getItem('token') || 
-                  localStorage.getItem('adminToken');
+    const checkAuth = async () => {
+      // Use consistent token names - check all possible token variations
+      const token = localStorage.getItem('mmartToken') || 
+                    localStorage.getItem('token') || 
+                    localStorage.getItem('adminToken');
 
-    if (token) {
-      setLoading(true);
+      if (token) {
+        setLoading(true);
 
-      // Store the token consistently as mmartToken
-      if (!localStorage.getItem('mmartToken')) {
-        localStorage.setItem('mmartToken', token);
-      }
+        // Store the token consistently as mmartToken
+        if (!localStorage.getItem('mmartToken')) {
+          localStorage.setItem('mmartToken', token);
+        }
 
-      api.get('/user')
-        .then(response => {
+        try {
+          // Ensure headers are set correctly for the user request
+          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          
+          // Use the correct API path with /api prefix
+          const response = await api.get('/api/user');
           const userData = response.data.data || response.data;
 
           // Check if user has admin role using the proper role object structure
@@ -99,28 +101,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           setIsAdmin(userIsAdmin);
           setIsAuthenticated(true);
-        })
-        .catch(err => {
+        } catch (err) {
           console.error('Failed to fetch user data:', err);
           
-          // Remove auto-login in development mode
-          setError('Failed to fetch user data. Please login again.');
-          localStorage.removeItem('mmartToken');
-          localStorage.removeItem('token');
-          localStorage.removeItem('adminToken');
-          setUser(null);
-          setIsAdmin(false);
-          setIsAuthenticated(false);
-        })
-        .finally(() => {
+          // Only log out if this isn't a network error
+          if (err.response) {
+            setError('Failed to fetch user data. Please login again.');
+            localStorage.removeItem('mmartToken');
+            localStorage.removeItem('token');
+            localStorage.removeItem('adminToken');
+            setUser(null);
+            setIsAdmin(false);
+            setIsAuthenticated(false);
+          }
+        } finally {
           setLoading(false);
-        });
-    } else {
-      // Always require manual login regardless of environment
-      setLoading(false);
-      setIsAuthenticated(false);
-    }
-  }, [isDevelopment]);
+        }
+      } else {
+        // Always require manual login regardless of environment
+        setLoading(false);
+        setIsAuthenticated(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
 
   const loginAsDevelopmentAdmin = async () => {
     if (!import.meta.env.DEV) return { success: false };
@@ -148,11 +153,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(null);
 
       const { email, password } = credentials;
-      const response = await api.post('/auth/login', { email, password });
+      const response = await api.post('/api/auth/login', { email, password });
       const { token, user: userData } = response.data.data || response.data;
 
       // Store token in localStorage with consistent naming
       localStorage.setItem('mmartToken', token);
+      
+      // Set authorization header for subsequent requests
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
       // Check if user has admin role using the proper role object structure
       const userIsAdmin = userData.roles?.some(role => 
@@ -179,8 +187,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
-      // Call logout API
-      await api.post('/logout');
+      // Call logout API with correct /api prefix
+      await api.post('/api/logout');
     } catch (err) {
       console.error('Logout API failed, but proceeding with local cleanup:', err);
     } finally {
@@ -188,6 +196,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       localStorage.removeItem('mmartToken');
       localStorage.removeItem('token');
       localStorage.removeItem('adminToken');
+      
+      // Clear authorization header
+      delete api.defaults.headers.common['Authorization'];
+      
       setUser(null);
       setIsAdmin(false);
       setIsAuthenticated(false);

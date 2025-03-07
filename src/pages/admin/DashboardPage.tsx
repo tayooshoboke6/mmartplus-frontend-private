@@ -181,19 +181,28 @@ const DashboardPage: React.FC = () => {
       // Check if we're in development mode
       const isDevelopmentMode = import.meta.env.DEV || process.env.NODE_ENV === 'development';
       
-      if (isDevelopmentMode) {
-        // In development mode, use mock data to enable testing
-        console.log('Using mock dashboard stats for development environment');
-        setStats(MOCK_DASHBOARD_STATS);
+      // Always try to use real data first, with mock data as fallback only in development mode
+      try {
+        // Attempt to fetch real data from the API
+        console.log('Fetching real dashboard stats from API...');
+        const response = await orderService.getDashboardStats();
+        setStats(response.data);
         setLoading(false);
-        return;
+      } catch (apiError: any) {
+        console.error('Error fetching dashboard stats from API:', apiError);
+        
+        if (isDevelopmentMode) {
+          // In development mode, fall back to mock data if API fails
+          console.log('Falling back to mock dashboard stats for development environment');
+          setStats(MOCK_DASHBOARD_STATS);
+          setLoading(false);
+        } else {
+          // In production, show proper error
+          throw apiError;
+        }
       }
-      
-      // In production, attempt to fetch real data
-      const response = await orderService.getDashboardStats();
-      setStats(response.data);
     } catch (err: any) {
-      console.error('Error fetching dashboard stats:', err);
+      console.error('Error in dashboard data flow:', err);
       
       // Show a more helpful error message
       const statusCode = err?.response?.status;

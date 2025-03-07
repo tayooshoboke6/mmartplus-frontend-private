@@ -205,6 +205,7 @@ const ProductSection = () => {
                 salePrice={product.sale_price ? parseFloat(product.sale_price.toString()) : undefined}
                 rating={product.average_rating || 0}
                 reviewCount={product.review_count || 0}
+                deliveryTime={product.delivery_time}
                 category={product.category?.name || ''}
                 inStock={product.stock > 0}
               />
