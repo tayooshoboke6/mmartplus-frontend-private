@@ -321,6 +321,13 @@ const Header = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (user) {
+      console.log('Current user:', user);
+      console.log('Has admin role:', user.roles?.some(role => role.name === 'admin' || role.name === 'super-admin'));
+    }
+  }, [user]);
+
   // Debounced search for product suggestions
   const fetchProductSuggestions = useRef(
     debounce(async (query: string) => {
@@ -502,7 +509,9 @@ const Header = () => {
                 <UserMenuItem onClick={() => { setShowUserMenu(false); navigate('/account/orders'); }}>
                   My Orders
                 </UserMenuItem>
-                {user?.email === 'admin@mmartplus.com' && (
+                {user && user.roles && (
+                  user.roles.some(role => role.name === 'admin' || role.name === 'super-admin') 
+                ) && (
                   <UserMenuItem onClick={() => { setShowUserMenu(false); navigate('/admin'); }}>
                     Admin Dashboard
                   </UserMenuItem>

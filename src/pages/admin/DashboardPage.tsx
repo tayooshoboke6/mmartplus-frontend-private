@@ -178,31 +178,38 @@ const DashboardPage: React.FC = () => {
     setError(null);
     
     try {
-      // Check if we're using a development token
-      const token = localStorage.getItem('mmartToken');
-      const isDevelopmentToken = token && token.includes('dev-admin-token');
+      // Check if we're in development mode
+      const isDevelopmentMode = import.meta.env.DEV || process.env.NODE_ENV === 'development';
       
-      if (isDevelopmentToken && process.env.NODE_ENV === 'development') {
-        // Use mock data in development mode
-        console.log('Using mock dashboard stats for development');
+      if (isDevelopmentMode) {
+        // In development mode, use mock data to enable testing
+        console.log('Using mock dashboard stats for development environment');
         setStats(MOCK_DASHBOARD_STATS);
         setLoading(false);
         return;
       }
       
-      // Fetch real data from API
+      // In production, attempt to fetch real data
       const response = await orderService.getDashboardStats();
       setStats(response.data);
     } catch (err: any) {
       console.error('Error fetching dashboard stats:', err);
       
-      // If this error was due to our development token, use mock data
-      if (err.isDevelopmentError) {
-        console.log('Using mock data instead due to development mode');
-        setStats(MOCK_DASHBOARD_STATS);
+      // Show a more helpful error message
+      const statusCode = err?.response?.status;
+      let errorMessage = 'Failed to load dashboard data.';
+      
+      if (statusCode === 404) {
+        errorMessage = 'Dashboard API endpoint not found. The backend API for dashboard statistics may not be implemented yet.';
+        console.log('Using mock data instead due to missing API endpoint');
+        setStats(MOCK_DASHBOARD_STATS);  // Fall back to mock data
+      } else if (statusCode === 401 || statusCode === 403) {
+        errorMessage = 'Authentication required. Please log in to view this dashboard.';
       } else {
-        setError(err.message || 'Failed to load dashboard data');
+        errorMessage = err.message || 'Failed to load dashboard data.';
       }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

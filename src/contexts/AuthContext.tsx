@@ -87,8 +87,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         .then(response => {
           const userData = response.data.data || response.data;
 
-          // Check if user has admin role
-          const userIsAdmin = userData.roles?.includes('admin') || false;
+          // Check if user has admin role using the proper role object structure
+          const userIsAdmin = userData.roles?.some(role => 
+            role.name === 'admin' || role.name === 'super-admin'
+          ) || false;
 
           setUser({
             ...userData,
@@ -131,7 +133,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       name: 'Admin User',
       email: 'admin@example.com',
       isAdmin: true,
-      roles: ['admin']
+      roles: [{ name: 'admin' }]
     };
 
     setUser(mockUser);
@@ -152,8 +154,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Store token in localStorage with consistent naming
       localStorage.setItem('mmartToken', token);
 
-      // Check if user has admin role
-      const userIsAdmin = userData.roles?.includes('admin') || false;
+      // Check if user has admin role using the proper role object structure
+      const userIsAdmin = userData.roles?.some(role => 
+        role.name === 'admin' || role.name === 'super-admin'
+      ) || false;
 
       // Set user state with admin flag
       const updatedUser = {

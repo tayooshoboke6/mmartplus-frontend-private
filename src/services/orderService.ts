@@ -130,8 +130,8 @@ const ensureAuthenticated = async () => {
   // Get CSRF cookie if needed
   await getCsrfCookie();
   
-  // Get authentication token
-  const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+  // Get authentication token - use mmartToken for consistency with AuthContext
+  const token = localStorage.getItem('mmartToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
   
   if (!token) {
     throw new Error('Authentication required. Please log in to view orders.');
@@ -235,7 +235,8 @@ const orderService = {
       // Ensure we have authentication before proceeding
       await ensureAuthenticated();
       
-      const response = await api.get('/dashboard/stats');
+      // Use the admin prefix for dashboard stats
+      const response = await api.get('/admin/dashboard/stats');
       return {
         status: 'success',
         data: response.data.data
