@@ -48,8 +48,8 @@ const categoryService = {
       const { forceRefresh, ...cleanParams } = params;
       const queryString = buildQueryString(cleanParams);
       
-      // Add timestamp to force a fresh fetch when requested
-      const cacheParams = forceRefresh ? `${queryString ? '&' : '?'}_t=${Date.now()}` : '';
+      // Remove timestamp parameter that's causing 404s on the backend
+      const cacheParams = ''; // Remove timestamp to avoid 404 errors
       
       // Use admin endpoint when in admin section
       const isAdminSection = window.location.pathname.includes('/admin');
