@@ -1,4 +1,5 @@
-import api from './api';
+import axios from 'axios';
+import config from '../config';
 
 // Order status enum definition
 export enum OrderStatusEnum {
@@ -127,111 +128,85 @@ export interface DashboardStats {
 }
 
 const orderService = {
-  getOrders: async (options: OrderFilterOptions = {}): Promise<GetOrdersResponse> => {
+  /**
+   * Get orders with optional filtering
+   */
+  async getOrders(options: OrderFilterOptions = {}): Promise<GetOrdersResponse> {
     try {
-      // Use the admin orders endpoint for admin users
-      const response = await api.get<any>('/admin/orders', { 
-        params: {
-          status: options.status,
-          payment_status: options.paymentStatus,
-          from_date: options.startDate,
-          to_date: options.endDate,
-          page: options.page || 1,
-          per_page: options.limit || 10
-        } 
+      const response = await axios.get(`${config.api.baseUrl}/orders`, { 
+        params: options 
       });
-      
-      console.log('Admin Orders API response:', response.data);
-      
-      // Map the Laravel response to our expected format
-      if (response.data && response.data.status === 'success' && response.data.data) {
-        // The response contains Laravel pagination data
-        const orders = response.data.data.data || [];
-        
-        // Transform the response to match our frontend model
-        const transformedOrders = orders.map((order: any) => ({
-          id: order.id,
-          order_number: order.order_number,
-          customer_name: order.user ? `${order.user.name}` : 'Guest User',
-          total: order.total,
-          status: order.status,
-          items_count: order.items ? order.items.length : 0,
-          payment_method: order.payment_method,
-          payment_status: order.payment_status,
-          created_at: order.created_at,
-          updated_at: order.updated_at,
-          user_id: order.user_id
-        }));
-        
-        return {
-          orders: transformedOrders,
-          total_count: response.data.data.total || 0
-        };
-      }
-      
-      // Fallback for unexpected response format
-      return {
-        orders: [],
-        total_count: 0
-      };
-    } catch (error) {
-      console.error('Error fetching admin orders:', error);
-      throw error;
-    }
-  },
-
-  getOrderDetail: async (orderId: number): Promise<GetOrderDetailResponse> => {
-    try {
-      const response = await api.get<GetOrderDetailResponse>(`/orders/${orderId}`);
       return response.data;
     } catch (error) {
-      console.error(`Error fetching order #${orderId}:`, error);
+      console.error('Failed to fetch orders:', error);
       throw error;
     }
   },
 
-  getDashboardStats: async (): Promise<{ status: string; data: DashboardStats }> => {
+  /**
+   * Get order details by ID
+   */
+  async getOrderDetail(orderId: number): Promise<GetOrderDetailResponse> {
     try {
-      const response = await api.get<{ status: string; data: DashboardStats }>('/admin/dashboard/stats');
+      const response = await axios.get(`${config.api.baseUrl}/orders/${orderId}`);
       return response.data;
     } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
+      console.error(`Failed to fetch order details for order ID ${orderId}:`, error);
       throw error;
     }
   },
 
-  cancelOrder: async (orderId: number): Promise<{ success: boolean; message: string }> => {
+  /**
+   * Get dashboard statistics
+   */
+  async getDashboardStats(): Promise<{ status: string; data: DashboardStats }> {
     try {
-      const response = await api.put(`/orders/${orderId}/cancel`);
+      const response = await axios.get(`${config.api.baseUrl}/dashboard/stats`);
       return response.data;
     } catch (error) {
-      console.error(`Error cancelling order #${orderId}:`, error);
+      console.error('Failed to fetch dashboard stats:', error);
       throw error;
     }
   },
 
-  reorder: async (orderId: number): Promise<{ success: boolean; message: string; cart_id?: number }> => {
+  /**
+   * Cancel an order
+   */
+  async cancelOrder(orderId: number): Promise<{ success: boolean; message: string }> {
     try {
-      const response = await api.post(`/orders/${orderId}/reorder`);
+      const response = await axios.post(`${config.api.baseUrl}/orders/${orderId}/cancel`);
       return response.data;
     } catch (error) {
-      console.error(`Error reordering order #${orderId}:`, error);
+      console.error(`Failed to cancel order ID ${orderId}:`, error);
       throw error;
     }
   },
 
-  updateOrderStatus: async (orderId: number, status: OrderStatus): Promise<{ success: boolean; message: string }> => {
+  /**
+   * Reorder items from a previous order
+   */
+  async reorder(orderId: number): Promise<{ success: boolean; message: string; cart_id?: number }> {
     try {
-      const response = await api.patch(`/admin/orders/${orderId}/status`, { status });
-      return {
-        success: response.data.status === 'success',
-        message: response.data.message || 'Order status updated successfully'
-      };
+      const response = await axios.post(`${config.api.baseUrl}/orders/${orderId}/reorder`);
+      return response.data;
     } catch (error) {
-      console.error(`Error updating order #${orderId} status:`, error);
+      console.error(`Failed to reorder items from order ID ${orderId}:`, error);
       throw error;
     }
   },
+
+  /**
+   * Update order status
+   */
+  async updateOrderStatus(orderId: number, status: OrderStatus): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await axios.put(`${config.api.baseUrl}/orders/${orderId}/status`, { status });
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to update status for order ID ${orderId}:`, error);
+      throw error;
+    }
+  }
 };
 
 export default orderService;

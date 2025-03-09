@@ -427,7 +427,7 @@ const SignupPage: React.FC = () => {
     <PageContainer>
       {/* Logo */}
       <Logo>
-        <img src="https://shop.mmartplus.com/images/white-logo.png" alt="M-Mart+" style={{ width: '120px', height: 'auto' }} />
+        <img src="/images/logo.png" alt="M-Mart+" style={{ width: '120px', height: 'auto' }} />
       </Logo>
       
       {/* Heading */}
@@ -661,12 +661,12 @@ const SignupPage: React.FC = () => {
         </OrDivider>
         
         <SocialButton type="button" onClick={handleGoogleSignup} provider="google">
-          <img src="/google-icon.png" alt="Google" />
+          <img src="/images/google-icon.svg" alt="Google" />
           Sign up with Google
         </SocialButton>
         
         <SocialButton type="button" onClick={handleAppleSignup} provider="apple">
-          <img src="/apple-icon.png" alt="Apple" />
+          <img src="/images/apple-icon.svg" alt="Apple" />
           Sign up with Apple
         </SocialButton>
       </SocialLoginContainer>

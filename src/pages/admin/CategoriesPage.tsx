@@ -6,7 +6,6 @@ import { FlexBox, Text, Button, Tooltip } from '../../styles/GlobalComponents';
 import categoryService from '../../services/categoryService';
 import { AuthContext } from '../../contexts/AuthContext';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-import { getCsrfCookie } from '../../services/api';
 
 interface CategoryFormData {
   id: number | null;
@@ -649,13 +648,13 @@ const CategoriesPage: React.FC = () => {
         <div style={{ display: 'flex', gap: '10px' }}>
           <Button 
             onClick={() => handleAdminLogin()}
-            variant="outlined"
+            variant="outline"
           >
             Set Admin Token
           </Button>
           {editMode && (
             <Button 
-              variant="outlined"
+              variant="outline"
               type="button" 
               onClick={resetForm}
             >

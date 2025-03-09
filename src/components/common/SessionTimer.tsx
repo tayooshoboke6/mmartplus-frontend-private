@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { refreshSession } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
 // Session duration in minutes

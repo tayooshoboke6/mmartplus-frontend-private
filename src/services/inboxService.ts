@@ -1,4 +1,5 @@
-import api from './api';
+import axios from 'axios';
+import config from '../config';
 
 // Define types
 export interface InboxMessage {
@@ -26,7 +27,9 @@ const inboxService = {
     try {
       // Try to get from API first
       try {
-        const response = await api.get<InboxResponse>('/user/inbox');
+        const response = await axios.get(`${config.api.baseUrl}/user/inbox`, {
+          withCredentials: true // Important for cookies
+        });
         if (response.data.status === 'success') {
           return response.data.data.sort((a, b) => 
             new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -70,7 +73,9 @@ const inboxService = {
     try {
       // Try API first
       try {
-        const response = await api.patch(`/user/inbox/${messageId}/read`);
+        const response = await axios.patch(`${config.api.baseUrl}/user/inbox/${messageId}/read`, {}, {
+          withCredentials: true // Important for cookies
+        });
         if (response.data.status === 'success') {
           return true;
         }
@@ -100,7 +105,9 @@ const inboxService = {
     try {
       // Try API first
       try {
-        const response = await api.delete(`/user/inbox/${messageId}`);
+        const response = await axios.delete(`${config.api.baseUrl}/user/inbox/${messageId}`, {
+          withCredentials: true // Important for cookies
+        });
         if (response.data.status === 'success') {
           return true;
         }
@@ -128,7 +135,9 @@ const inboxService = {
     try {
       // Try API first
       try {
-        const response = await api.delete('/user/inbox/clear');
+        const response = await axios.delete(`${config.api.baseUrl}/user/inbox/clear`, {
+          withCredentials: true // Important for cookies
+        });
         if (response.data.status === 'success') {
           return true;
         }
@@ -154,9 +163,11 @@ const inboxService = {
     try {
       // Try API first
       try {
-        const response = await api.post('/user/inbox', {
+        const response = await axios.post(`${config.api.baseUrl}/user/inbox`, {
           ...message,
           messageType: 'campaign'
+        }, {
+          withCredentials: true // Important for cookies
         });
         if (response.data.status === 'success') {
           return true;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
 import emailVerificationService from '../services/emailVerificationService';
@@ -137,8 +137,12 @@ const TimerText = styled.div`
 
 // Email verification page component
 const EmailVerificationPage: React.FC = () => {
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Get email from location state or use mock user email
+  const email = location.state?.email || 'user@example.com';
   
   const [code, setCode] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -157,7 +161,23 @@ const EmailVerificationPage: React.FC = () => {
   const handleSendCode = async () => {
     try {
       setLoading(true);
-      const response = await emailVerificationService.sendVerificationCode();
+      
+      // Use the appropriate method based on whether we have an email from location state
+      let response;
+      if (email && email !== 'user@example.com') {
+        response = await emailVerificationService.sendVerificationCodeByEmail(email);
+      } else {
+        response = await emailVerificationService.sendVerificationCode();
+      }
+      
+      // For development purposes, log the verification code
+      if (process.env.NODE_ENV === 'development') {
+        const mockCode = emailVerificationService._getVerificationCode(email);
+        console.log('Development mode - Verification code:', mockCode);
+        // Auto-fill the code in development mode
+        setCode(mockCode || '');
+      }
+      
       setMessage(response.message);
       setIsError(false);
       setCountdown(30); // 30 seconds cooldown
@@ -179,7 +199,15 @@ const EmailVerificationPage: React.FC = () => {
     
     try {
       setLoading(true);
-      const response = await emailVerificationService.verifyCode(code);
+      
+      // Use the appropriate method based on whether we have an email from location state
+      let response;
+      if (email && email !== 'user@example.com') {
+        response = await emailVerificationService.verifyEmailWithCode(email, code);
+      } else {
+        response = await emailVerificationService.verifyEmail(code);
+      }
+      
       setMessage(response.message);
       setIsError(false);
       setIsVerified(true);
@@ -203,27 +231,21 @@ const EmailVerificationPage: React.FC = () => {
         const response = await emailVerificationService.checkVerificationStatus();
         if (response.data?.verified) {
           setIsVerified(true);
-          setMessage('Your email is already verified.');
+          setMessage('Your email has already been verified.');
         }
       } catch (error) {
-        // Handle error silently
+        // Silently fail, we'll just assume not verified
+        console.error('Failed to check verification status:', error);
       }
     };
     
-    if (isAuthenticated && user) {
-      checkStatus();
-    } else {
-      // Redirect to login if not authenticated
-      navigate('/login');
-    }
-  }, [isAuthenticated, user, navigate]);
+    checkStatus();
+  }, []);
   
-  // Countdown timer for resend button
+  // Countdown timer for resending code
   useEffect(() => {
     if (countdown > 0) {
-      const timer = setTimeout(() => {
-        setCountdown(countdown - 1);
-      }, 1000);
+      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
     }
   }, [countdown]);

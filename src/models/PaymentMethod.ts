@@ -4,23 +4,28 @@ export interface PaymentMethod {
   code: string;
   description: string;
   icon: string;
-  enabled: boolean;
-  requiresRedirect: boolean;
+  isActive: boolean;
+  requiresRedirect?: boolean;
   processingFee?: number;
   processingFeeType?: 'percentage' | 'fixed';
   minimumAmount?: number;
   maximumAmount?: number;
-  position: number;
+  position?: number;
 }
 
 export interface PaymentSettings {
-  availablePaymentMethods: PaymentMethod[];
+  availablePaymentMethods?: PaymentMethod[];
   defaultPaymentMethod: string;
-  allowCashOnDelivery: boolean;
-  allowBankTransfer: boolean;
-  allowCardPayments: boolean;
-  allowMobilePayments: boolean;
-  processingFees: {
+  allowCashOnDelivery?: boolean;
+  allowBankTransfer?: boolean;
+  allowCardPayments?: boolean;
+  allowMobilePayments?: boolean;
+  allowPartialPayments?: boolean;
+  minimumPartialPaymentPercentage?: number;
+  paymentDueDays?: number;
+  enableInstallments?: boolean;
+  maxInstallments?: number;
+  processingFees?: {
     [key: string]: {
       amount: number;
       type: 'percentage' | 'fixed';

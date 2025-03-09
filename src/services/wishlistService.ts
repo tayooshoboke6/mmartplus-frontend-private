@@ -1,5 +1,5 @@
-import api from './api';
-import { AxiosResponse } from 'axios';
+import axios from 'axios';
+import config from '../config';
 
 // Types for wishlist items
 export interface WishlistItem {
@@ -27,7 +27,9 @@ const wishlistService = {
     try {
       // Try to get from API first
       try {
-        const response = await api.get<WishlistResponse>('/wishlist');
+        const response = await axios.get(`${config.api.baseUrl}/wishlist`, {
+          withCredentials: true // Important for cookies
+        });
         if (response.data.status === 'success') {
           return response.data.data;
         }
@@ -49,8 +51,10 @@ const wishlistService = {
     try {
       // Try API first
       try {
-        const response = await api.post<{ status: string; data: WishlistItem }>('/wishlist', { 
+        const response = await axios.post(`${config.api.baseUrl}/wishlist`, { 
           product_id: product.id 
+        }, {
+          withCredentials: true // Important for cookies
         });
         if (response.data.status === 'success') {
           return response.data.data;
@@ -93,7 +97,9 @@ const wishlistService = {
     try {
       // Try API first
       try {
-        const response = await api.delete(`/wishlist/${id}`);
+        const response = await axios.delete(`${config.api.baseUrl}/wishlist/${id}`, {
+          withCredentials: true // Important for cookies
+        });
         if (response.data.status === 'success') {
           return true;
         }
@@ -121,7 +127,9 @@ const wishlistService = {
     try {
       // Try API first
       try {
-        const response = await api.delete('/wishlist');
+        const response = await axios.delete(`${config.api.baseUrl}/wishlist`, {
+          withCredentials: true // Important for cookies
+        });
         if (response.data.status === 'success') {
           return true;
         }

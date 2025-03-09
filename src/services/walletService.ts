@@ -1,4 +1,5 @@
-import api from './api';
+import axios from 'axios';
+import config from '../config';
 
 export interface WalletData {
   balance: number;
@@ -31,7 +32,9 @@ const walletService = {
    */
   getWalletDetails: async (): Promise<WalletData> => {
     try {
-      const response = await api.get('/wallet');
+      const response = await axios.get(`${config.api.baseUrl}/wallet`, {
+        withCredentials: true // Important for cookies
+      });
       return response.data;
     } catch (error) {
       throw error;
@@ -43,7 +46,9 @@ const walletService = {
    */
   generateVirtualAccount: async (): Promise<GenerateAccountResponse> => {
     try {
-      const response = await api.post('/wallet/generate-account');
+      const response = await axios.post(`${config.api.baseUrl}/wallet/generate-account`, {}, {
+        withCredentials: true // Important for cookies
+      });
       return response.data;
     } catch (error) {
       throw error;
@@ -55,7 +60,10 @@ const walletService = {
    */
   getTransactions: async (page = 1, limit = 10): Promise<Transaction[]> => {
     try {
-      const response = await api.get(`/wallet/transactions?page=${page}&limit=${limit}`);
+      const response = await axios.get(`${config.api.baseUrl}/wallet/transactions`, {
+        params: { page, limit },
+        withCredentials: true // Important for cookies
+      });
       return response.data.transactions;
     } catch (error) {
       throw error;
@@ -67,7 +75,12 @@ const walletService = {
    */
   verifyPayment: async (reference: string): Promise<any> => {
     try {
-      const response = await api.post('/wallet/verify-payment', { reference });
+      const response = await axios.post(`${config.api.baseUrl}/wallet/verify-payment`, 
+        { reference }, 
+        {
+          withCredentials: true // Important for cookies
+        }
+      );
       return response.data;
     } catch (error) {
       throw error;
@@ -79,7 +92,12 @@ const walletService = {
    */
   withdraw: async (amount: number, bankAccount: string, bankCode: string): Promise<any> => {
     try {
-      const response = await api.post('/wallet/withdraw', { amount, bankAccount, bankCode });
+      const response = await axios.post(`${config.api.baseUrl}/wallet/withdraw`, 
+        { amount, bankAccount, bankCode }, 
+        {
+          withCredentials: true // Important for cookies
+        }
+      );
       return response.data;
     } catch (error) {
       throw error;

@@ -1,344 +1,178 @@
-import config from '../config';
-import type { Category, CategoriesResponse } from '../types/category';
-import api, { getAdminToken, refreshSession } from './api';
+import apiService, { endpoints } from './apiService';
+import { ApiResponse } from '../utils/apiClient';
 
-// Helper to build query string
-const buildQueryString = (params: Record<string, any>): string => {
-  const queryParams = new URLSearchParams();
-  
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== '') {
-      queryParams.append(key, String(value));
-    }
-  });
-  
-  return queryParams.toString();
-};
-
-// Fallback data for UI - used when API requests fail
-const fallbackCategories: Category[] = [
-  {
-    id: 0,
-    name: "Sample Category",
-    description: "This is a fallback category when API is unavailable",
-    color: "#FF5733",
-    image_url: null,
-    parent_id: null,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString()
-  }
-];
-
-export interface GetCategoriesParams {
-  search?: string;
-  sort?: string;
-  parent_id?: number | null;
-  page?: number;
-  per_page?: number;
-  forceRefresh?: boolean; // Add parameter to force cache bypass
+export interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string;
+  parent_id?: number;
+  image_url?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  children?: Category[];
+  product_count?: number;
 }
 
+export interface CategoryCreateData {
+  name: string;
+  description?: string;
+  parent_id?: number;
+  image?: File;
+  is_active?: boolean;
+}
+
+export interface CategoryUpdateData extends Partial<CategoryCreateData> {
+  id: number;
+}
+
+export interface CategoryListResponse {
+  data: Category[];
+  meta?: {
+    current_page: number;
+    from: number;
+    last_page: number;
+    path: string;
+    per_page: number;
+    to: number;
+    total: number;
+  };
+}
+
+/**
+ * Category service for handling category-related API calls
+ */
 const categoryService = {
   /**
-   * Get a list of categories with optional filtering
+   * Get all categories
    */
-  async getCategories(params: GetCategoriesParams = {}): Promise<CategoriesResponse> {
-    try {
-      // Extract forceRefresh and create a clean params object without it
-      const { forceRefresh, ...cleanParams } = params;
-      const queryString = buildQueryString(cleanParams);
-      
-      // Add timestamp to force a fresh fetch when requested
-      const cacheParams = forceRefresh ? `${queryString ? '&' : '?'}_t=${Date.now()}` : '';
-      
-      // Use admin endpoint when in admin section
-      const isAdminSection = window.location.pathname.includes('/admin');
-      const baseEndpoint = isAdminSection ? '/admin/categories' : '/categories';
-      
-      // Correct URL construction
-      const endpoint = `${baseEndpoint}${queryString ? `?${queryString}` : ''}${cacheParams}`;
-      
-      console.log('Fetching categories from:', endpoint);
-      
-      // Ensure we have an admin token
-      const adminToken = getAdminToken();
-      if (!adminToken && isAdminSection) {
-        console.warn('No admin token found for admin category request');
-        localStorage.setItem('adminToken', 'dev-admin-token-for-testing');
-      }
-      
-      // Make the API request
-      const response = await api.get(endpoint);
-      
-      console.log('Categories API Response:', response);
-      
-      return {
-        status: 'success',
-        data: response.data
-      };
-    } catch (error: any) {
-      console.error('Error fetching categories:', error);
-      
-      // If auth error, refresh session and retry
-      if (error.response?.status === 401) {
-        await refreshSession();
-        return categoryService.getCategories(params);
-      }
-      
-      // Return user-friendly error messages based on status code
-      let errorMessage = 'Failed to fetch categories';
-      if (error.response) {
-        switch (error.response.status) {
-          case 404:
-            errorMessage = 'Categories endpoint not found. Please check API configuration.';
-            break;
-          case 403:
-            errorMessage = 'You do not have permission to view categories.';
-            break;
-          case 500:
-            errorMessage = 'Server error while fetching categories. Please try again later.';
-            break;
-          default:
-            errorMessage = error.response.data?.message || errorMessage;
-        }
-      }
-      
-      // Return fallback data to prevent UI from breaking
-      return {
-        status: 'success',
-        data: fallbackCategories,
-        fallback: true,
-        originalError: errorMessage
-      };
-    }
+  async getCategories(params: { 
+    include_inactive?: boolean; 
+    include_children?: boolean;
+    include_product_count?: boolean;
+    parent_id?: number;
+  } = {}): Promise<ApiResponse<CategoryListResponse>> {
+    return apiService.get<CategoryListResponse>(
+      endpoints.categories.base,
+      params,
+      'Failed to fetch categories'
+    );
   },
 
   /**
-   * Get a specific category by ID
+   * Get a category by ID
    */
-  async getCategory(id: number): Promise<any> {
-    try {
-      // Add timestamp to ensure fresh data
-      const timestamp = Date.now();
-      
-      // Use admin endpoint when in admin section
-      const isAdminSection = window.location.pathname.includes('/admin');
-      const baseEndpoint = isAdminSection ? '/admin/categories' : '/categories';
-      
-      // Correct URL construction
-      const response = await api.get(`${baseEndpoint}/${id}?_t=${timestamp}`);
-      
-      return {
-        status: 'success',
-        data: response.data
-      };
-    } catch (error: any) {
-      console.error(`Error fetching category ${id}:`, error);
-      
-      // If auth error, refresh session and retry
-      if (error.response?.status === 401) {
-        await refreshSession();
-        return categoryService.getCategory(id);
-      }
-      
-      // Return user-friendly error messages based on status code
-      let errorMessage = `Failed to fetch category #${id}`;
-      if (error.response) {
-        switch (error.response.status) {
-          case 404:
-            errorMessage = `Category #${id} not found. It may have been deleted.`;
-            break;
-          case 403:
-            errorMessage = 'You do not have permission to view this category.';
-            break;
-          default:
-            errorMessage = error.response.data?.message || errorMessage;
-        }
-      }
-      
-      return {
-        status: 'error',
-        message: errorMessage
-      };
-    }
+  async getCategoryById(id: number): Promise<ApiResponse<Category>> {
+    return apiService.get<Category>(
+      endpoints.categories.byId(id),
+      {},
+      `Failed to fetch category with ID ${id}`
+    );
+  },
+
+  /**
+   * Get a category by slug
+   */
+  async getCategoryBySlug(slug: string): Promise<ApiResponse<Category>> {
+    return apiService.get<Category>(
+      endpoints.categories.bySlug(slug),
+      {},
+      `Failed to fetch category with slug "${slug}"`
+    );
+  },
+
+  /**
+   * Get products in a category
+   */
+  async getCategoryProducts(categoryId: number, params: {
+    page?: number;
+    per_page?: number;
+    sort_by?: string;
+    sort_order?: 'asc' | 'desc';
+  } = {}): Promise<ApiResponse<any>> {
+    return apiService.get<any>(
+      endpoints.categories.products(categoryId),
+      params,
+      `Failed to fetch products for category ID ${categoryId}`
+    );
   },
 
   /**
    * Create a new category
    */
-  async createCategory(data: FormData): Promise<any> {
-    try {
-      // Ensure we have an admin token
-      const adminToken = getAdminToken();
-      if (!adminToken) {
-        console.warn('No admin token found for category creation');
-        await refreshSession();
-      }
+  async createCategory(categoryData: CategoryCreateData): Promise<ApiResponse<Category>> {
+    // If there is an image, use FormData
+    if (categoryData.image) {
+      const formData = new FormData();
       
-      // Correct URL construction with admin prefix
-      const response = await api.post(`/admin/categories`, data, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
+      // Add all category data to FormData
+      Object.entries(categoryData).forEach(([key, value]) => {
+        if (key === 'image' && value instanceof File) {
+          formData.append('image', value);
+        } else if (value !== undefined) {
+          formData.append(key, String(value));
         }
       });
-      return {
-        status: 'success',
-        data: response.data
-      };
-    } catch (error: any) {
-      console.error('Error creating category:', error);
       
-      // If auth error, refresh session and retry
-      if (error.response?.status === 401) {
-        await refreshSession();
-        return categoryService.createCategory(data);
-      }
-      
-      // Return user-friendly error messages based on status code
-      let errorMessage = 'Failed to create category';
-      if (error.response) {
-        switch (error.response.status) {
-          case 422:
-            const validationErrors = error.response.data?.errors || {};
-            if (validationErrors.name && validationErrors.name.includes('already been taken')) {
-              errorMessage = 'A category with this name already exists. Please choose a different name.';
-            } else if (validationErrors.slug && validationErrors.slug.includes('already been taken')) {
-              errorMessage = 'A category with this slug already exists. Please modify the name to generate a unique slug.';
-            } else {
-              errorMessage = 'Validation error: ' + (error.response.data?.message || 'Please check your inputs');
-            }
-            break;
-          case 403:
-            errorMessage = 'You do not have permission to create categories.';
-            break;
-          default:
-            errorMessage = error.response.data?.message || errorMessage;
-        }
-      }
-      
-      return {
-        status: 'error',
-        message: errorMessage
-      };
+      return apiService.upload<Category>(
+        endpoints.categories.base,
+        formData,
+        'Failed to create category'
+      );
     }
+    
+    // If no image, use regular POST
+    return apiService.post<Category>(
+      endpoints.categories.base,
+      categoryData,
+      'Failed to create category'
+    );
   },
 
   /**
    * Update an existing category
    */
-  async updateCategory(id: number, data: FormData): Promise<any> {
-    try {
-      // Set the _method field to PUT for Laravel to handle correctly
-      data.append('_method', 'PUT');
+  async updateCategory(categoryData: CategoryUpdateData): Promise<ApiResponse<Category>> {
+    const { id, ...updateData } = categoryData;
+    
+    // If there is an image, use FormData
+    if (updateData.image) {
+      const formData = new FormData();
       
-      // Ensure we have an admin token
-      const adminToken = getAdminToken();
-      if (!adminToken) {
-        console.warn('No admin token found for category update');
-        await refreshSession();
-      }
-      
-      // Correct URL construction with admin prefix
-      const response = await api.post(`/admin/categories/${id}`, data, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
+      // Add all category data to FormData
+      Object.entries(updateData).forEach(([key, value]) => {
+        if (key === 'image' && value instanceof File) {
+          formData.append('image', value);
+        } else if (value !== undefined) {
+          formData.append(key, String(value));
         }
       });
       
-      return {
-        status: 'success',
-        data: response.data
-      };
-    } catch (error: any) {
-      console.error(`Error updating category ${id}:`, error);
-      
-      // If auth error, refresh session and retry
-      if (error.response?.status === 401) {
-        await refreshSession();
-        return categoryService.updateCategory(id, data);
-      }
-      
-      // Return user-friendly error messages based on status code
-      let errorMessage = `Failed to update category #${id}`;
-      if (error.response) {
-        switch (error.response.status) {
-          case 404:
-            errorMessage = `Category #${id} not found. It may have been deleted.`;
-            break;
-          case 422:
-            const validationErrors = error.response.data?.errors || {};
-            if (validationErrors.name && validationErrors.name.includes('already been taken')) {
-              errorMessage = 'A category with this name already exists. Please choose a different name.';
-            } else if (validationErrors.slug && validationErrors.slug.includes('already been taken')) {
-              errorMessage = 'A category with this slug already exists. Please modify the name to generate a unique slug.';
-            } else {
-              errorMessage = 'Validation error: ' + (error.response.data?.message || 'Please check your inputs');
-            }
-            break;
-          case 403:
-            errorMessage = 'You do not have permission to update this category.';
-            break;
-          default:
-            errorMessage = error.response.data?.message || errorMessage;
-        }
-      }
-      
-      return {
-        status: 'error',
-        message: errorMessage
-      };
+      return apiService.upload<Category>(
+        endpoints.categories.byId(id),
+        formData,
+        'Failed to update category'
+      );
     }
+    
+    // If no image, use regular PUT
+    return apiService.put<Category>(
+      endpoints.categories.byId(id),
+      updateData,
+      'Failed to update category'
+    );
   },
 
   /**
    * Delete a category
    */
-  async deleteCategory(id: number): Promise<any> {
-    try {
-      // Ensure we have an admin token
-      const adminToken = getAdminToken();
-      if (!adminToken) {
-        console.warn('No admin token found for category deletion');
-        await refreshSession();
-      }
-      
-      // Correct URL construction with admin prefix
-      await api.delete(`/admin/categories/${id}`);
-      return {
-        status: 'success'
-      };
-    } catch (error: any) {
-      console.error(`Error deleting category ${id}:`, error);
-      
-      // If auth error, refresh session and retry
-      if (error.response?.status === 401) {
-        await refreshSession();
-        return categoryService.deleteCategory(id);
-      }
-      
-      // Return user-friendly error messages based on status code
-      let errorMessage = `Failed to delete category #${id}`;
-      if (error.response) {
-        switch (error.response.status) {
-          case 404:
-            errorMessage = `Category #${id} not found. It may have been deleted already.`;
-            break;
-          case 422:
-            errorMessage = 'Cannot delete this category: ' + (error.response.data?.message || 'It may be in use by products');
-            break;
-          case 403:
-            errorMessage = 'You do not have permission to delete this category.';
-            break;
-          default:
-            errorMessage = error.response.data?.message || errorMessage;
-        }
-      }
-      
-      return {
-        status: 'error',
-        message: errorMessage
-      };
-    }
+  async deleteCategory(id: number): Promise<ApiResponse<{ success: boolean }>> {
+    return apiService.delete<{ success: boolean }>(
+      endpoints.categories.byId(id),
+      {},
+      'Failed to delete category'
+    );
   }
 };
 

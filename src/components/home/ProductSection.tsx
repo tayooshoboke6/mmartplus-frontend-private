@@ -90,7 +90,7 @@ const products = [
   {
     id: 1,
     name: "Golden Penny Semovita - 5kg",
-    image: "/products/semovita.png",
+    image: "https://dummyimage.com/300x200/",
     price: 5500.00,
     rating: 5,
     reviewCount: 42,
@@ -100,7 +100,7 @@ const products = [
   {
     id: 2,
     name: "Sunlight Detergent Powder - 900g",
-    image: "/products/detergent.png",
+    image: "https://dummyimage.com/300x200/",
     price: 1200.00,
     oldPrice: 1500.00,
     discount: true,
@@ -112,7 +112,7 @@ const products = [
   {
     id: 3,
     name: "Mamador Cooking Oil - 3.8L",
-    image: "/products/cooking-oil.png",
+    image: "https://dummyimage.com/300x200/",
     price: 8500.00,
     rating: 4,
     reviewCount: 32,
@@ -122,7 +122,7 @@ const products = [
   {
     id: 4,
     name: "Indomie Instant Noodles (Chicken Flavor) - Pack of 40",
-    image: "/products/noodles.png",
+    image: "https://dummyimage.com/300x200/",
     price: 7200.00,
     rating: 5,
     reviewCount: 87,
@@ -132,7 +132,7 @@ const products = [
   {
     id: 5,
     name: "Peak Milk Powder - 900g",
-    image: "/products/milk.png",
+    image: "https://dummyimage.com/300x200/",
     price: 4400.00,
     rating: 4,
     reviewCount: 55,
@@ -142,7 +142,7 @@ const products = [
   {
     id: 6,
     name: "Mortein Insecticide Spray - 600ml",
-    image: "/products/insecticide.png",
+    image: "https://dummyimage.com/300x200/",
     price: 2400.00,
     rating: 4,
     reviewCount: 29,

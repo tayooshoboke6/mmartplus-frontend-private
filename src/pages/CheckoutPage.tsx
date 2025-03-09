@@ -6,12 +6,200 @@ import Footer from '../components/layout/Footer';
 import { Button, SectionContainer, Spacer, Text } from '../styles/GlobalComponents';
 import { useCart } from '../contexts/CartContext';
 import { formatCurrency } from '../utils/formatCurrency';
-import AddressService from '../services/AddressService';
-import PaymentService from '../services/PaymentService';
-import StoreAddressService from '../services/StoreAddressService';
 import { Address } from '../models/Address';
 import { PaymentMethod } from '../models/PaymentMethod';
-import { StoreAddress } from '../models/StoreAddress';
+import { StoreAddress, OpeningHours, defaultOpeningHours } from '../models/StoreAddress';
+
+// Mock data for payment methods
+const MOCK_PAYMENT_METHODS: PaymentMethod[] = [
+  {
+    id: 'pm1',
+    name: 'Credit/Debit Card',
+    code: 'card',
+    description: 'Pay with Visa, Mastercard, or other cards',
+    icon: 'credit-card',
+    isActive: true,
+    requiresRedirect: false,
+    processingFee: 2.5,
+    processingFeeType: 'percentage',
+    position: 1
+  },
+  {
+    id: 'pm2',
+    name: 'Bank Transfer',
+    code: 'bank_transfer',
+    description: 'Pay directly from your bank account',
+    icon: 'university',
+    isActive: true,
+    requiresRedirect: true,
+    processingFee: 1.0,
+    processingFeeType: 'percentage',
+    position: 2
+  },
+  {
+    id: 'pm3',
+    name: 'Cash on Delivery',
+    code: 'cod',
+    description: 'Pay with cash when your order arrives',
+    icon: 'money-bill-wave',
+    isActive: true,
+    requiresRedirect: false,
+    processingFee: 0,
+    position: 3
+  },
+  {
+    id: 'pm4',
+    name: 'Mobile Money',
+    code: 'mobile_money',
+    description: 'Pay using your mobile wallet',
+    icon: 'mobile-alt',
+    isActive: true,
+    requiresRedirect: true,
+    processingFee: 1.5,
+    processingFeeType: 'percentage',
+    position: 4
+  },
+  {
+    id: 'pm5',
+    name: 'PayPal',
+    code: 'paypal',
+    description: 'Pay securely with PayPal',
+    icon: 'paypal',
+    isActive: true,
+    requiresRedirect: true,
+    processingFee: 3.0,
+    processingFeeType: 'percentage',
+    position: 5
+  }
+];
+
+// Mock data for addresses
+const MOCK_ADDRESSES: Address[] = [
+  {
+    id: 'addr1',
+    userId: 'user1',
+    name: 'John Doe',
+    phone: '+1234567890',
+    street: '123 Main St',
+    city: 'Lagos',
+    state: 'Lagos State',
+    postalCode: '100001',
+    country: 'Nigeria',
+    isDefault: true,
+    createdAt: '2023-01-15T10:30:00Z',
+    updatedAt: '2023-01-15T10:30:00Z'
+  },
+  {
+    id: 'addr2',
+    userId: 'user1',
+    name: 'John Doe (Office)',
+    phone: '+1234567891',
+    street: '456 Business Ave',
+    city: 'Lagos',
+    state: 'Lagos State',
+    postalCode: '100002',
+    country: 'Nigeria',
+    isDefault: false,
+    createdAt: '2023-02-20T14:45:00Z',
+    updatedAt: '2023-02-20T14:45:00Z'
+  }
+];
+
+// Mock data for store addresses
+const MOCK_STORE_ADDRESSES: StoreAddress[] = [
+  {
+    id: 'store1',
+    name: 'M-Mart Victoria Island',
+    street: '15 Adeola Odeku Street',
+    city: 'Victoria Island',
+    state: 'Lagos State',
+    postalCode: '101233',
+    country: 'Nigeria',
+    phone: '+2347012345678',
+    email: 'vi-store@mmart.com',
+    latitude: 6.4281,
+    longitude: 3.4219,
+    openingHours: {
+      ...defaultOpeningHours,
+      sunday: { isOpen: true, open: '12:00', close: '16:00' }
+    },
+    isActive: true,
+    allowsPickup: true,
+    pickupInstructions: 'Please come to the customer service desk with your order number and ID.',
+    deliverySettings: {
+      baseFee: 500,
+      perKmCharge: 100,
+      orderValueAdjustments: [
+        {
+          orderValueThreshold: 5000,
+          adjustmentType: 'percentage',
+          adjustmentValue: 50
+        },
+        {
+          orderValueThreshold: 10000,
+          adjustmentType: 'fixed',
+          adjustmentValue: 0
+        }
+      ],
+      maxDeliveryDistanceKm: 10,
+      outsideGeofenceFee: 300,
+      enableDelivery: true
+    },
+    createdAt: '2022-10-01T08:00:00Z',
+    updatedAt: '2023-03-15T14:30:00Z'
+  },
+  {
+    id: 'store2',
+    name: 'M-Mart Ikeja',
+    street: '45 Allen Avenue',
+    city: 'Ikeja',
+    state: 'Lagos State',
+    postalCode: '100271',
+    country: 'Nigeria',
+    phone: '+2347023456789',
+    email: 'ikeja-store@mmart.com',
+    latitude: 6.6018,
+    longitude: 3.3515,
+    openingHours: defaultOpeningHours,
+    isActive: true,
+    allowsPickup: true,
+    pickupInstructions: 'Proceed to the pickup counter at the back of the store with your order confirmation.',
+    deliverySettings: {
+      baseFee: 500,
+      perKmCharge: 100,
+      orderValueAdjustments: [
+        {
+          orderValueThreshold: 5000,
+          adjustmentType: 'percentage',
+          adjustmentValue: 50
+        },
+        {
+          orderValueThreshold: 10000,
+          adjustmentType: 'fixed',
+          adjustmentValue: 0
+        }
+      ],
+      maxDeliveryDistanceKm: 15,
+      outsideGeofenceFee: 400,
+      enableDelivery: true
+    },
+    createdAt: '2022-11-15T09:30:00Z',
+    updatedAt: '2023-04-10T11:20:00Z'
+  }
+];
+
+// Mock service functions
+const mockGetPaymentMethodById = (id: string): PaymentMethod | undefined => {
+  return MOCK_PAYMENT_METHODS.find(pm => pm.id === id);
+};
+
+const mockGetAddressById = (id: string): Address | undefined => {
+  return MOCK_ADDRESSES.find(addr => addr.id === id);
+};
+
+const mockGetStoreAddressById = (id: string): StoreAddress | undefined => {
+  return MOCK_STORE_ADDRESSES.find(store => store.id === id);
+};
 
 const PageContainer = styled.div`
   display: flex;
@@ -198,20 +386,20 @@ const CheckoutPage: React.FC = () => {
         // Set delivery option
         setDeliveryOption(delivery || 'home');
         
-        // Fetch payment method
-        const paymentMethodData = await PaymentService.getPaymentMethodById(paymentId);
+        // Get payment method from mock data
+        const paymentMethodData = mockGetPaymentMethodById(paymentId);
         if (!paymentMethodData) {
           throw new Error('Invalid payment method');
         }
         setPaymentMethod(paymentMethodData);
         
-        // Fetch address or store based on delivery option
+        // Get address or store based on delivery option
         if (delivery === 'home') {
           if (!addressId) {
             throw new Error('Delivery address not specified');
           }
           
-          const addressData = await AddressService.getAddressById(addressId);
+          const addressData = mockGetAddressById(addressId);
           if (!addressData) {
             throw new Error('Invalid delivery address');
           }
@@ -221,7 +409,7 @@ const CheckoutPage: React.FC = () => {
             throw new Error('Pickup store not specified');
           }
           
-          const storeData = await StoreAddressService.getStoreAddressById(storeId);
+          const storeData = mockGetStoreAddressById(storeId);
           if (!storeData) {
             throw new Error('Invalid pickup store');
           }

@@ -7,7 +7,6 @@ import Footer from '../components/layout/Footer';
 import { Text, Button, FlexBox } from '../styles/GlobalComponents';
 import { useCart } from '../contexts/CartContext';
 import { formatCurrency } from '../utils/formatCurrency';
-import recentlyViewedService from '../services/recentlyViewedService';
 
 // Styled Components
 const PageContainer = styled.div`
@@ -243,7 +242,7 @@ const ProductImageGallery = ({ images, altText, onImageChange }: {
     <div>
       <div style={{ marginBottom: '10px' }}>
         <img 
-          src={images[activeIndex] || 'https://via.placeholder.com/500x500?text=No+Image'} 
+          src={images[activeIndex] || 'https://dummyimage.com/500x500/'} 
           alt={altText} 
           style={{ width: '100%', borderRadius: '8px', objectFit: 'cover' }}
         />
@@ -276,9 +275,9 @@ const mockProducts = [
     id: 1,
     name: 'Fresh Whole Milk',
     images: [
-      'https://via.placeholder.com/500x400?text=Fresh+Whole+Milk',
-      'https://via.placeholder.com/500x400?text=Milk+Nutritional+Info',
-      'https://via.placeholder.com/500x400?text=Milk+Package',
+      'https://dummyimage.com/500x400/',
+      'https://dummyimage.com/500x400/',
+      'https://dummyimage.com/500x400/',
     ],
     category: 'Dairy & Breakfast',
     price: 1200,
@@ -312,9 +311,9 @@ const mockProducts = [
     id: 2,
     name: 'Premium Basmati Rice (5kg)',
     images: [
-      'https://via.placeholder.com/500x400?text=Premium+Basmati+Rice',
-      'https://via.placeholder.com/500x400?text=Rice+Package+Back',
-      'https://via.placeholder.com/500x400?text=Rice+Cooking+Instructions',
+      'https://dummyimage.com/500x400/',
+      'https://dummyimage.com/500x400/',
+      'https://dummyimage.com/500x400/',
     ],
     category: 'Staples & Grains',
     price: 7500,
@@ -348,9 +347,9 @@ const mockProducts = [
     id: 3,
     name: 'Fresh Tomatoes (1kg)',
     images: [
-      'https://via.placeholder.com/500x400?text=Fresh+Tomatoes',
-      'https://via.placeholder.com/500x400?text=Tomatoes+Close+Up',
-      'https://via.placeholder.com/500x400?text=Tomatoes+In+Basket',
+      'https://dummyimage.com/500x400/',
+      'https://dummyimage.com/500x400/',
+      'https://dummyimage.com/500x400/',
     ],
     category: 'Fruits & Vegetables',
     price: 1800,
@@ -384,9 +383,9 @@ const mockProducts = [
     id: 4,
     name: 'Frozen Chicken Breast (1kg)',
     images: [
-      'https://via.placeholder.com/500x400?text=Frozen+Chicken+Breast',
-      'https://via.placeholder.com/500x400?text=Chicken+Package',
-      'https://via.placeholder.com/500x400?text=Chicken+Nutritional+Info',
+      'https://dummyimage.com/500x400/',
+      'https://dummyimage.com/500x400/',
+      'https://dummyimage.com/500x400/',
     ],
     category: 'Packaged & Frozen Foods',
     price: 5500,
@@ -420,9 +419,9 @@ const mockProducts = [
     id: 5,
     name: 'Premium Dish Soap',
     images: [
-      'https://via.placeholder.com/500x400?text=Premium+Dish+Soap',
-      'https://via.placeholder.com/500x400?text=Dish+Soap+Label',
-      'https://via.placeholder.com/500x400?text=Dish+Soap+Usage',
+      'https://dummyimage.com/500x400/',
+      'https://dummyimage.com/500x400/',
+      'https://dummyimage.com/500x400/',
     ],
     category: 'Cleaning & Laundry',
     price: 950,
@@ -456,9 +455,9 @@ const mockProducts = [
     id: 6,
     name: 'Fresh Eggs (Crate of 30)',
     images: [
-      'https://via.placeholder.com/500x400?text=Fresh+Eggs',
-      'https://via.placeholder.com/500x400?text=Egg+Carton',
-      'https://via.placeholder.com/500x400?text=Eggs+Close+Up',
+      'https://dummyimage.com/500x400/',
+      'https://dummyimage.com/500x400/',
+      'https://dummyimage.com/500x400/',
     ],
     category: 'Dairy & Breakfast',
     price: 3200,
@@ -492,8 +491,8 @@ const mockProducts = [
     id: 7,
     name: 'Premium Cotton T-Shirt',
     images: [
-      'https://via.placeholder.com/500x400?text=Cotton+Tshirt',
-      'https://via.placeholder.com/500x400?text=Tshirt+Back'
+      'https://dummyimage.com/500x400/',
+      'https://dummyimage.com/500x400/'
     ],
     category: 'Clothing',
     price: 5500,
@@ -572,8 +571,7 @@ const ProductDetailPage = () => {
   const cartItem = cartItems.find(item => item.id.toString() === id);
   const isInCart = !!cartItem;
 
-  // Get the product data
-  // In a real app, this would be fetched from an API
+  // Get the product data from mock data
   const product = mockProducts.find((p) => p.id.toString() === id);
 
   // Handle case where product isn't found
@@ -649,7 +647,7 @@ const ProductDetailPage = () => {
 
   // Helper function to generate image placeholders for testing
   const getImagePlaceholder = (index: number) => {
-    return `https://via.placeholder.com/500x500?text=Product+Image+${index + 1}`;
+    return `https://dummyimage.com/500x500/`;
   };
 
   // Check if product is in stock based on product type
@@ -778,18 +776,6 @@ const ProductDetailPage = () => {
 
     return stars;
   };
-
-  // Track product view
-  useEffect(() => {
-    const trackProductView = async () => {
-      try {
-        await recentlyViewedService.addToRecentlyViewed(product);
-      } catch (error) {
-        console.error('Error tracking product view:', error);
-      }
-    };
-    trackProductView();
-  }, [product]);
 
   return (
     <PageContainer>
@@ -965,7 +951,7 @@ const ProductDetailPage = () => {
                             src={similarProduct.images?.[0] || getImagePlaceholder(0)} 
                             alt={similarProduct.name}
                             onError={(e) => {
-                              (e.target as HTMLImageElement).src = 'https://via.placeholder.com/200x200?text=Product';
+                              (e.target as HTMLImageElement).src = 'https://dummyimage.com/200x200/';
                             }}
                           />
                         </CardImage>

@@ -73,7 +73,7 @@ const ProductNotFoundPage = () => {
           alt="Product Not Found" 
           onError={(e) => {
             const target = e.target as HTMLImageElement;
-            target.src = 'https://via.placeholder.com/300x300?text=Product+Not+Found';
+            target.src = 'https://dummyimage.com/300x200/';
             target.onerror = null;
           }}
         />

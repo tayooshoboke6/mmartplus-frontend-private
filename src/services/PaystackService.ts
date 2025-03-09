@@ -1,4 +1,5 @@
-import api from './api';
+import axios from 'axios';
+import config from '../config';
 
 interface PaystackTransactionResponse {
   status: boolean;
@@ -30,12 +31,14 @@ export const PaystackService = {
     callback_url: string
   ): Promise<PaystackTransactionResponse> => {
     try {
-      const response = await api.post('/payment/paystack/initialize', {
+      const response = await axios.post(`${config.api.baseUrl}/payment/paystack/initialize`, {
         email,
         amount: Math.round(amount * 100), // Convert to kobo/cents
         reference,
         callback_url,
         currency: 'NGN'
+      }, {
+        withCredentials: true
       });
 
       return response.data;
@@ -48,7 +51,9 @@ export const PaystackService = {
   // Verify a transaction
   verifyTransaction: async (reference: string): Promise<PaystackVerificationResponse> => {
     try {
-      const response = await api.get(`/payment/paystack/verify/${reference}`);
+      const response = await axios.get(`${config.api.baseUrl}/payment/paystack/verify/${reference}`, {
+        withCredentials: true
+      });
       return response.data;
     } catch (error) {
       console.error('Error verifying Paystack transaction:', error);

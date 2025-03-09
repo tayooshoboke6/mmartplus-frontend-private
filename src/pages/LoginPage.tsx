@@ -2,7 +2,39 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
-import { initializeSession } from '../services/api';
+
+// Mock function to replace initializeSession
+const mockInitializeSession = () => {
+  console.log('Mock session initialized');
+  // Set a mock session timeout
+  localStorage.setItem('session_expiry', (Date.now() + 60 * 60 * 1000).toString());
+};
+
+// Mock data for user authentication
+const mockUsers = {
+  'user1@example.com': 'password1',
+  'user2@example.com': 'password2',
+};
+
+// Mock login function
+const mockLogin = async (credentials: { email: string; password: string }) => {
+  const { email, password } = credentials;
+  if (mockUsers[email] === password) {
+    return { success: true };
+  } else {
+    throw new Error('Invalid email or password');
+  }
+};
+
+// Mock login with Google function
+const mockLoginWithGoogle = async () => {
+  return { success: true };
+};
+
+// Mock login with Apple function
+const mockLoginWithApple = async () => {
+  return { success: true };
+};
 
 // Styled components
 const PageContainer = styled.div`
@@ -227,7 +259,7 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login, loginWithGoogle, loginWithApple, isAuthenticated, isLoading, error, clearError } = useAuth();
+  const { isAuthenticated, loading: isLoading, error, clearError } = useAuth();
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -252,10 +284,10 @@ const LoginPage: React.FC = () => {
     
     try {
       setIsSubmitting(true);
-      const result = await login({ email, password });
+      const result = await mockLogin({ email, password });
       if (result && result.success) {
-        // Initialize session timeout handling
-        initializeSession();
+        // Initialize mock session timeout handling
+        mockInitializeSession();
         
         // Add a slight delay before redirecting to ensure session is properly initialized
         setTimeout(() => {
@@ -283,7 +315,7 @@ const LoginPage: React.FC = () => {
   const handleGoogleLogin = async () => {
     setIsSubmitting(true);
     try {
-      const user = await loginWithGoogle();
+      const user = await mockLoginWithGoogle();
       if (user) {
         const destination = location.state?.from?.pathname || '/';
         navigate(destination);
@@ -299,7 +331,7 @@ const LoginPage: React.FC = () => {
   const handleAppleLogin = async () => {
     setIsSubmitting(true);
     try {
-      const user = await loginWithApple();
+      const user = await mockLoginWithApple();
       if (user) {
         const destination = location.state?.from?.pathname || '/';
         navigate(destination);
@@ -315,7 +347,7 @@ const LoginPage: React.FC = () => {
     <PageContainer>
       {/* Logo */}
       <Logo>
-        <img src="https://shop.mmartplus.com/images/white-logo.png" alt="M-Mart+" style={{ width: '120px', height: 'auto' }} />
+        <img src="/images/logo.png" alt="M-Mart+" style={{ width: '120px', height: 'auto' }} />
       </Logo>
       
       {/* Heading */}
@@ -390,12 +422,12 @@ const LoginPage: React.FC = () => {
         </OrDivider>
         
         <SocialButton type="button" onClick={handleGoogleLogin} provider="google">
-          <img src="/google-icon.png" alt="Google" />
+          <img src="/images/google-icon.svg" alt="Google" />
           Sign in with Google
         </SocialButton>
         
         <SocialButton type="button" onClick={handleAppleLogin} provider="apple">
-          <img src="/apple-icon.png" alt="Apple" />
+          <img src="/images/apple-icon.svg" alt="Apple" />
           Sign in with Apple
         </SocialButton>
       </SocialLoginContainer>

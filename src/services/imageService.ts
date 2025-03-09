@@ -1,5 +1,3 @@
-import api from './api';
-
 // Interface for image upload response
 export interface UploadResponse {
   success: boolean;
@@ -7,6 +5,9 @@ export interface UploadResponse {
   public_id?: string;
   message?: string;
 }
+
+import axios from 'axios';
+import config from '../config';
 
 /**
  * Image service for compressing and uploading images to Cloudinary
@@ -123,7 +124,7 @@ const imageService = {
       formData.append('folder', folder);
       
       // Make the API call to the backend, which will handle the Cloudinary upload
-      const response = await api.post<UploadResponse>('/upload', formData, {
+      const response = await axios.post(`${config.api.baseUrl}/upload`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -155,7 +156,7 @@ const imageService = {
       formData.append('image', compressedFile);
       formData.append('folder', 'profiles');
       
-      const response = await api.post<UploadResponse>('/upload/profile', formData, {
+      const response = await axios.post(`${config.api.baseUrl}/upload/profile`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -186,7 +187,7 @@ const imageService = {
       formData.append('image', compressedFile);
       formData.append('folder', 'products');
       
-      const response = await api.post<UploadResponse>('/upload/product', formData, {
+      const response = await axios.post(`${config.api.baseUrl}/upload/product`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -217,7 +218,7 @@ const imageService = {
       formData.append('image', compressedFile);
       formData.append('folder', 'categories');
       
-      const response = await api.post<UploadResponse>('/upload/category', formData, {
+      const response = await axios.post(`${config.api.baseUrl}/upload/category`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }

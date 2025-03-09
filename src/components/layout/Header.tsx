@@ -424,7 +424,7 @@ const Header = () => {
       )}
       <HeaderContainer>
         <Logo to="/">
-          <img src="https://shop.mmartplus.com/images/white-logo.png" alt="M-Mart+ Logo" width="120" height="auto" />
+          <img src="/images/logo.png" alt="M-Mart+ Logo" width="120" height="auto" />
         </Logo>
         
         <SearchBar ref={searchRef}>

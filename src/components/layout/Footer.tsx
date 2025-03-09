@@ -199,7 +199,7 @@ const Footer = () => {
   return (
     <FooterContainer>
       <TopSection>
-        <img src="https://shop.mmartplus.com/images/white-logo.png" alt="M-Mart+" style={{ width: '120px', height: 'auto' }} />
+        <img src="/images/logo.png" alt="M-Mart+" style={{ width: '120px', height: 'auto' }} />
       </TopSection>
       
       <MainContent>
@@ -207,15 +207,15 @@ const Footer = () => {
           <SectionTitle>Contact Us</SectionTitle>
           <ContactInfo>
             <ContactItem>
-              <img src="https://shop.mmartplus.com/images/phone.png" alt="Phone" width="18" height="18" style={{ marginRight: '8px' }} />
+              <img src="/images/phone.png" alt="Phone" width="18" height="18" style={{ marginRight: '8px' }} />
               <span>+2348146628019</span>
             </ContactItem>
             <ContactItem>
-              <img src="https://shop.mmartplus.com/images/email.png" alt="Email" width="18" height="18" style={{ marginRight: '8px' }} />
+              <img src="/images/email.png" alt="Email" width="18" height="18" style={{ marginRight: '8px' }} />
               <span>info@mmartplus.com</span>
             </ContactItem>
             <ContactItem>
-              <img src="https://shop.mmartplus.com/images/location.png" alt="Location" width="18" height="18" style={{ marginRight: '8px' }} />
+              <img src="/images/location.png" alt="Location" width="18" height="18" style={{ marginRight: '8px' }} />
               <span>Plot 1407G Shalom Road, Amuwo Odofin, Lagos, Nigeria</span>
             </ContactItem>
           </ContactInfo>
@@ -224,35 +224,35 @@ const Footer = () => {
         <Section>
           <SectionTitle>Payment method</SectionTitle>
           <PaymentMethods>
-            <img src="https://shop.mmartplus.com/images/visa.png" alt="Visa" style={{ height: '30px', marginRight: '10px' }} />
-            <img src="https://shop.mmartplus.com/images/master.png" alt="Mastercard" style={{ height: '30px', marginRight: '10px' }} />
-            <img src="https://shop.mmartplus.com/images/book.png" alt="Verve" style={{ height: '30px' }} />
+            <img src="/images/visa.png" alt="Visa" style={{ height: '30px', marginRight: '10px' }} />
+            <img src="/images/master.png" alt="Mastercard" style={{ height: '30px', marginRight: '10px' }} />
+            <img src="/images/book.png" alt="Verve" style={{ height: '30px' }} />
           </PaymentMethods>
         </Section>
         
         <Section>
           <SectionTitle>Download App</SectionTitle>
           <AppDownload>
-            <img src="https://shop.mmartplus.com/images/playstore.png" alt="Get it on Google Play" style={{ height: '40px', marginRight: '10px', marginBottom: '10px' }} />
-            <img src="https://shop.mmartplus.com/images/appstore.png" alt="Download on the App Store" style={{ height: '40px', marginBottom: '10px' }} />
+            <img src="/images/playstore.png" alt="Get it on Google Play" style={{ height: '40px', marginRight: '10px', marginBottom: '10px' }} />
+            <img src="/images/appstore.png" alt="Download on the App Store" style={{ height: '40px', marginBottom: '10px' }} />
           </AppDownload>
           
           <SectionTitle style={{ marginTop: '20px' }}>Our Socials</SectionTitle>
           <SocialIcons>
             <a href="#" aria-label="Facebook">
-              <img src="https://shop.mmartplus.com/images/fbook.png" alt="Facebook" width="24" height="24" />
+              <img src="/images/fbook.png" alt="Facebook" width="24" height="24" />
             </a>
             <a href="#" aria-label="Twitter">
-              <img src="https://shop.mmartplus.com/images/twitter.png" alt="Twitter" width="24" height="24" />
+              <img src="/images/twitter.png" alt="Twitter" width="24" height="24" />
             </a>
             <a href="#" aria-label="Instagram">
-              <img src="https://shop.mmartplus.com/images/instagram.png" alt="Instagram" width="24" height="24" />
+              <img src="/images/instagram.png" alt="Instagram" width="24" height="24" />
             </a>
             <a href="#" aria-label="TikTok">
-              <img src="https://shop.mmartplus.com/images/tiktok.png" alt="TikTok" width="24" height="24" />
+              <img src="/images/tiktok.svg" alt="TikTok" width="24" height="24" />
             </a>
             <a href="#" aria-label="YouTube">
-              <img src="https://shop.mmartplus.com/images/youtube.png" alt="YouTube" width="24" height="24" />
+              <img src="/images/youtube.png" alt="YouTube" width="24" height="24" />
             </a>
           </SocialIcons>
         </Section>

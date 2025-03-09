@@ -156,18 +156,18 @@ interface Category {
 // Mock category data for the homepage carousel
 // These categories are the main categories from our hierarchy
 const mockCategories: Category[] = [
-  { id: 1, name: 'Food & Groceries', icon: '/category-food.png', slug: 'food-groceries', isActive: true },
-  { id: 2, name: 'Household Essentials', icon: '/category-household.png', slug: 'household-essentials', isActive: true },
-  { id: 3, name: 'Kitchen & Home', icon: '/category-kitchen.png', slug: 'kitchen-home', isActive: true },
-  { id: 4, name: 'Baby & Family Care', icon: '/category-baby.png', slug: 'baby-family', isActive: true },
-  { id: 5, name: 'Drinks & Alcohol', icon: '/category-drinks.png', slug: 'drinks-alcohol', isActive: true },
-  { id: 6, name: 'Office & General', icon: '/category-office.png', slug: 'office-general', isActive: true },
-  { id: 7, name: 'Staples & Grains', icon: '/category-staples.png', slug: 'staples-grains', isActive: true },
-  { id: 8, name: 'Cooking Essentials', icon: '/category-cooking.png', slug: 'cooking-essentials', isActive: true },
-  { id: 9, name: 'Packaged Foods', icon: '/category-packaged.png', slug: 'packaged-frozen', isActive: true },
-  { id: 10, name: 'Fruits & Vegetables', icon: '/category-fruit-veg.png', slug: 'fruits-vegetables', isActive: true },
-  { id: 11, name: 'Dairy & Breakfast', icon: '/category-dairy.png', slug: 'dairy-breakfast', isActive: true },
-  { id: 12, name: 'Cleaning & Laundry', icon: '/category-cleaning.png', slug: 'cleaning-laundry', isActive: true }
+  { id: 1, name: 'Food & Groceries', icon: 'https://dummyimage.com/300x200/', slug: 'food-groceries', isActive: true },
+  { id: 2, name: 'Household Essentials', icon: 'https://dummyimage.com/300x200/', slug: 'household-essentials', isActive: true },
+  { id: 3, name: 'Kitchen & Home', icon: 'https://dummyimage.com/300x200/', slug: 'kitchen-home', isActive: true },
+  { id: 4, name: 'Baby & Family Care', icon: 'https://dummyimage.com/300x200/', slug: 'baby-family', isActive: true },
+  { id: 5, name: 'Drinks & Alcohol', icon: 'https://dummyimage.com/300x200/', slug: 'drinks-alcohol', isActive: true },
+  { id: 6, name: 'Office & General', icon: 'https://dummyimage.com/300x200/', slug: 'office-general', isActive: true },
+  { id: 7, name: 'Staples & Grains', icon: 'https://dummyimage.com/300x200/', slug: 'staples-grains', isActive: true },
+  { id: 8, name: 'Cooking Essentials', icon: 'https://dummyimage.com/300x200/', slug: 'cooking-essentials', isActive: true },
+  { id: 9, name: 'Packaged Foods', icon: 'https://dummyimage.com/300x200/', slug: 'packaged-frozen', isActive: true },
+  { id: 10, name: 'Fruits & Vegetables', icon: 'https://dummyimage.com/300x200/', slug: 'fruits-vegetables', isActive: true },
+  { id: 11, name: 'Dairy & Breakfast', icon: 'https://dummyimage.com/300x200/', slug: 'dairy-breakfast', isActive: true },
+  { id: 12, name: 'Cleaning & Laundry', icon: 'https://dummyimage.com/300x200/', slug: 'cleaning-laundry', isActive: true }
 ];
 
 const CategorySection: React.FC = () => {
@@ -381,7 +381,7 @@ const CategorySection: React.FC = () => {
                   src={category.icon} 
                   alt={category.name} 
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = `https://via.placeholder.com/60x60?text=${category.name.charAt(0)}`;
+                    (e.target as HTMLImageElement).src = `https://dummyimage.com/60x60/`;
                   }}
                 />
               </CategoryIcon>

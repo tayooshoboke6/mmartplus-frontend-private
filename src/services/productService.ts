@@ -1,318 +1,294 @@
-import api from './api';
-import { Category } from './categoryService';
-
 // Types
+export interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string;
+  parent_id: number | null;
+  image_url?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Product {
   id: number;
   name: string;
   slug: string;
-  description: string | null;
-  short_description: string | null;
+  description: string;
   price: number;
-  sale_price: number | null;
+  discount_price?: number;
   stock_quantity: number;
-  sku: string;
-  barcode: string | null;
-  is_featured: boolean;
-  is_active: boolean;
-  weight: string | null;
-  dimensions: string | null;
+  images: string[];
   category_id: number;
-  image_urls: string[];
-  metadata: Record<string, any> | null;
-  created_at: string;
-  updated_at: string;
-  
-  // Computed properties
-  is_on_sale: boolean;
-  is_in_stock: boolean;
-  discount_percentage: number | null;
-  formatted_price: string;
-  formatted_sale_price: string | null;
-  average_rating: number | null;
-  review_count: number;
-  
-  // Relationships
-  category?: Category;
-  reviews?: Review[];
-}
-
-export interface Review {
-  id: number;
-  user_id: number;
-  product_id: number;
-  rating: number;
-  comment: string | null;
-  is_approved: boolean;
-  created_at: string;
-  updated_at: string;
-  
-  // Relationships
-  user?: {
+  category?: {
     id: number;
-    first_name: string;
-    last_name: string;
-    profile_picture: string | null;
+    name: string;
+    slug: string;
   };
+  tags?: string[];
+  attributes?: Record<string, string>;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface SingleProductResponse {
-  success: boolean;
-  product: Product;
+export interface ProductFilter {
+  category_id?: number;
+  category_slug?: string;
+  min_price?: number;
+  max_price?: number;
+  search?: string;
+  sort_by?: 'price_asc' | 'price_desc' | 'newest' | 'popular';
+  page?: number;
+  per_page?: number;
+  tags?: string[];
 }
 
-export interface ProductsResponse {
-  success: boolean;
-  data: {
-    data: Product[];
+export interface ProductListResponse {
+  data: Product[];
+  meta: {
     current_page: number;
+    from: number;
     last_page: number;
+    path: string;
     per_page: number;
+    to: number;
     total: number;
   };
 }
 
+export interface ProductCreateData {
+  name: string;
+  description: string;
+  price: number;
+  discount_price?: number;
+  stock_quantity: number;
+  category_id: number;
+  images?: File[];
+  tags?: string[];
+  attributes?: Record<string, string>;
+}
+
+export interface ProductUpdateData extends Partial<ProductCreateData> {
+  id: number;
+}
+
+import axios from 'axios';
+import config from '../config';
+
+/**
+ * Product service for handling product-related API calls
+ */
 const productService = {
-  // Get all products with optional filtering
-  getProducts: async (params: {
-    category_id?: number;
-    include_subcategories?: boolean;
-    featured?: boolean;
-    search?: string;
-    min_price?: number;
-    max_price?: number;
-    sort_by?: 'name' | 'price' | 'created_at' | 'stock_quantity' | 'sale_price';
-    sort_order?: 'asc' | 'desc';
-    per_page?: number;
-    page?: number;
-  } = {}): Promise<ProductsResponse> => {
+  /**
+   * Get a list of products with optional filtering
+   */
+  async getProducts(filters: ProductFilter = {}): Promise<ProductListResponse> {
     try {
-      const response = await api.get<ProductsResponse>('/products', { params });
-      return response.data;
-    } catch (error: any) {
-      console.error('Error in getProducts:', error);
-      throw error;
-    }
-  },
-  
-  // Search products specifically for search bar functionality
-  searchProducts: async (query: string, page: number = 1, perPage: number = 20): Promise<ProductsResponse> => {
-    try {
-      const response = await api.get<ProductsResponse>('/products', { 
-        params: { 
-          search: query,
-          page,
-          per_page: perPage 
-        }
+      const response = await axios.get(`${config.api.baseUrl}/products`, {
+        params: filters
       });
       return response.data;
-    } catch (error: any) {
-      console.error('Error searching products:', error);
-      
-      // Return mock data for development
-      const mockData: ProductsResponse = {
-        success: true,
-        data: {
-          data: [
-            {
-              id: 1,
-              name: `${query} Sample Product 1`,
-              slug: 'sample-product-1',
-              description: 'Sample description',
-              short_description: 'Sample short description',
-              price: 19999,
-              sale_price: 14999,
-              stock_quantity: 100,
-              sku: 'SAMPLE-001',
-              barcode: '1234567890',
-              is_featured: true,
-              is_active: true,
-              weight: '1kg',
-              dimensions: '10x10x10',
-              category_id: 1,
-              image_urls: ['https://via.placeholder.com/300?text=Product1'],
-              metadata: null,
-              created_at: '2023-01-01',
-              updated_at: '2023-01-01',
-              is_on_sale: true,
-              is_in_stock: true,
-              discount_percentage: 25,
-              formatted_price: '₦19,999',
-              formatted_sale_price: '₦14,999',
-              average_rating: 4.5,
-              review_count: 10
-            },
-            {
-              id: 2,
-              name: `${query} Sample Product 2`,
-              slug: 'sample-product-2',
-              description: 'Another sample description',
-              short_description: 'Another sample short description',
-              price: 29999,
-              sale_price: null,
-              stock_quantity: 50,
-              sku: 'SAMPLE-002',
-              barcode: '0987654321',
-              is_featured: false,
-              is_active: true,
-              weight: '2kg',
-              dimensions: '20x20x20',
-              category_id: 2,
-              image_urls: ['https://via.placeholder.com/300?text=Product2'],
-              metadata: null,
-              created_at: '2023-01-02',
-              updated_at: '2023-01-02',
-              is_on_sale: false,
-              is_in_stock: true,
-              discount_percentage: null,
-              formatted_price: '₦29,999',
-              formatted_sale_price: null,
-              average_rating: 4.0,
-              review_count: 5
-            }
-          ],
-          current_page: page,
-          last_page: 1,
-          per_page: perPage,
-          total: 2
-        }
-      };
-      
-      return mockData;
-    }
-  },
-
-  // Get a specific product by slug
-  getProduct: async (id: number): Promise<SingleProductResponse> => {
-    try {
-      const response = await api.get<SingleProductResponse>(`/products/${id}`);
-      return response.data;
-    } catch (error: any) {
-      console.error(`Error in getProduct(${id}):`, error);
+    } catch (error) {
+      console.error('Failed to fetch products:', error);
       throw error;
     }
   },
 
-  // Admin: Create a new product
-  createProduct: async (formData: FormData): Promise<SingleProductResponse> => {
+  /**
+   * Get a single product by ID
+   */
+  async getProductById(id: number): Promise<Product> {
     try {
-      const response = await api.post<SingleProductResponse>('/products', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
+      const response = await axios.get(`${config.api.baseUrl}/products/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to fetch product with ID ${id}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get a single product by slug
+   */
+  async getProductBySlug(slug: string): Promise<Product> {
+    try {
+      const response = await axios.get(`${config.api.baseUrl}/products/slug/${slug}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to fetch product with slug "${slug}":`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get featured products
+   */
+  async getFeaturedProducts(): Promise<Product[]> {
+    try {
+      const response = await axios.get(`${config.api.baseUrl}/products/featured`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch featured products:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get new arrivals
+   */
+  async getNewArrivals(): Promise<Product[]> {
+    try {
+      const response = await axios.get(`${config.api.baseUrl}/products/new-arrivals`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch new arrivals:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get best sellers
+   */
+  async getBestSellers(): Promise<Product[]> {
+    try {
+      const response = await axios.get(`${config.api.baseUrl}/products/best-sellers`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch best sellers:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Search products
+   */
+  async searchProducts(query: string): Promise<ProductListResponse> {
+    try {
+      const response = await axios.get(`${config.api.baseUrl}/products/search`, {
+        params: { query }
       });
       return response.data;
-    } catch (error: any) {
-      console.error('Error in createProduct:', error);
+    } catch (error) {
+      console.error('Failed to search products:', error);
       throw error;
     }
   },
 
-  // Admin: Update a product
-  updateProduct: async (id: number, formData: FormData): Promise<SingleProductResponse> => {
+  /**
+   * Create a new product
+   */
+  async createProduct(productData: ProductCreateData): Promise<Product> {
     try {
-      const response = await api.post<SingleProductResponse>(`/products/${id}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-      return response.data;
-    } catch (error: any) {
-      console.error(`Error in updateProduct(${id}):`, error);
-      throw error;
-    }
-  },
-
-  // Admin: Delete a product
-  deleteProduct: async (id: number): Promise<{success: boolean; message: string}> => {
-    try {
-      // Check for authentication
-      const token = localStorage.getItem('mmartToken');
-      if (!token) {
-        return {
-          success: false,
-          message: 'Authentication required. Please log in.'
-        };
-      }
-      
-      // Add a timeout to the request to handle potential hang
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
-      try {
-        // Use the admin-specific endpoint for product deletion
-        const response = await api.delete(`/admin/products/${id}`, {
-          signal: controller.signal
+      // If there are images, use FormData
+      if (productData.images && productData.images.length > 0) {
+        const formData = new FormData();
+        
+        // Add all product data to FormData
+        Object.entries(productData).forEach(([key, value]) => {
+          if (key === 'images') {
+            // Add each image file
+            productData.images?.forEach((image, index) => {
+              formData.append(`images[${index}]`, image);
+            });
+          } else if (key === 'tags' && Array.isArray(value)) {
+            // Add tags as JSON string
+            formData.append('tags', JSON.stringify(value));
+          } else if (key === 'attributes' && typeof value === 'object') {
+            // Add attributes as JSON string
+            formData.append('attributes', JSON.stringify(value));
+          } else {
+            formData.append(key, String(value));
+          }
         });
         
-        clearTimeout(timeoutId);
+        const response = await axios.post(`${config.api.baseUrl}/products`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
         return response.data;
-      } catch (err: any) {
-        clearTimeout(timeoutId);
-        
-        // Check for timeout
-        if (err.name === 'AbortError') {
-          console.error(`Product deletion timed out for ID: ${id}`);
-          return {
-            success: false,
-            message: 'Request timed out. The server may be experiencing issues.'
-          };
-        }
-        
-        // Re-throw for main error handler
-        throw err;
-      }
-    } catch (error: any) {
-      console.error(`Error in deleteProduct(${id}):`, error);
-      
-      // Format a response when there's a specific status code we want to handle
-      if (error.response) {
-        if (error.response.status === 409) {
-          return {
-            success: false,
-            message: 'This product cannot be deleted because it is associated with existing orders.'
-          };
-        }
       }
       
-      throw error;
-    }
-  },
-
-  // Submit a product review
-  submitReview: async (productId: number, data: {
-    rating: number;
-    comment?: string;
-  }): Promise<{success: boolean; message: string}> => {
-    try {
-      const response = await api.post(`/products/${productId}/reviews`, data);
+      // If no images, use regular POST
+      const response = await axios.post(`${config.api.baseUrl}/products`, productData);
       return response.data;
-    } catch (error: any) {
-      console.error('Error in submitReview:', error);
+    } catch (error) {
+      console.error('Failed to create product:', error);
       throw error;
     }
   },
 
-  // Get featured products for homepage
-  getFeaturedProducts: async (limit: number = 8): Promise<ProductsResponse> => {
-    return productService.getProducts({
-      featured: true,
-      per_page: limit
-    });
+  /**
+   * Update an existing product
+   */
+  async updateProduct(productData: ProductUpdateData): Promise<Product> {
+    try {
+      const { id, ...updateData } = productData;
+      
+      // If there are images, use FormData
+      if (updateData.images && updateData.images.length > 0) {
+        const formData = new FormData();
+        
+        // Add all product data to FormData
+        Object.entries(updateData).forEach(([key, value]) => {
+          if (key === 'images') {
+            // Add each image file
+            updateData.images?.forEach((image, index) => {
+              formData.append(`images[${index}]`, image);
+            });
+          } else if (key === 'tags' && Array.isArray(value)) {
+            // Add tags as JSON string
+            formData.append('tags', JSON.stringify(value));
+          } else if (key === 'attributes' && typeof value === 'object') {
+            // Add attributes as JSON string
+            formData.append('attributes', JSON.stringify(value));
+          } else if (value !== undefined) {
+            formData.append(key, String(value));
+          }
+        });
+        
+        const response = await axios.post(`${config.api.baseUrl}/products/${id}`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        return response.data;
+      }
+      
+      // If no images, use regular PUT
+      const response = await axios.put(`${config.api.baseUrl}/products/${id}`, updateData);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to update product:', error);
+      throw error;
+    }
   },
 
-  // Get new arrivals
-  getNewArrivals: async (limit: number = 8): Promise<ProductsResponse> => {
-    return productService.getProducts({
-      sort_by: 'created_at',
-      sort_order: 'desc',
-      per_page: limit
-    });
+  /**
+   * Delete a product
+   */
+  async deleteProduct(id: number): Promise<{ success: boolean }> {
+    try {
+      const response = await axios.delete(`${config.api.baseUrl}/products/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to delete product with ID ${id}:`, error);
+      throw error;
+    }
   },
 
-  // Get best selling products
-  getBestSellers: async (limit: number = 8): Promise<ProductsResponse> => {
-    return productService.getFeaturedProducts(limit);
+  /**
+   * Get product reviews
+   */
+  async getProductReviews(productId: number): Promise<any[]> {
+    try {
+      const response = await axios.get(`${config.api.baseUrl}/products/${productId}/reviews`);
+      return response.data;
+    } catch (error) {
+      console.error(`Failed to fetch reviews for product ID ${productId}:`, error);
+      throw error;
+    }
   }
 };
 

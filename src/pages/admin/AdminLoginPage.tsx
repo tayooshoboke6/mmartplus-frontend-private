@@ -193,7 +193,7 @@ const AdminLoginPage: React.FC = () => {
   return (
     <PageContainer>
       <Logo>
-        <img src="https://shop.mmartplus.com/images/white-logo.png" alt="M-Mart+ Logo" onError={(e) => e.currentTarget.src = '/logo192.png'} />
+        <img src="/images/logo.png" alt="M-Mart+ Logo" onError={(e) => e.currentTarget.src = '/logo192.png'} />
       </Logo>
       
       <Heading>Admin Login</Heading>

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, ChangeEvent, useRef } from 'react';
 import styled from 'styled-components';
-import api, { getCsrfCookie } from '../../services/api';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 
 // Styled Components

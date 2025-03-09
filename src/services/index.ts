@@ -1,5 +1,5 @@
-export { default as api } from './api';
-export { default as authService } from './authService';
+
+
 export { default as categoryService } from './categoryService';
 export { default as productService } from './productService';
 export { default as VoucherService } from './VoucherService';
@@ -10,12 +10,6 @@ export { default as inboxService } from './inboxService';
 export { default as adminMessageService } from './adminMessageService';
 
 // Re-export types
-export type { 
-  LoginCredentials, 
-  RegisterData, 
-  User,
-  AuthResponse 
-} from './authService';
 
 export type { 
   Category,

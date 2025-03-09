@@ -1,5 +1,7 @@
 // Application configuration
-const config = {
+import { Config } from './types/config';
+
+const config: Config = {
   // API URLs
   api: {
     baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
@@ -41,6 +43,7 @@ const config = {
   development: {
     mockAdminToken: import.meta.env.DEV ? 'dev-admin-token-for-testing' : null,
     mockUserToken: import.meta.env.DEV ? 'dev-user-token-for-testing' : null,
+    mockApiDelay: 500, // Simulated delay for mock API responses in milliseconds
     
     // Function to clear development localStorage settings - for clean slate testing
     resetDevSettings: () => {

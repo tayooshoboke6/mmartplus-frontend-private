@@ -1,4 +1,5 @@
-import api from './api';
+import axios from 'axios';
+import config from '../config';
 
 // Define max number of recently viewed products to store
 const MAX_RECENTLY_VIEWED = 20;
@@ -25,7 +26,9 @@ const recentlyViewedService = {
     try {
       // Try to get from API first
       try {
-        const response = await api.get<RecentlyViewedResponse>('/user/recently-viewed');
+        const response = await axios.get(`${config.api.baseUrl}/user/recently-viewed`, {
+          withCredentials: true // Important for cookies
+        });
         if (response.data.status === 'success') {
           // Sort by viewedAt in descending order (newest first)
           return response.data.data
@@ -55,7 +58,10 @@ const recentlyViewedService = {
     try {
       // First try API
       try {
-        await api.post('/user/recently-viewed', { product_id: product.id });
+        await axios.post(`${config.api.baseUrl}/user/recently-viewed`, 
+          { product_id: product.id },
+          { withCredentials: true } // Important for cookies
+        );
         return;
       } catch (error) {
         console.log('Using local storage for recently viewed as fallback');
@@ -103,7 +109,9 @@ const recentlyViewedService = {
     try {
       // Try API first
       try {
-        const response = await api.delete('/user/recently-viewed');
+        const response = await axios.delete(`${config.api.baseUrl}/user/recently-viewed`, {
+          withCredentials: true // Important for cookies
+        });
         if (response.data.status === 'success') {
           return true;
         }

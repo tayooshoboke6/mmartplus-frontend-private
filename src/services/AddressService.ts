@@ -1,4 +1,5 @@
-import api from './api';
+import axios from 'axios';
+import config from '../config';
 import { Address, AddressFormData } from '../models/Address';
 
 // Response interfaces
@@ -17,7 +18,9 @@ const AddressService = {
   // Get all addresses for a user
   getUserAddresses: async (userId: string): Promise<Address[]> => {
     try {
-      const response = await api.get<AddressesResponse>(`/users/${userId}/addresses`);
+      const response = await axios.get<AddressesResponse>(`${config.api.baseUrl}/users/${userId}/addresses`, {
+        withCredentials: true
+      });
       return response.data.addresses;
     } catch (error) {
       console.error(`Error fetching addresses for user #${userId}:`, error);
@@ -28,7 +31,9 @@ const AddressService = {
   // Get a specific address by ID
   getAddressById: async (id: string): Promise<Address | null> => {
     try {
-      const response = await api.get<AddressResponse>(`/addresses/${id}`);
+      const response = await axios.get<AddressResponse>(`${config.api.baseUrl}/addresses/${id}`, {
+        withCredentials: true
+      });
       return response.data.address;
     } catch (error) {
       console.error(`Error fetching address #${id}:`, error);
@@ -39,7 +44,9 @@ const AddressService = {
   // Get the default address for a user
   getDefaultAddress: async (userId: string): Promise<Address | null> => {
     try {
-      const response = await api.get<AddressResponse>(`/users/${userId}/addresses/default`);
+      const response = await axios.get<AddressResponse>(`${config.api.baseUrl}/users/${userId}/addresses/default`, {
+        withCredentials: true
+      });
       return response.data.address;
     } catch (error) {
       console.error(`Error fetching default address for user #${userId}:`, error);
@@ -50,9 +57,11 @@ const AddressService = {
   // Create a new address
   createAddress: async (userId: string, addressData: Omit<AddressFormData, 'id' | 'userId'>): Promise<Address> => {
     try {
-      const response = await api.post<AddressResponse>(`/users/${userId}/addresses`, {
+      const response = await axios.post<AddressResponse>(`${config.api.baseUrl}/users/${userId}/addresses`, {
         ...addressData,
         userId
+      }, {
+        withCredentials: true
       });
       return response.data.address;
     } catch (error) {
@@ -64,7 +73,9 @@ const AddressService = {
   // Update an existing address
   updateAddress: async (id: string, addressData: Partial<AddressFormData>): Promise<Address> => {
     try {
-      const response = await api.put<AddressResponse>(`/addresses/${id}`, addressData);
+      const response = await axios.put<AddressResponse>(`${config.api.baseUrl}/addresses/${id}`, addressData, {
+        withCredentials: true
+      });
       return response.data.address;
     } catch (error) {
       console.error(`Error updating address #${id}:`, error);
@@ -75,7 +86,9 @@ const AddressService = {
   // Delete an address
   deleteAddress: async (id: string): Promise<boolean> => {
     try {
-      await api.delete(`/addresses/${id}`);
+      await axios.delete(`${config.api.baseUrl}/addresses/${id}`, {
+        withCredentials: true
+      });
       return true;
     } catch (error) {
       console.error(`Error deleting address #${id}:`, error);
@@ -86,7 +99,9 @@ const AddressService = {
   // Make an address the default for a user
   setDefaultAddress: async (id: string): Promise<Address> => {
     try {
-      const response = await api.put<AddressResponse>(`/addresses/${id}/set-default`);
+      const response = await axios.put<AddressResponse>(`${config.api.baseUrl}/addresses/${id}/set-default`, {}, {
+        withCredentials: true
+      });
       return response.data.address;
     } catch (error) {
       console.error(`Error setting address #${id} as default:`, error);

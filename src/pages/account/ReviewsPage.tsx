@@ -345,7 +345,7 @@ const ReviewsPage: React.FC = () => {
             orderId: 'MM78945',
             productId: 101,
             productName: 'Golden Penny Semovita - 1kg',
-            productImage: '/images/products/golden-penny-semovita.jpg',
+            productImage: 'https://dummyimage.com/300x200/',
             price: 1200,
             orderDate: '2025-02-25'
           },
@@ -354,7 +354,7 @@ const ReviewsPage: React.FC = () => {
             orderId: 'MM78945',
             productId: 102,
             productName: 'Dano Milk Powder - 400g',
-            productImage: '/images/products/dano-milk.jpg',
+            productImage: 'https://dummyimage.com/300x200/',
             price: 1800,
             orderDate: '2025-02-25'
           },
@@ -363,7 +363,7 @@ const ReviewsPage: React.FC = () => {
             orderId: 'MM78856',
             productId: 103,
             productName: 'Indomie Chicken Flavor - Pack of 40',
-            productImage: '/images/products/indomie-chicken.jpg',
+            productImage: 'https://dummyimage.com/300x200/',
             price: 5500,
             orderDate: '2025-03-01'
           }

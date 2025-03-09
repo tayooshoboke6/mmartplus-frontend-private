@@ -16,9 +16,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import ProtectedRoute from './components/auth/ProtectedRoute'
 import AdminRoute from './components/auth/AdminRoute'
 import ErrorBoundary from './components/common/ErrorBoundary'
-import SessionTimer from './components/common/SessionTimer'
 import { useEffect, useState } from 'react'
-import { checkAndRefreshTokenOnStartup } from './services/api'
 import { useAuth } from './contexts/AuthContext'
 import './App.css'
 import { ToastContainer } from 'react-toastify'
@@ -71,15 +69,7 @@ function AppContent() {
   }, [darkMode]);
   
   // Handle user token refresh on app load
-  useEffect(() => {
-    const checkToken = async () => {
-      // Check for existing tokens and refresh session
-      await checkAndRefreshTokenOnStartup();
-      console.log('Session initialized on application start');
-    };
-    
-    checkToken();
-  }, []);
+ 
 
   return (
     <>
@@ -138,7 +128,7 @@ function AppContent() {
         <Route path="/admin/message-campaigns" element={<AdminRoute><MessageCampaignsPage /></AdminRoute>} />
       </Routes>
       <ToastContainer position="bottom-right" autoClose={5000} />
-      <SessionTimer />
+    
     </>
   )
 }
