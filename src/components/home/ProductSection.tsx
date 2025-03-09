@@ -1,5 +1,9 @@
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import ProductCard from '../product/ProductCard';
+import productService from '../../services/productService';
+import { Product } from '../../services/productService';
+import LoadingSpinner from '../common/LoadingSpinner';
 
 const Container = styled.div`
   margin: 30px 0;
@@ -85,73 +89,61 @@ const NavigationButton = styled.button`
   }
 `;
 
-// Sample product data aligned with the new grocery store category system
-const products = [
-  {
-    id: 1,
-    name: "Golden Penny Semovita - 5kg",
-    image: "https://dummyimage.com/300x200/",
-    price: 5500.00,
-    rating: 5,
-    reviewCount: 42,
-    deliveryDays: 2,
-    category: "Staples & Grains"
-  },
-  {
-    id: 2,
-    name: "Sunlight Detergent Powder - 900g",
-    image: "https://dummyimage.com/300x200/",
-    price: 1200.00,
-    oldPrice: 1500.00,
-    discount: true,
-    rating: 4,
-    reviewCount: 63,
-    deliveryDays: 2,
-    category: "Cleaning & Laundry"
-  },
-  {
-    id: 3,
-    name: "Mamador Cooking Oil - 3.8L",
-    image: "https://dummyimage.com/300x200/",
-    price: 8500.00,
-    rating: 4,
-    reviewCount: 32,
-    deliveryDays: 2,
-    category: "Cooking Essentials"
-  },
-  {
-    id: 4,
-    name: "Indomie Instant Noodles (Chicken Flavor) - Pack of 40",
-    image: "https://dummyimage.com/300x200/",
-    price: 7200.00,
-    rating: 5,
-    reviewCount: 87,
-    deliveryDays: 2,
-    category: "Packaged & Frozen Foods"
-  },
-  {
-    id: 5,
-    name: "Peak Milk Powder - 900g",
-    image: "https://dummyimage.com/300x200/",
-    price: 4400.00,
-    rating: 4,
-    reviewCount: 55,
-    deliveryDays: 2,
-    category: "Dairy & Breakfast"
-  },
-  {
-    id: 6,
-    name: "Mortein Insecticide Spray - 600ml",
-    image: "https://dummyimage.com/300x200/",
-    price: 2400.00,
-    rating: 4,
-    reviewCount: 29,
-    deliveryDays: 2,
-    category: "Pest Control & Safety"
-  }
-];
+const ErrorMessage = styled.div`
+  color: #e74c3c;
+  text-align: center;
+  padding: 20px;
+  font-size: 16px;
+`;
 
-const ProductSection = () => {
+const LoadingContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+`;
+
+const ProductSection: React.FC = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        const featuredProducts = await productService.getFeaturedProducts();
+        setProducts(featuredProducts);
+        setError(null);
+      } catch (err) {
+        console.error('Failed to fetch products:', err);
+        setError('Failed to load products. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  if (loading) {
+    return (
+      <Container>
+        <LoadingContainer>
+          <LoadingSpinner />
+        </LoadingContainer>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container>
+        <ErrorMessage>{error}</ErrorMessage>
+      </Container>
+    );
+  }
+
   return (
     <Container>
       <ProductsGrid>
@@ -160,14 +152,14 @@ const ProductSection = () => {
             key={product.id}
             id={product.id}
             name={product.name}
-            image={product.image}
+            image={product.images?.[0] || "https://dummyimage.com/300x200/"}
             price={product.price}
-            oldPrice={product.oldPrice}
-            discount={product.discount}
+            oldPrice={product.discount_price ? product.price : undefined}
+            discount={product.discount_price !== undefined}
             rating={product.rating}
-            reviewCount={product.reviewCount}
-            deliveryDays={product.deliveryDays}
-            category={product.category}
+            reviewCount={product.review_count}
+            deliveryDays={2}
+            category={product.category?.name}
           />
         ))}
       </ProductsGrid>

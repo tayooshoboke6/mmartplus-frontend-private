@@ -30,17 +30,25 @@ class ApiService {
    * @param endpoint API endpoint
    * @param data Request body data
    * @param errorMessage Custom error message
+   * @param isFormData Whether the data is FormData (for file uploads)
    */
   async post<T>(
     endpoint: string, 
     data: any = {}, 
-    errorMessage: string = 'Failed to submit data'
+    errorMessage: string = 'Failed to submit data',
+    isFormData: boolean = false
   ): Promise<ApiResponse<T>> {
     const config: AxiosRequestConfig = {
       method: 'POST',
       url: endpoint,
       data
     };
+    
+    if (isFormData) {
+      config.headers = {
+        'Content-Type': 'multipart/form-data'
+      };
+    }
     
     return apiRequest<T>(config, errorMessage);
   }
@@ -50,17 +58,25 @@ class ApiService {
    * @param endpoint API endpoint
    * @param data Request body data
    * @param errorMessage Custom error message
+   * @param isFormData Whether the data is FormData (for file uploads)
    */
   async put<T>(
     endpoint: string, 
     data: any = {}, 
-    errorMessage: string = 'Failed to update data'
+    errorMessage: string = 'Failed to update data',
+    isFormData: boolean = false
   ): Promise<ApiResponse<T>> {
     const config: AxiosRequestConfig = {
       method: 'PUT',
       url: endpoint,
       data
     };
+    
+    if (isFormData) {
+      config.headers = {
+        'Content-Type': 'multipart/form-data'
+      };
+    }
     
     return apiRequest<T>(config, errorMessage);
   }
@@ -70,17 +86,25 @@ class ApiService {
    * @param endpoint API endpoint
    * @param data Request body data
    * @param errorMessage Custom error message
+   * @param isFormData Whether the data is FormData (for file uploads)
    */
   async patch<T>(
     endpoint: string, 
     data: any = {}, 
-    errorMessage: string = 'Failed to update data'
+    errorMessage: string = 'Failed to update data',
+    isFormData: boolean = false
   ): Promise<ApiResponse<T>> {
     const config: AxiosRequestConfig = {
       method: 'PATCH',
       url: endpoint,
       data
     };
+    
+    if (isFormData) {
+      config.headers = {
+        'Content-Type': 'multipart/form-data'
+      };
+    }
     
     return apiRequest<T>(config, errorMessage);
   }
