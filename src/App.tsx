@@ -11,6 +11,10 @@ import LoginPage from './pages/LoginPage'
 import SignupPage from './pages/SignupPage'
 import EmailVerificationPage from './pages/EmailVerificationPage'
 import RegistrationVerificationPage from './pages/RegistrationVerificationPage'
+import CategoryApiDebugPage from './pages/CategoryApiDebugPage'
+import ProductApiDebugPage from './pages/ProductApiDebugPage'
+import LoginApiDebugPage from './pages/LoginApiDebugPage'
+import SignupApiDebugPage from './pages/SignupApiDebugPage'
 import { CartProvider } from './contexts/CartContext'
 import { AuthProvider } from './contexts/AuthContext'
 import ProtectedRoute from './components/auth/ProtectedRoute'
@@ -21,6 +25,7 @@ import { useAuth } from './contexts/AuthContext'
 import './App.css'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
+import DebugNavigation from './components/debug/DebugNavigation'
 
 // Admin pages
 import DashboardPage from './pages/admin/DashboardPage'
@@ -111,6 +116,7 @@ function AppContent() {
         
         {/* Protected Admin routes */}
         <Route path="/admin" element={<AdminRoute><DashboardPage /></AdminRoute>} />
+        <Route path="/admin/dashboard" element={<AdminRoute><DashboardPage /></AdminRoute>} />
         <Route path="/admin/products" element={<AdminRoute><ProductsPage /></AdminRoute>} />
         <Route path="/admin/products/new" element={<AdminRoute><ProductFormPage /></AdminRoute>} />
         <Route path="/admin/products/add" element={<AdminRoute><ProductFormPage /></AdminRoute>} />
@@ -126,9 +132,18 @@ function AppContent() {
         <Route path="/admin/store-addresses" element={<AdminRoute><StoreAddressesPage /></AdminRoute>} />
         <Route path="/admin/voucher-management" element={<AdminRoute><VoucherManagementPage /></AdminRoute>} />
         <Route path="/admin/message-campaigns" element={<AdminRoute><MessageCampaignsPage /></AdminRoute>} />
+        
+        {/* API Debug Pages */}
+        <Route path="/debug/category-api" element={<CategoryApiDebugPage />} />
+        <Route path="/debug/product-api" element={<ProductApiDebugPage />} />
+        <Route path="/debug/login-api" element={<LoginApiDebugPage />} />
+        <Route path="/debug/signup-api" element={<SignupApiDebugPage />} />
+        
+        {/* Fallback route */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <ToastContainer position="bottom-right" autoClose={5000} />
-    
+      <DebugNavigation />
     </>
   )
 }

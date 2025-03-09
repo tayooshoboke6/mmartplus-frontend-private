@@ -69,6 +69,45 @@
 - Maintained consistent spacing and alignment across all elements
 - Preserved the original MMart styling with blue pricing, green delivery text, and blue buttons
 
+### 5. API Debug Pages
+- **Category API Debug Page**:
+  - Created a dedicated page for testing and debugging category API calls
+  - Implemented test controls for all category service methods
+  - Added form inputs for testing different parameters (ID, slug, parent_id, etc.)
+  - Included options to test both service methods and direct API calls
+  - Provided detailed response display with proper formatting
+  - Added success/error messaging for better debugging experience
+
+- **Product API Debug Page**:
+  - Created a dedicated page for testing and debugging product API calls
+  - Implemented test controls for all product service methods
+  - Added form inputs for testing different parameters (ID, slug, category, price range, etc.)
+  - Included options to test featured products, new arrivals, and best sellers
+  - Provided detailed response display with proper formatting
+  - Added success/error messaging for better debugging experience
+
+- **Login API Debug Page**:
+  - Created a dedicated page for testing and debugging login API calls
+  - Implemented test controls for all authentication methods (login, logout, getCurrentUser)
+  - Added form inputs for testing different login credentials
+  - Included options to test social login methods (Google, Apple)
+  - Provided detailed response display with proper formatting
+  - Added success/error messaging for better debugging experience
+
+- **Signup API Debug Page**:
+  - Created a dedicated page for testing and debugging signup API calls
+  - Implemented test controls for registration, email verification, and password reset
+  - Added form inputs for testing different registration parameters
+  - Organized into separate sections for registration, verification, and password reset
+  - Provided detailed response display with proper formatting
+  - Added success/error messaging for better debugging experience
+
+- **Debug Navigation**:
+  - Added a floating debug button accessible from any page in the application
+  - Implemented a dropdown menu with links to all debug pages
+  - Positioned in the bottom-right corner for easy access without interfering with the main UI
+  - Styled to be subtle yet accessible for development and testing purposes
+
 ## Technical Implementation Details
 - Used styled-components for consistent styling across components
 - Implemented responsive design with appropriate media queries
