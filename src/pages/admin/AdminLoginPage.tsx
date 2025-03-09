@@ -16,7 +16,9 @@ const PageContainer = styled.div`
 `;
 
 const Logo = styled.div`
-  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   margin-bottom: 40px;
   
   img {
@@ -192,7 +194,7 @@ const AdminLoginPage: React.FC = () => {
   
   return (
     <PageContainer>
-      <Logo>
+      <Logo onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
         <img src="/images/logo.png" alt="M-Mart+ Logo" onError={(e) => e.currentTarget.src = '/logo192.png'} />
       </Logo>
       

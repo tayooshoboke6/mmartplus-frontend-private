@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import AddressAutocomplete from '../components/auth/AddressAutocomplete';
 import SelfieCapture from '../components/auth/SelfieCapture';
 import AvatarGenerator from '../components/auth/AvatarGenerator';
+import { RegisterData } from '../services/authService';
 
 // Styled components (reusing styles from LoginPage)
 const PageContainer = styled.div`
@@ -15,7 +16,9 @@ const PageContainer = styled.div`
 `;
 
 const Logo = styled.div`
-  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   margin-bottom: 40px;
   
   img {
@@ -259,38 +262,104 @@ const SecondaryButton = styled.button`
   }
 `;
 
+// Additional styled components for multi-step form
+const StepIndicator = styled.div`
+  display: flex;
+  justify-content: center;
+  margin-bottom: 30px;
+`;
+
+interface StepProps {
+  active: boolean;
+  completed: boolean;
+  isLast?: boolean;
+}
+
+const Step = styled.div<StepProps>`
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: ${props => props.completed ? '#0077C8' : props.active ? '#0077C8' : '#e0e0e0'};
+  color: ${props => props.active || props.completed ? 'white' : '#666'};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 5px;
+  font-weight: 600;
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 100%;
+    transform: translateY(-50%);
+    height: 2px;
+    width: 30px;
+    background-color: ${props => props.completed ? '#0077C8' : '#e0e0e0'};
+    display: ${props => props.isLast ? 'none' : 'block'};
+  }
+`;
+
+const StepLabel = styled.div`
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+  margin-top: 5px;
+`;
+
+const ButtonContainer = styled.div`
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+`;
+
+const BackButton = styled(SecondaryButton)`
+  margin-right: 10px;
+`;
+
+const NextButton = styled(Button)`
+  margin-left: auto;
+`;
+
 // Signup page component
 const SignupPage: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { register, loginWithGoogle, loginWithApple, error, clearError } = useAuth();
+  
+  // Form data state
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
+    phoneNumber: '',
     password: '',
     address: '',
-    gender: undefined as 'male' | 'female' | 'other' | undefined,
-    profile_picture: ''
+    gender: '',
+    profile_picture: null as string | null
   });
   
+  // Form validation and UI states
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selfieImage, setSelfieImage] = useState<string | null>(null);
-  const [showAvatarGenerator, setShowAvatarGenerator] = useState<boolean>(false);
+  const [showAvatarGenerator, setShowAvatarGenerator] = useState(false);
   const [captureStep, setCaptureStep] = useState<'initial' | 'capture' | 'generate'>('initial');
   
-  const { register, loginWithGoogle, loginWithApple, isAuthenticated, isLoading, error, clearError } = useAuth();
-  
-  const navigate = useNavigate();
-  const location = useLocation();
+  // Multi-step form state
+  const [currentStep, setCurrentStep] = useState(1);
+  const totalSteps = 3;
   
   // If already authenticated, redirect to home
   useEffect(() => {
-    if (isAuthenticated) {
+    if (error) {
       navigate('/');
     }
-  }, [isAuthenticated, navigate]);
+  }, [error, navigate]);
   
   // Handle input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -305,26 +374,40 @@ const SignupPage: React.FC = () => {
   
   // Validate form
   const validateForm = () => {
-    const errors: {[key: string]: string} = {};
+    const errors: { [key: string]: string } = {};
     
-    // Required fields
-    if (!formData.firstName.trim()) errors.firstName = 'First name is required';
-    if (!formData.lastName.trim()) errors.lastName = 'Last name is required';
-    if (!formData.email.trim()) errors.email = 'Email is required';
-    if (!formData.password) errors.password = 'Password is required';
-    
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (formData.email && !emailRegex.test(formData.email)) {
-      errors.email = 'Invalid email address';
+    // Validate first name
+    if (!formData.firstName.trim()) {
+      errors.firstName = 'First name is required';
     }
     
-    // Password validation (at least 8 characters, with numbers and letters)
-    if (formData.password && formData.password.length < 8) {
+    // Validate last name
+    if (!formData.lastName.trim()) {
+      errors.lastName = 'Last name is required';
+    }
+    
+    // Validate email
+    if (!formData.email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      errors.email = 'Email is invalid';
+    }
+    
+    // Validate phone number
+    if (!formData.phoneNumber.trim()) {
+      errors.phoneNumber = 'Phone number is required';
+    } else if (!/^[\d\s\-\(\)]+$/.test(formData.phoneNumber)) {
+      errors.phoneNumber = 'Phone number is invalid';
+    }
+    
+    // Validate password
+    if (!formData.password.trim()) {
+      errors.password = 'Password is required';
+    } else if (formData.password.length < 8) {
       errors.password = 'Password must be at least 8 characters';
     }
     
-    // Password matching
+    // Validate confirm password
     if (formData.password !== confirmPassword) {
       errors.confirmPassword = 'Passwords do not match';
     }
@@ -337,22 +420,27 @@ const SignupPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Only validate and submit if on the final step
+    if (currentStep !== totalSteps) {
+      setCurrentStep(currentStep + 1);
+      return;
+    }
+    
     // Validate form
     if (!validateForm()) {
       return;
     }
     
+    setIsSubmitting(true);
+    
     try {
-      console.log('Submitting registration data:', formData);
-      
-      // Map frontend field names to backend field names expected by the API
-      const registrationData = {
-        first_name: formData.firstName,
-        last_name: formData.lastName,
+      // Map form data to backend fields
+      const registrationData: RegisterData = {
+        name: `${formData.firstName} ${formData.lastName}`,
         email: formData.email,
+        phone_number: formData.phoneNumber || '',  
         password: formData.password,
-        password_confirmation: confirmPassword,
-        profile_picture: formData.profile_picture
+        password_confirmation: confirmPassword
       };
       
       console.log('Mapped to backend fields:', registrationData);
@@ -363,6 +451,8 @@ const SignupPage: React.FC = () => {
     } catch (err) {
       console.error('Registration error:', err);
       // Error will be handled by the AuthContext
+    } finally {
+      setIsSubmitting(false);
     }
   };
   
@@ -426,8 +516,16 @@ const SignupPage: React.FC = () => {
   return (
     <PageContainer>
       {/* Logo */}
-      <Logo>
-        <img src="/images/logo.png" alt="M-Mart+" style={{ width: '120px', height: 'auto' }} />
+      <Logo onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
+        <img 
+          src="/images/logo.png" 
+          alt="M-Mart+" 
+          style={{ width: '120px', height: 'auto' }} 
+          onError={(e) => {
+            e.currentTarget.src = '/images/logo.png';
+            e.currentTarget.onerror = null;
+          }}
+        />
       </Logo>
       
       {/* Heading */}
@@ -441,217 +539,308 @@ const SignupPage: React.FC = () => {
         </ErrorMessage>
       )}
       
+      {/* Multi-step form navigation */}
+      <StepIndicator>
+        {[
+          { number: 1, label: 'Account' },
+          { number: 2, label: 'Security' },
+          { number: 3, label: 'Profile' }
+        ].map((step, index) => (
+          <div key={index} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <Step
+              active={currentStep === step.number}
+              completed={currentStep > step.number}
+              isLast={index === totalSteps - 1}
+            >
+              {step.number}
+            </Step>
+            <StepLabel>{step.label}</StepLabel>
+          </div>
+        ))}
+      </StepIndicator>
+      
       {/* Signup form */}
       <Form onSubmit={handleSubmit}>
-        <FormRow>
-          <FormGroup>
-            <Label htmlFor="firstName">First Name*</Label>
-            <Input
-              id="firstName"
-              name="firstName"
-              type="text"
-              value={formData.firstName}
-              onChange={handleChange}
-              placeholder="John"
-              required
-            />
-            {formErrors.firstName && <ValidationMessage>{formErrors.firstName}</ValidationMessage>}
-          </FormGroup>
-          
-          <FormGroup>
-            <Label htmlFor="lastName">Last Name*</Label>
-            <Input
-              id="lastName"
-              name="lastName"
-              type="text"
-              value={formData.lastName}
-              onChange={handleChange}
-              placeholder="Doe"
-              required
-            />
-            {formErrors.lastName && <ValidationMessage>{formErrors.lastName}</ValidationMessage>}
-          </FormGroup>
-        </FormRow>
+        {currentStep === 1 && (
+          <React.Fragment>
+            <FormRow>
+              <FormGroup>
+                <Label htmlFor="firstName">First Name*</Label>
+                <Input
+                  id="firstName"
+                  name="firstName"
+                  type="text"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  placeholder="John"
+                  required
+                />
+                {formErrors.firstName && <ValidationMessage>{formErrors.firstName}</ValidationMessage>}
+              </FormGroup>
+              
+              <FormGroup>
+                <Label htmlFor="lastName">Last Name*</Label>
+                <Input
+                  id="lastName"
+                  name="lastName"
+                  type="text"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  placeholder="Doe"
+                  required
+                />
+                {formErrors.lastName && <ValidationMessage>{formErrors.lastName}</ValidationMessage>}
+              </FormGroup>
+            </FormRow>
+            
+            <FormGroup>
+              <Label htmlFor="email">Email Address*</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="name@example.com"
+                required
+              />
+              {formErrors.email && <ValidationMessage>{formErrors.email}</ValidationMessage>}
+            </FormGroup>
+            
+            <FormGroup>
+              <Label htmlFor="phoneNumber">Phone Number*</Label>
+              <Input
+                id="phoneNumber"
+                name="phoneNumber"
+                type="tel"
+                value={formData.phoneNumber}
+                onChange={handleChange}
+                placeholder="123-456-7890"
+                required
+              />
+              {formErrors.phoneNumber && <ValidationMessage>{formErrors.phoneNumber}</ValidationMessage>}
+            </FormGroup>
+            
+            <ButtonContainer>
+              <NextButton type="button" onClick={() => {
+                // Validate first step fields before proceeding
+                const errors: { [key: string]: string } = {};
+                if (!formData.firstName.trim()) errors.firstName = 'First name is required';
+                if (!formData.lastName.trim()) errors.lastName = 'Last name is required';
+                if (!formData.email.trim()) {
+                  errors.email = 'Email is required';
+                } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+                  errors.email = 'Email is invalid';
+                }
+                if (!formData.phoneNumber.trim()) {
+                  errors.phoneNumber = 'Phone number is required';
+                } else if (!/^[\d\s\-\(\)]+$/.test(formData.phoneNumber)) {
+                  errors.phoneNumber = 'Phone number is invalid';
+                }
+                
+                setFormErrors(errors);
+                if (Object.keys(errors).length === 0) {
+                  setCurrentStep(2);
+                }
+              }}>Next</NextButton>
+            </ButtonContainer>
+          </React.Fragment>
+        )}
         
-        <FormGroup>
-          <Label htmlFor="email">Email Address*</Label>
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            value={formData.email}
-            onChange={handleChange}
-            placeholder="name@example.com"
-            required
-          />
-          {formErrors.email && <ValidationMessage>{formErrors.email}</ValidationMessage>}
-        </FormGroup>
+        {currentStep === 2 && (
+          <React.Fragment>
+            <FormGroup>
+              <Label htmlFor="password">Password*</Label>
+              <PasswordInput>
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  required
+                />
+                <TogglePasswordButton
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                      <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                  )}
+                </TogglePasswordButton>
+              </PasswordInput>
+              {formErrors.password && <ValidationMessage>{formErrors.password}</ValidationMessage>}
+            </FormGroup>
+            
+            <FormGroup>
+              <Label htmlFor="confirmPassword">Confirm Password*</Label>
+              <PasswordInput>
+                <input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
+                <TogglePasswordButton
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showConfirmPassword ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                      <line x1="1" y1="1" x2="23" y2="23"></line>
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                  )}
+                </TogglePasswordButton>
+              </PasswordInput>
+              {formErrors.confirmPassword && <ValidationMessage>{formErrors.confirmPassword}</ValidationMessage>}
+            </FormGroup>
+            
+            <ButtonContainer>
+              <BackButton type="button" onClick={() => setCurrentStep(1)}>Back</BackButton>
+              <NextButton type="button" onClick={() => {
+                // Validate password fields before proceeding
+                const errors: { [key: string]: string } = {};
+                if (!formData.password.trim()) {
+                  errors.password = 'Password is required';
+                } else if (formData.password.length < 8) {
+                  errors.password = 'Password must be at least 8 characters';
+                }
+                
+                if (formData.password !== confirmPassword) {
+                  errors.confirmPassword = 'Passwords do not match';
+                }
+                
+                setFormErrors(errors);
+                if (Object.keys(errors).length === 0) {
+                  setCurrentStep(3);
+                }
+              }}>Next</NextButton>
+            </ButtonContainer>
+          </React.Fragment>
+        )}
         
-        <FormGroup>
-          <Label htmlFor="profilePicture">Profile Picture</Label>
-          {captureStep === 'initial' && (
-            <div style={{ textAlign: 'center' }}>
-              {formData.profile_picture ? (
-                <div>
-                  <div style={{ 
-                    width: '100px', 
-                    height: '100px', 
-                    borderRadius: '50%', 
-                    overflow: 'hidden',
-                    margin: '0 auto 15px' 
-                  }}>
-                    <img 
-                      src={formData.profile_picture} 
-                      alt="Your avatar" 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                    />
+        {currentStep === 3 && (
+          <React.Fragment>
+            <FormGroup>
+              <Label htmlFor="address">Address</Label>
+              <AddressAutocomplete
+                value={formData.address || ''}
+                onChange={(address) => setFormData(prev => ({ ...prev, address }))}
+                placeholder="123 Main St, City, State"
+              />
+            </FormGroup>
+            
+            <FormGroup>
+              <Label htmlFor="gender">Gender</Label>
+              <Select
+                id="gender"
+                name="gender"
+                value={formData.gender || ''}
+                onChange={handleChange}
+              >
+                <option value="">Select gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </Select>
+            </FormGroup>
+            
+            <FormGroup>
+              <Label htmlFor="profilePicture">Profile Picture</Label>
+              {captureStep === 'initial' && (
+                <div style={{ textAlign: 'center' }}>
+                  {formData.profile_picture ? (
+                    <div>
+                      <div style={{ 
+                        width: '100px', 
+                        height: '100px', 
+                        borderRadius: '50%', 
+                        overflow: 'hidden',
+                        margin: '0 auto 15px' 
+                      }}>
+                        <img 
+                          src={formData.profile_picture} 
+                          alt="Your avatar" 
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                        />
+                      </div>
+                      <SecondaryButton 
+                        type="button" 
+                        onClick={startSelfieCapture}
+                        style={{ margin: '0 auto' }}
+                      >
+                        Change Profile Picture
+                      </SecondaryButton>
+                    </div>
+                  ) : (
+                    <div>
+                      <div style={{ 
+                        width: '100px', 
+                        height: '100px', 
+                        borderRadius: '50%', 
+                        backgroundColor: '#f0f0f0', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        margin: '0 auto 15px' 
+                      }}>
+                        <FaUser size={40} color="#ccc" />
+                      </div>
+                      <SecondaryButton 
+                        type="button" 
+                        onClick={startSelfieCapture}
+                        style={{ margin: '0 auto' }}
+                      >
+                        Take Selfie for Avatar
+                      </SecondaryButton>
+                    </div>
+                  )}
+                  <div style={{ textAlign: 'center', margin: '10px 0', color: '#666', fontSize: '14px' }}>
+                    Profile picture is optional. If you don't upload one, a default avatar will be used.
                   </div>
-                  <SecondaryButton 
-                    type="button" 
-                    onClick={startSelfieCapture}
-                    style={{ margin: '0 auto' }}
-                  >
-                    Change Profile Picture
-                  </SecondaryButton>
-                </div>
-              ) : (
-                <div>
-                  <div style={{ 
-                    width: '100px', 
-                    height: '100px', 
-                    borderRadius: '50%', 
-                    backgroundColor: '#f0f0f0', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    margin: '0 auto 15px' 
-                  }}>
-                    <FaUser size={40} color="#ccc" />
-                  </div>
-                  <SecondaryButton 
-                    type="button" 
-                    onClick={startSelfieCapture}
-                    style={{ margin: '0 auto' }}
-                  >
-                    Take Selfie for Avatar
-                  </SecondaryButton>
                 </div>
               )}
-              <div style={{ textAlign: 'center', margin: '10px 0', color: '#666', fontSize: '14px' }}>
-                Profile picture is optional. If you don't upload one, a default avatar will be used.
-              </div>
-            </div>
-          )}
-          
-          {captureStep === 'capture' && (
-            <SelfieCapture onImageCaptured={handleSelfieCaptured} />
-          )}
-          
-          {captureStep === 'generate' && selfieImage && (
-            <AvatarGenerator 
-              selfieImage={selfieImage}
-              onAvatarGenerated={handleAvatarGenerated}
-              onRetakeSelfie={handleRetakeSelfie}
-            />
-          )}
-        </FormGroup>
-        
-        <FormGroup>
-          <Label htmlFor="address">Address</Label>
-          <AddressAutocomplete
-            value={formData.address || ''}
-            onChange={(address) => setFormData(prev => ({ ...prev, address }))}
-            placeholder="123 Main St, City, State"
-          />
-        </FormGroup>
-        
-        <FormGroup>
-          <Label htmlFor="gender">Gender</Label>
-          <Select
-            id="gender"
-            name="gender"
-            value={formData.gender || ''}
-            onChange={handleChange}
-          >
-            <option value="">Select gender</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-            <option value="other">Other</option>
-          </Select>
-        </FormGroup>
-        
-        <FormGroup>
-          <Label htmlFor="password">Password*</Label>
-          <PasswordInput>
-            <input
-              id="password"
-              name="password"
-              type={showPassword ? 'text' : 'password'}
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="••••••••"
-              required
-            />
-            <TogglePasswordButton
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
-            >
-              {showPassword ? (
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                  <line x1="1" y1="1" x2="23" y2="23"></line>
-                </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
+              
+              {captureStep === 'capture' && (
+                <SelfieCapture onImageCaptured={handleSelfieCaptured} />
               )}
-            </TogglePasswordButton>
-          </PasswordInput>
-          {formErrors.password && <ValidationMessage>{formErrors.password}</ValidationMessage>}
-          <ValidationMessage>
-            Password must be at least 8 characters
-          </ValidationMessage>
-        </FormGroup>
-        
-        <FormGroup>
-          <Label htmlFor="confirmPassword">Confirm Password*</Label>
-          <PasswordInput>
-            <input
-              id="confirmPassword"
-              name="confirmPassword"
-              type={showConfirmPassword ? 'text' : 'password'}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-            />
-            <TogglePasswordButton
-              type="button"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-            >
-              {showConfirmPassword ? (
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                  <line x1="1" y1="1" x2="23" y2="23"></line>
-                </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
+              
+              {captureStep === 'generate' && selfieImage && (
+                <AvatarGenerator 
+                  selfieImage={selfieImage}
+                  onAvatarGenerated={handleAvatarGenerated}
+                  onRetakeSelfie={handleRetakeSelfie}
+                />
               )}
-            </TogglePasswordButton>
-          </PasswordInput>
-          {formErrors.confirmPassword && <ValidationMessage>{formErrors.confirmPassword}</ValidationMessage>}
-        </FormGroup>
-        
-        <Button type="submit" disabled={isLoading || isSubmitting}>
-          {isLoading || isSubmitting ? 'Creating account...' : 'Sign Up'}
-        </Button>
+            </FormGroup>
+            
+            <ButtonContainer>
+              <BackButton type="button" onClick={() => setCurrentStep(2)}>Back</BackButton>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Creating account...' : 'Sign Up'}
+              </Button>
+            </ButtonContainer>
+          </React.Fragment>
+        )}
       </Form>
       
       {/* Social login options */}
@@ -660,13 +849,27 @@ const SignupPage: React.FC = () => {
           <span>OR</span>
         </OrDivider>
         
-        <SocialButton type="button" onClick={handleGoogleSignup} provider="google">
-          <img src="/images/google-icon.svg" alt="Google" />
+        <SocialButton type="button" onClick={handleGoogleSignup} provider="google" disabled={isSubmitting}>
+          <img 
+            src="/images/google-icon.svg" 
+            alt="Google"
+            onError={(e) => {
+              e.currentTarget.src = '/images/google-icon.png';
+              e.currentTarget.onerror = null;
+            }}
+          />
           Sign up with Google
         </SocialButton>
         
-        <SocialButton type="button" onClick={handleAppleSignup} provider="apple">
-          <img src="/images/apple-icon.svg" alt="Apple" />
+        <SocialButton type="button" onClick={handleAppleSignup} provider="apple" disabled={isSubmitting}>
+          <img 
+            src="/images/apple-icon.svg" 
+            alt="Apple" 
+            onError={(e) => {
+              e.currentTarget.src = '/images/apple-icon.png';
+              e.currentTarget.onerror = null;
+            }}
+          />
           Sign up with Apple
         </SocialButton>
       </SocialLoginContainer>

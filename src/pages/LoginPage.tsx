@@ -44,7 +44,9 @@ const PageContainer = styled.div`
 `;
 
 const Logo = styled.div`
-  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   margin-bottom: 40px;
   
   img {
@@ -346,8 +348,16 @@ const LoginPage: React.FC = () => {
   return (
     <PageContainer>
       {/* Logo */}
-      <Logo>
-        <img src="/images/logo.png" alt="M-Mart+" style={{ width: '120px', height: 'auto' }} />
+      <Logo onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
+        <img 
+          src="/images/logo.png" 
+          alt="M-Mart+" 
+          style={{ width: '120px', height: 'auto' }} 
+          onError={(e) => {
+            e.currentTarget.src = '/logo192.png';
+            e.currentTarget.onerror = null;
+          }}
+        />
       </Logo>
       
       {/* Heading */}
@@ -422,12 +432,26 @@ const LoginPage: React.FC = () => {
         </OrDivider>
         
         <SocialButton type="button" onClick={handleGoogleLogin} provider="google">
-          <img src="/images/google-icon.svg" alt="Google" />
+          <img 
+            src="/images/google-icon.svg" 
+            alt="Google"
+            onError={(e) => {
+              e.currentTarget.src = '/images/google-icon.png';
+              e.currentTarget.onerror = null;
+            }}
+          />
           Sign in with Google
         </SocialButton>
         
         <SocialButton type="button" onClick={handleAppleLogin} provider="apple">
-          <img src="/images/apple-icon.svg" alt="Apple" />
+          <img 
+            src="/images/apple-icon.svg" 
+            alt="Apple"
+            onError={(e) => {
+              e.currentTarget.src = '/images/apple-icon.png';
+              e.currentTarget.onerror = null;
+            }}
+          />
           Sign in with Apple
         </SocialButton>
       </SocialLoginContainer>
